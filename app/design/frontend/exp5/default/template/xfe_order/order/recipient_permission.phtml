@@ -1,0 +1,396 @@
+<?php
+/**
+ * 收件账户使用权限 - 开关设置
+ * Recipient Account Usage Permission - Toggle Setting
+ *
+ * 界面位置：我的账户 → 账户设置 → 安全
+ * Interface location: My Account → Account Settings → Security
+ *
+ * @var $this Mage_Core_Block_Template
+ */
+?>
+<div class="recipient-permission" x-data="recipientPermissionToggle()">
+
+    <!-- ================================================================== -->
+    <!-- 标题区                                                              -->
+    <!-- ================================================================== -->
+    <div class="rp-header">
+        <div class="rp-title-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="5" width="18" height="14" rx="2" stroke="#3A2449" stroke-width="1.6" fill="none"/>
+                <circle cx="12" cy="12" r="3" stroke="#3A2449" stroke-width="1.6" fill="none"/>
+                <path d="M8 5V3M16 5V3" stroke="#3A2449" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <div class="rp-title-text">
+            <!-- 🔧 可编辑：标题 -->
+            <div class="rp-title"
+                 data-fr="Compte utilisable comme destinataire"
+                 data-cn="账户可作为收件人使用"
+                 data-en="Account usable as a recipient">
+                <?php echo $this->__('Account usable as a recipient'); ?>
+            </div>
+            <!-- 🔧 可编辑：说明文字 -->
+            <p class="rp-description"
+               data-fr="Les autres expéditeurs peuvent saisir votre email ou votre numéro de téléphone pour récupérer votre adresse et vous envoyer des colis à vos frais."
+               data-cn="其他寄件人可以通过输入您的电子邮箱地址或手机号码，获取您的收件地址，并使用您的账户支付运费向您寄送包裹。"
+               data-en="Other senders can enter your email address or phone number to retrieve your delivery address and send parcels to you at your expense.">
+                <?php echo $this->__('Other senders can enter your email address or phone number to retrieve your delivery address and send parcels to you at your expense.'); ?>
+            </p>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- 开关切换区域                                                        -->
+    <!-- ================================================================== -->
+    <div class="rp-toggle-area">
+
+        <!-- 开启状态 -->
+        <div class="rp-toggle-option"
+             :class="{ 'rp-active': enabled, 'rp-inactive': !enabled }"
+             @click="enabled = true"
+             role="button" tabindex="0"
+             @keydown.enter="enabled = true">
+
+            <div class="rp-option-header">
+                <div class="rp-status-badge" :class="enabled ? 'rp-badge-on' : 'rp-badge-off'">
+                    <span class="rp-dot" :class="enabled ? 'rp-dot-on' : 'rp-dot-off'"></span>
+                    <span data-fr="Activé" data-cn="已启用" data-en="Enabled">
+                        <?php echo $this->__('Enabled'); ?>
+                    </span>
+                </div>
+                <div class="rp-radio-outer" :class="{ 'rp-radio-checked': enabled }">
+                    <div class="rp-radio-inner" x-show="enabled"></div>
+                </div>
+            </div>
+            <p class="rp-status-desc"
+               data-fr="visible dans les recherches de destinataire"
+               data-cn="在收件人搜索中可见"
+               data-en="visible in recipient searches">
+                <?php echo $this->__('visible in recipient searches'); ?>
+            </p>
+        </div>
+
+        <!-- 关闭状态 -->
+        <div class="rp-toggle-option"
+             :class="{ 'rp-active': !enabled, 'rp-inactive': enabled }"
+             @click="enabled = false"
+             role="button" tabindex="0"
+             @keydown.enter="enabled = false">
+
+            <div class="rp-option-header">
+                <div class="rp-status-badge" :class="!enabled ? 'rp-badge-on' : 'rp-badge-off'"
+                     :style="!enabled ? 'background: #E5E5E5; color: #5D4D67;' : ''">
+                    <span class="rp-dot" :class="!enabled ? 'rp-dot-off' : 'rp-dot-on'"
+                          :style="!enabled ? 'background: #5D4D67;' : ''"></span>
+                    <span data-fr="Désactivé" data-cn="已禁用" data-en="Disabled">
+                        <?php echo $this->__('Disabled'); ?>
+                    </span>
+                </div>
+                <div class="rp-radio-outer" :class="{ 'rp-radio-checked': !enabled }">
+                    <div class="rp-radio-inner" x-show="!enabled"></div>
+                </div>
+            </div>
+            <p class="rp-status-desc"
+               data-fr="masqué des recherches de destinataire"
+               data-cn="在收件人搜索中隐藏"
+               data-en="hidden from recipient searches">
+                <?php echo $this->__('hidden from recipient searches'); ?>
+            </p>
+        </div>
+
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- 信息提示                                                              -->
+    <!-- ================================================================== -->
+    <div class="rp-info" x-show="!enabled" x-cloak>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0;">
+            <circle cx="12" cy="12" r="10" stroke="#8B6F9E" stroke-width="1.6" fill="none"/>
+            <path d="M12 8V13" stroke="#8B6F9E" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="12" cy="16.5" r="1.3" fill="#8B6F9E"/>
+        </svg>
+        <span data-fr="Ce compte n'existe pas ou n'est pas autorisé pour les expéditions à son compte."
+              data-cn="该账户不存在或未授权使用其账户寄件。"
+              data-en="This account does not exist or is not authorized for shipments billed to its account.">
+            <?php echo $this->__('This account does not exist or is not authorized for shipments billed to its account.'); ?>
+        </span>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- 保存按钮                                                              -->
+    <!-- ================================================================== -->
+    <div class="rp-actions">
+        <button type="button" class="rp-btn rp-btn-primary" @click="saveSetting()"
+                :disabled="saving">
+            <span x-show="!saving">
+                <?php echo $this->__('Save'); ?>
+            </span>
+            <span x-show="saving" x-cloak>
+                <?php echo $this->__('Saving...'); ?>
+            </span>
+        </button>
+    </div>
+
+</div>
+
+<script>
+function recipientPermissionToggle() {
+    return {
+        // 🔧 可编辑：初始值（开发后默认值为关闭 false）
+        enabled: false,
+        saving: false,
+
+        init() {
+            // 从服务器加载当前设置
+            this.loadSetting();
+        },
+
+        loadSetting() {
+            fetch('/xfe_order/order/recipientPermissionStatus')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        this.enabled = data.data.enabled;
+                    }
+                })
+                .catch(() => {
+                    console.log('[RecipientPermission] Load failed, using default');
+                });
+        },
+
+        saveSetting() {
+            this.saving = true;
+            const formData = new FormData();
+            formData.append('enabled', this.enabled ? '1' : '0');
+            fetch('/xfe_order/order/recipientPermissionSave', {
+                method: 'POST',
+                body: formData
+            })
+                .then(r => r.json())
+                .then(data => {
+                    console.log('[RecipientPermission] Saved:', data);
+                    this.saving = false;
+                })
+                .catch(() => {
+                    console.log('[RecipientPermission] Save failed');
+                    this.saving = false;
+                });
+        }
+    };
+}
+</script>
+
+<style>
+/* ===== 容器 ===== */
+.recipient-permission {
+    max-width: 600px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ===== 标题区 ===== */
+.rp-header {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 28px;
+}
+
+.rp-title-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #F0EBF5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.rp-title-text {
+    flex: 1;
+}
+
+.rp-title {
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    color: #3A2449;
+    line-height: 1.3;
+    margin-bottom: 8px;
+}
+
+.rp-description {
+    font-family: 'Red Hat Display', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 400;
+    font-size: 16px;
+    color: #3A2449;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* ===== 开关选项区 ===== */
+.rp-toggle-area {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.rp-toggle-option {
+    padding: 16px 20px;
+    border-radius: 14px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.rp-toggle-option.rp-active {
+    border-color: #1EA099;
+    background: #F5FCFB;
+}
+
+.rp-toggle-option.rp-inactive {
+    border-color: #E0DEE4;
+    background: #FAFAFB;
+}
+
+.rp-toggle-option.rp-inactive:hover {
+    border-color: #C8C5CE;
+    background: #F5F4F7;
+}
+
+.rp-option-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+/* ===== 状态徽章 ===== */
+.rp-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 14px 4px 10px;
+    border-radius: 20px;
+    font-family: 'Red Hat Display', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    transition: all 0.2s ease;
+}
+
+.rp-badge-on {
+    background: #E8F5F4;
+    color: #1EA099;
+}
+
+.rp-badge-off {
+    background: #E5E5E5;
+    color: #5D4D67;
+}
+
+.rp-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.rp-dot-on {
+    background: #1EA099;
+}
+
+.rp-dot-off {
+    background: #5D4D67;
+}
+
+/* ===== 单选按钮 ===== */
+.rp-radio-outer {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #C8C5CE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.rp-radio-checked {
+    border-color: #1EA099;
+}
+
+.rp-radio-inner {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #1EA099;
+}
+
+/* ===== 状态说明文字 ===== */
+.rp-status-desc {
+    font-family: 'Red Hat Display', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 400;
+    font-size: 16px;
+    color: #626262;
+    margin: 0 0 0 2px;
+}
+
+/* ===== 提示信息 ===== */
+.rp-info {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 14px 18px;
+    background: #F6F2FA;
+    border: 1.5px solid #DCCDE6;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    font-family: 'Red Hat Display', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #4A345A;
+}
+
+/* ===== 按钮区 ===== */
+.rp-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.rp-btn {
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+}
+
+.rp-btn-primary {
+    background: #3A2449;
+    color: #fff;
+    box-shadow: 0 4px 14px -4px #3A244980;
+}
+
+.rp-btn-primary:hover {
+    background: #2D1B39;
+    box-shadow: 0 6px 18px -4px #3A2449B3;
+}
+
+.rp-btn-primary:disabled {
+    background: #C8C5CE;
+    color: #8A8699;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* ===== Alpine.js 隐藏 ===== */
+[x-cloak] { display: none !important; }
+</style>

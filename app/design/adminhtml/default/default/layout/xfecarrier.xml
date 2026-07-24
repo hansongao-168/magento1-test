@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<layout>
+    <!-- Carrier grid/list page -->
+    <adminhtml_carrier_index>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier" name="carrier_grid" />
+        </reference>
+    </adminhtml_carrier_index>
+
+    <!-- Carrier edit page: tabs on left, form in content -->
+    <adminhtml_carrier_edit>
+        <reference name="left">
+            <block type="xfe_carrier/adminhtml_carrier_edit_tabs" name="carrier_tabs" />
+        </reference>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_edit" name="carrier_edit" />
+        </reference>
+    </adminhtml_carrier_edit>
+
+    <!-- Add Logo page (standalone Magento form) -->
+    <adminhtml_carrier_addlogo>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_logo_edit" name="carrier_logo_edit" />
+        </reference>
+    </adminhtml_carrier_addlogo>
+
+    <!-- Account edit page -->
+    <adminhtml_carrier_editaccount>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_account_edit" name="carrier_account_edit" />
+        </reference>
+    </adminhtml_carrier_editaccount>
+
+    <!-- Rule edit page -->
+    <adminhtml_carrier_editrule>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_rule_edit" name="carrier_rule_edit" />
+        </reference>
+    </adminhtml_carrier_editrule>
+
+    <!-- Carrier grid (ajax) -->
+    <adminhtml_carrier_grid>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_grid" name="carrier_ajax_grid" />
+        </reference>
+    </adminhtml_carrier_grid>
+</layout>

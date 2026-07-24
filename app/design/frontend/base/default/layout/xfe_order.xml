@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<layout version="0.1.0">
+    <xfe_order_order_index translate="label">
+        <label>Customer My Account Order History (Dynamic)</label>
+        <update handle="customer_account"/>
+        <reference name="my.account.wrapper">
+            <block type="xfe_orderfrontend/order_history" name="xfe.order.history"/>
+        </reference>
+    </xfe_order_order_index>
+
+    <!-- 客户账户导航中添加 XFE 动态订单列表，与原有 My Orders 共存 -->
+    <customer_account>
+        <reference name="customer_account_navigation">
+            <action method="addLink" translate="label" module="xfe_orderfrontend">
+                <name>xfe_orders</name>
+                <path>xfe_order/order/index</path>
+                <label>My Dynamic Orders</label>
+            </action>
+        </reference>
+    </customer_account>
+</layout>

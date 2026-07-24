@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<layout version="0.1.0">
+    <customer_account>
+        <reference name="customer_account_navigation">
+            <action method="removeLink">
+                <name>orders</name>
+            </action>
+            <action method="addLink" translate="label" module="xfe_orderfrontend">
+                <name>xfe_orders</name>
+                <path>xfe_order/order/index</path>
+                <label>My Orders</label>
+            </action>
+        </reference>
+    </customer_account>
+</layout>

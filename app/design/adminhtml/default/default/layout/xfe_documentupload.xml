@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<layout version="0.1.0">
+    <!-- Admin upload page -->
+    <adminhtml_documentupload_index>
+        <reference name="content">
+            <block type="xfe_documentupload/upload_form" name="document.upload.form"
+                   template="xfe_documentupload/upload.phtml">
+                <action method="setIsAdmin">
+                    <value>1</value>
+                </action>
+            </block>
+        </reference>
+        <reference name="head">
+            <action method="addItem">
+                <type>skin_css</type>
+                <name>css/xfe_documentupload.css</name>
+            </action>
+            <action method="addItem">
+                <type>skin_js</type>
+                <name>js/xfe_documentupload.js</name>
+            </action>
+            <action method="addItem">
+                <type>js</type>
+                <name>https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js</name>
+            </action>
+        </reference>
+    </adminhtml_documentupload_index>
+    <!-- Popup layout: minimal chrome for modal -->
+    <xfe_documentupload_popup>
+        <remove name="menu"/>
+        <remove name="header"/>
+        <remove name="footer"/>
+        <remove name="notifications"/>
+        <reference name="content">
+            <block type="xfe_documentupload/upload_form" name="document.upload.form"
+                   template="xfe_documentupload/upload.phtml">
+                <action method="setIsAdmin">
+                    <value>1</value>
+                </action>
+                <action method="setIsPopup">
+                    <value>1</value>
+                </action>
+            </block>
+        </reference>
+        <reference name="head">
+            <action method="addItem">
+                <type>skin_css</type>
+                <name>css/xfe_documentupload.css</name>
+            </action>
+            <action method="addItem">
+                <type>skin_js</type>
+                <name>js/xfe_documentupload.js</name>
+            </action>
+            <action method="addItem">
+                <type>js</type>
+                <name>https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js</name>
+            </action>
+        </reference>
+    </xfe_documentupload_popup>
+    <!-- Popup init script (via widget) -->
+    <adminhtml_documentupload_index>
+        <reference name="head">
+            <action method="addItem">
+                <type>skin_js</type>
+                <name>js/xfe_documentupload_popup.js</name>
+            </action>
+        </reference>
+    </adminhtml_documentupload_index>
+</layout>

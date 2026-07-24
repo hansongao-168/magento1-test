@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<config>
+    <acl>
+        <resources>
+            <admin>
+                <children>
+                    <sales>
+                        <children>
+                            <xcarrierslabel translate="title">
+                                <title>Logistic Carriers Label</title>
+                                <children>
+                                    <rule translate="title">
+                                        <title>Manage Carrier Label Rules</title>
+                                    </rule>
+                                </children>
+                            </xcarrierslabel>
+                        </children>
+                    </sales>
+                </children>
+            </admin>
+        </resources>
+    </acl>
+</config>

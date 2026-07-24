@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<layout version="0.1.0">
+
+    <!-- ================================================================ -->
+    <!-- 客户账户导航：添加"收件账户使用权限"链接                          -->
+    <!-- ================================================================ -->
+    <customer_account>
+        <reference name="customer_account_navigation">
+            <action method="addLink" translate="label" module="xfe_orderfrontend">
+                <name>recipient_permission</name>
+                <path>xfe_order/order/recipientPermission</path>
+                <label>收件账户使用权限</label>
+            </action>
+        </reference>
+    </customer_account>
+
+    <!-- ================================================================ -->
+    <!-- 收件账户使用权限设置页面                                          -->
+    <!-- ================================================================ -->
+    <xfe_order_order_recipientpermission translate="label">
+        <label>收件账户使用权限 - 开关设置</label>
+        <update handle="customer_account"/>
+        <reference name="my.account.wrapper">
+            <block type="core/template" name="recipient_permission"
+                   template="xfe_order/order/recipient_permission.phtml"/>
+        </reference>
+        <reference name="head">
+            <action method="addItem">
+                <type>js</type>
+                <name>https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js</name>
+            </action>
+        </reference>
+    </xfe_order_order_recipientpermission>
+
+</layout>

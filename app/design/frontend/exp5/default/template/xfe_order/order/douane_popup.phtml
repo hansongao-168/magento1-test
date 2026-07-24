@@ -1,0 +1,260 @@
+<?php
+/**
+ * Douane Popup - CPSC Customs Compliance Modal
+ *
+ * 完全自包含的弹窗，不依赖父级 Alpine 组件。
+ * 页面加载自动弹出，关闭后可通过右下角浮动按钮重新打开。
+ * 所有文字内容均在下方用 🔧 标注，方便编辑。
+ *
+ * @var $this Mage_Core_Block_Template
+ */
+?>
+<div x-data="douanePopup()">
+
+    <!-- ================================================================== -->
+    <!-- 🔧 可编辑：触发按钮（弹窗关闭后，右下角浮动按钮）                  -->
+    <!-- ================================================================== -->
+    <button x-show="!showDouane"
+            @click="showDouane = true"
+            style="position: fixed; right: 24px; bottom: 24px; z-index: 9998;
+                   padding: 14px 20px; border-radius: 12px; border: none;
+                   background: #C92F33; color: #fff;
+                   font-size: 14px; font-weight: 700; font-family: inherit;
+                   cursor: pointer; box-shadow: 0 6px 20px -6px #C92F3380;
+                   display: flex; align-items: center; gap: 8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L2 7V12C2 16.5 6.5 20.5 12 22C17.5 20.5 22 16.5 22 12V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" fill="none"/>
+            <path d="M12 8V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="12" cy="16.2" r="1.1" fill="currentColor"/>
+        </svg>
+        CPSC Customs
+    </button>
+
+    <!-- ================================================================== -->
+    <!-- 弹窗页面（全屏居中背景）                                            -->
+    <!-- ================================================================== -->
+    <div x-show="showDouane"
+         x-cloak
+         id="app" style="
+           min-height: 100vh; width: 100%;
+           background: #F6F5F1;
+           position: fixed; inset: 0; z-index: 9999;
+         ">
+
+        <!-- 半透明遮罩层 -->
+        <div style="
+          position: fixed; inset: 0;
+          background: #1816118C;
+          animation: fadeIn 0.25s ease;
+        "></div>
+
+        <!-- 弹窗卡片（绝对定位居中） -->
+        <div id="modal" style="
+          position: absolute; top: 50%; left: 50%;
+          transform: translate(-50%, -50%);
+          width: 640px; max-width: calc(100% - 80px);
+          background: #ffffff; border-radius: 20px;
+          box-shadow: 0 30px 80px -20px #1E131159, 0 0 0 1px #E0DED7;
+          animation: popIn 0.3s cubic-bezier(0.16,1,0.3,1);
+          overflow: hidden; display: flex; flex-direction: column;
+          max-height: 90vh;
+        ">
+
+            <!-- ===== 页眉区域（图标 + 标题） ===== -->
+            <div style="
+              padding: 28px 32px 20px 32px; display: flex; gap: 16px;
+              align-items: flex-start; border-bottom: 1px solid #EAE8E0;
+              flex-shrink: 0;
+            ">
+                <!-- 红色盾牌图标 -->
+                <div style="
+                  width: 44px; height: 44px; border-radius: 12px;
+                  background: #C92F33; display: flex;
+                  align-items: center; justify-content: center;
+                  flex-shrink: 0;
+                ">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2L2 7V12C2 16.5 6.5 20.5 12 22C17.5 20.5 22 16.5 22 12V7L12 2Z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
+                        <path d="M12 8V13" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                        <circle cx="12" cy="16.2" r="1.1" fill="white"/>
+                    </svg>
+                </div>
+                <div style="flex: 1;">
+                    <!-- 🔧 可编辑：副标题 -->
+                    <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #C92F33; margin-bottom: 4px;">
+                        Obligation douanière — États-Unis
+                    </div>
+                    <!-- 🔧 可编辑：主标题 -->
+                    <div style="font-size: 20px; font-weight: 800; color: #181611; line-height: 1.25;">
+                        Conformité produit CPSC (eFiling)
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== 内容区域（可滚动） ===== -->
+            <div style="padding: 24px 32px 8px 32px; overflow-y: auto; flex: 1;">
+
+                <!-- 🔧 可编辑：说明段落 -->
+                <p style="font-size: 15px; line-height: 1.6; color: #3C3A35; margin: 0 0 20px 0;">
+                    Depuis le <strong style="color: #181611;">8 juillet 2026</strong>,
+                    les douanes américaines exigent la transmission électronique des données
+                    de conformité des produits (CPSC eFiling) avant leur entrée sur le territoire,
+                    pour les produits concernés.
+                    <strong style="color: #181611;">
+                        En tant qu'expéditeur, vous êtes responsable de vous assurer que ces
+                        informations sont complètes, exactes et disponibles
+                    </strong>
+                    avant toute expédition.
+                </p>
+
+                <!-- 🔧 可编辑：信息列表 -->
+                <div style="background: #F6F5F1; border: 1px solid #E4E1DA; border-radius: 12px; padding: 16px 18px; margin-bottom: 20px;">
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #57554F; margin-bottom: 10px;">
+                        Informations pouvant être demandées
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;">
+                        <div style="font-size: 13.5px; color: #302E28; display: flex; gap: 8px; align-items: baseline;">
+                            <span style="color: #C92F33;">•</span> Identifiant produit (GTIN, SKU…)
+                        </div>
+                        <div style="font-size: 13.5px; color: #302E28; display: flex; gap: 8px; align-items: baseline;">
+                            <span style="color: #C92F33;">•</span> Norme CPSC applicable
+                        </div>
+                        <div style="font-size: 13.5px; color: #302E28; display: flex; gap: 8px; align-items: baseline;">
+                            <span style="color: #C92F33;">•</span> Date/lieu de fabrication
+                        </div>
+                        <div style="font-size: 13.5px; color: #302E28; display: flex; gap: 8px; align-items: baseline;">
+                            <span style="color: #C92F33;">•</span> Date du dernier test
+                        </div>
+                        <div style="font-size: 13.5px; color: #302E28; display: flex; gap: 8px; align-items: baseline;">
+                            <span style="color: #C92F33;">•</span> Laboratoire de test
+                        </div>
+                        <div style="font-size: 13.5px; color: #302E28; display: flex; gap: 8px; align-items: baseline;">
+                            <span style="color: #C92F33;">•</span> Contact dossier conformité
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🔧 可编辑：警告框 -->
+                <div style="background: #FFEBE8; border: 1.5px solid #C92F3359; border-radius: 14px; padding: 18px 20px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0;">
+                            <path d="M12 3L2 20H22L12 3Z" fill="#C92F33"/>
+                            <rect x="11" y="9" width="2" height="5" fill="white"/>
+                            <rect x="11" y="15.5" width="2" height="2" fill="white"/>
+                        </svg>
+                        <span style="font-size: 13.5px; font-weight: 800; color: #8D000E; text-transform: uppercase; letter-spacing: 0.03em;">
+                            Informations manquantes ou inexactes
+                        </span>
+                    </div>
+                    <p style="font-size: 14px; line-height: 1.55; color: #620001; margin: 0 0 12px 0;">
+                        Le colis peut être <strong>bloqué, retenu ou refusé</strong> par la douane
+                        américaine. Des frais de stockage de <strong>0,08 USD/kg/jour ouvrable</strong>
+                        peuvent s'appliquer jusqu'à régularisation.
+                    </p>
+                    <p style="font-size: 14.5px; line-height: 1.55; color: #550000; margin: 0; font-weight: 700; border-top: 1px solid #C92F3340; padding-top: 12px;">
+                        En cas de retour ou destruction du colis pour non-conformité CPSC,
+                        37 Express n'effectuera aucun remboursement — frais d'expédition,
+                        de douane, de stockage et de retour restent à votre charge exclusive.
+                    </p>
+                </div>
+
+                <!-- 🔧 可编辑：脚注 -->
+                <p style="font-size: 13px; line-height: 1.6; color: #65635D; margin: 0 0 8px 0;">
+                    37 Express agit en qualité d'<strong>intermédiaire logistique</strong> et
+                    transmet les informations déclarées par l'expéditeur, sans en vérifier
+                    la conformité réglementaire.
+                    <strong>L'importateur est le responsable légal de la conformité douanière
+                    du produit</strong> et doit en être informé par vos soins.
+                    Cette responsabilité vous incombe exclusivement.
+                    En cas de doute : <a href="https://cpsc.gov/eFiling" target="_blank" rel="noopener" style="color: #0066CC; font-weight: 700; text-decoration: underline;">cpsc.gov/eFiling</a>
+                </p>
+            </div>
+
+            <!-- ===== 底部操作区 ===== -->
+            <div style="padding: 18px 32px 24px 32px; border-top: 1px solid #EAE8E0; flex-shrink: 0;">
+
+                <!-- 🔧 可编辑：确认复选框 -->
+                <label id="ackLabel" style="display: flex; gap: 12px; align-items: flex-start; cursor: pointer; margin-bottom: 18px;">
+                    <input type="checkbox" x-model="acknowledged" style="
+                        width: 18px; height: 18px; margin-top: 1px;
+                        accent-color: #C92F33; flex-shrink: 0; cursor: pointer;
+                    ">
+                    <span style="font-size: 13.5px; line-height: 1.5; color: #302E28;">
+                        Je certifie avoir vérifié le statut réglementaire de mes produits
+                        et reconnais qu'en cas de blocage, de refus d'entrée ou de retour
+                        lié aux formalités douanières, <strong>aucun remboursement</strong>
+                        ne pourra être réclamé à 37 Express.
+                    </span>
+                </label>
+
+                <!-- 🔧 可编辑：按钮组 -->
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button id="btnCancel"
+                            @mouseover="btnCancelHover=true"
+                            @mouseout="btnCancelHover=false"
+                            :style="'padding: 12px 22px; border-radius: 10px; border: 1.5px solid #DAD7D0; font-size: 14.5px; font-weight: 600; cursor: pointer; font-family: inherit; ' + (btnCancelHover ? 'background: #F3F2EE; color: #3C3A35;' : 'background: #ffffff; color: #3C3A35;')">
+                        Annuler
+                    </button>
+                    <button id="btnConfirm" :disabled="!acknowledged"
+                            @click="onConfirm()"
+                            :style="acknowledged
+                                ? 'padding: 12px 24px; border-radius: 10px; border: none; font-size: 14.5px; font-weight: 700; font-family: inherit; cursor: pointer; background: #C92F33; color: #fff; box-shadow: 0 4px 14px -4px #C92F3380; transition: all 0.15s ease;'
+                                : 'padding: 12px 24px; border-radius: 10px; border: none; font-size: 14.5px; font-weight: 700; font-family: inherit; cursor: not-allowed; background: #E7E4DD; color: #918F88; transition: all 0.15s ease;'">
+                        Confirmer et continuer →
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+function douanePopup() {
+    return {
+        // 页面加载即弹出弹窗
+        showDouane: true,
+        acknowledged: false,
+        btnCancelHover: false,
+
+        init() {
+            // 不再绑定 Escape 键关闭，仅 Confirmer 按钮可关闭
+        },
+
+        // 🔧 可编辑：确认按钮点击后的行为
+        onConfirm() {
+            console.log('[Douane Popup] Confirmé — conformité CPSC acceptée');
+            // 修改此处实现你的确认逻辑，例如：
+            // - 提交表单
+            // - 标记订单为已确认
+            // - 跳转到下一步
+            this.showDouane = false;
+        }
+    };
+}
+</script>
+
+<style>
+/* ===== 动画 ===== */
+@keyframes popIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ===== 全局重置 ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ===== 字体：匹配原版系统字体 ===== */
+#app, #app * {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Alpine.js 隐藏未初始化元素 */
+[x-cloak] { display: none !important; }
+</style>

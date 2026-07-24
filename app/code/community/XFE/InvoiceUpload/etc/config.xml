@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  XFE_InvoiceUpload module
+  Allow a logged-in customer to upload invoice files (PDF / image) for an order.
+  Architecture (one-way):
+
+      Block ─┐
+             ├─► Service\InvoiceUploader ─► File\Store
+      Ctrl  ─┘                            └► File\Validator
+                                            └► Model\Invoice
+
+  No horizontal service-to-service references.
+-->
+<config>
+    <modules>
+        <XFE_InvoiceUpload>
+            <version>1.0.0</version>
+        </XFE_InvoiceUpload>
+    </modules>
+
+    <global>
+        <models>
+            <xfe_invoiceupload>
+                <class>XFE_InvoiceUpload_Model</class>
+                <resourceModel>xfe_invoiceupload_resource</resourceModel>
+            </xfe_invoiceupload>
+            <xfe_invoiceupload_resource>
+                <class>XFE_InvoiceUpload_Model_Resource</class>
+                <entities>
+                    <invoice>
+                        <table>xfe_invoiceupload_invoice</table>
+                    </invoice>
+                </entities>
+            </xfe_invoiceupload_resource>
+        </models>
+        <blocks>
+            <xfe_invoiceupload>
+                <class>XFE_InvoiceUpload_Block</class>
+            </xfe_invoiceupload>
+        </blocks>
+        <helpers>
+            <xfe_invoiceupload>
+                <class>XFE_InvoiceUpload_Helper</class>
+            </xfe_invoiceupload>
+        </helpers>
+        <resources>
+            <invoiceupload_setup>
+                <setup>
+                    <module>XFE_InvoiceUpload</module>
+                    <class>Mage_Core_Model_Resource_Setup</class>
+                </setup>
+            </invoiceupload_setup>
+        </resources>
+    </global>
+
+    <frontend>
+        <routers>
+            <xfe_invoiceupload>
+                <use>standard</use>
+                <args>
+                    <module>XFE_InvoiceUpload</module>
+                    <frontName>xfe_invoiceupload</frontName>
+                </args>
+            </xfe_invoiceupload>
+        </routers>
+        <layout>
+            <updates>
+                <xfe_invoiceupload>
+                    <file>xfe_invoiceupload.xml</file>
+                </xfe_invoiceupload>
+            </updates>
+        </layout>
+    </frontend>
+
+    <default>
+        <!-- Tunable limits, read via Helper\Data::getMaxBytes() / getAllowedExtensions() -->
+        <xfe_invoiceupload>
+            <general>
+                <max_bytes>5242880</max_bytes>          <!-- 5 MiB -->
+                <allowed_extensions>pdf,jpg,jpeg,png</allowed_extensions>
+            </general>
+        </xfe_invoiceupload>
+    </default>
+</config>

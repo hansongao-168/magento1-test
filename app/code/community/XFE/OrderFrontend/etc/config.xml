@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <XFE_OrderFrontend>
+            <version>1.0.0</version>
+        </XFE_OrderFrontend>
+    </modules>
+    <frontend>
+        <routers>
+            <xfe_orderfrontend>
+                <use>standard</use>
+                <args>
+                    <module>XFE_OrderFrontend</module>
+                    <frontName>xfe_order</frontName>
+                </args>
+            </xfe_orderfrontend>
+        </routers>
+        <layout>
+            <updates>
+                <xfe_orderfrontend>
+                    <file>xfe_order.xml</file>
+                </xfe_orderfrontend>
+            </updates>
+        </layout>
+    </frontend>
+    <global>
+        <blocks>
+            <xfe_orderfrontend>
+                <class>XFE_OrderFrontend_Block</class>
+            </xfe_orderfrontend>
+            <!-- 重写客户导航 Block 以支持 removeLink -->
+            <customer>
+                <rewrite>
+                    <account_navigation>XFE_OrderFrontend_Block_Rewrite_AccountNavigation</account_navigation>
+                </rewrite>
+            </customer>
+        </blocks>
+        <helpers>
+            <xfe_orderfrontend>
+                <class>XFE_OrderFrontend_Helper</class>
+            </xfe_orderfrontend>
+        </helpers>
+    </global>
+</config>

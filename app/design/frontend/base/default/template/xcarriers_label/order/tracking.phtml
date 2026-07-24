@@ -1,0 +1,32 @@
+<?php
+/**
+ * Partner Tracking Template
+ * Displays partner tracking numbers with external link and copy functionality
+ *
+ * Uses XFE_LogisticsCarriersLabel_Helper_Data::getPartnerTrackingRow()
+ * to generate "N° suivi partenaire" rows for each package.
+ *
+ * @see XFE_LogisticsCarriersLabel_Block_Order_Tracking
+ * @see XFE_LogisticsCarriersLabel_Helper_Data
+ */
+$_helper       = Mage::helper('xcarrierslabel');
+$_trackingData = $this->getPartnerTrackingData();
+?>
+<?php if (!empty($_trackingData)): ?>
+<div class="partner-tracking-info">
+    <?php foreach ($_trackingData as $_track): ?>
+        <?php
+        // Use the helper to build the complete tracking row with link and copy buttons
+        $_row = $_helper->getPartnerTrackingRow(
+            $_track['country_code'],
+            null,
+            $_track['track_number'],
+            ''
+        );
+        ?>
+        <?php if ($_row['has_data']): ?>
+            <?php echo $_row['row_html'] ?>
+        <?php endif; ?>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>

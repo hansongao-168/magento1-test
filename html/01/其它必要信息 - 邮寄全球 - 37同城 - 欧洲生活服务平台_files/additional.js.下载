@@ -1,0 +1,100 @@
+if(typeof Parcel !== 'object' || Parcel===null){
+    var Parcel = {};
+}
+if(!Parcel.Additional){
+    Parcel.Additional = {};
+}
+
+Parcel.Additional.initialize = function(formContainer, articlesContainer){
+    JSExt.Event.Customize.addEventListener('parcelAddArticleAfter', tr => tr.find('.tooltip').remove());
+    Parcel.Additional.initArticles(articlesContainer);
+    Parcel.Additional.initFields(formContainer);
+};
+
+Parcel.Additional.initArticles = function(articlesContainer){
+    let psc = jQuery(articlesContainer);
+    if(psc.length){
+        psc.find('td input[type="text"]').each(function(){
+            var td = $(this).up('td'), label = td.getAttribute('data-th');
+            if(this.getAttribute('not-load-placeholder') != 1 && this.getAttribute('placeholder')){
+                td.insert('<div class="inp-after">'+this.getAttribute('placeholder')+'</div>');
+                this.removeAttribute('placeholder');
+            }
+            //if(label){
+            //    this.setAttribute('placeholder', label);
+            //}
+        });
+        psc.find('td .inp-after').each(function(){
+            var td = jQuery(this).parent(), ii = document.createElement('a');
+            ii.setAttribute('class', 'iconfont info-icon');
+            ii.setAttribute('data-tip', this.innerHTML);
+            ii.setAttribute('href', 'javascript:;');
+            td.find('.el-box').append(ii);
+            this.remove();
+        });
+        psc.find('div.add-item-btn').each(function(){
+            this.closest('.package-item').querySelector('.addition-table').appendChild(this);
+        });
+        psc.on('click', '.info-icon', function(){
+            Parcel.Additional.Tooltip.show(this, $(this).up('td'));
+        })
+        .on('blur', '.info-icon', function(){
+            var target = this;
+            window.setTimeout(() => Parcel.Additional.Tooltip.hide(target, $(target).up('td')), 10);
+        });
+    }
+};
+
+Parcel.Additional.initFields = function(formContainer){
+    var c = jQuery('#parcel-additional-form'), fl = c.find('.product-options ul.form-list');
+    if(fl.length>1){
+        fl[0].querySelectorAll('.fields.download-pdf').forEach(li => {
+            jQuery(fl[1]).prepend(li);
+        });
+    }
+};
+
+Parcel.Additional.Tooltip = {
+    show(target, container) {
+        if(!container)container = target.parentNode;
+        var tooltip = jQuery(container).find('.tooltip');
+        if(!tooltip.length){
+            tooltip = document.createElement("div");
+            tooltip.setAttribute('class', 'tooltip fade bs-tooltip-bottom show');
+            tooltip.innerHTML = '<div class="tooltip-inner">'+target.getAttribute('data-tip')+'</div>';
+            container.appendChild(tooltip);
+            tooltip = jQuery(tooltip);
+            jQuery(container).addClass('show-tooltip');
+        }
+        Parcel.Additional.Tooltip.position(target, tooltip);
+    },
+    hide(target, container) {
+        if(!container)container = target.parentNode;
+        var tooltip = jQuery(container).find('.tooltip');
+        if(tooltip.is(':hover')){
+            tooltip.on('mouseout', function() {
+                jQuery(container).removeClass('show-tooltip');
+                tooltip.off().remove();
+            });
+        }else{
+            jQuery(container).removeClass('show-tooltip');
+            tooltip.remove();
+        }
+    },
+    position(target, tooltip) {
+        var rect = jQuery(target).position();
+        tooltip.css({'height': 'auto', 'left': rect.left+'px', 'top': (rect.top+jQuery(target).outerHeight()+5)+'px'});
+        var offset = tooltip.offset(), y = offset.top - document.documentElement.scrollTop, _h = tooltip.height(), h = document.documentElement.clientHeight;
+        if (y + _h > h - 20) tooltip.height(h - 20 - y);
+        tooltip.css({'width':'auto'}).css('white-space', 'nowrap');
+        var x = offset.left - document.documentElement.scrollLeft, _w = tooltip.width(), w = document.documentElement.clientWidth;
+        if (x + _w > w - 5) {
+            if(_w > w-5){
+                let l = jQuery(tooltip).parents('.show-tooltip').offset().left;
+                tooltip.width(w - 10).css({'white-space': 'wrap', 'left': (0-l+5)+'px'});
+            }else{
+                tooltip.css({'left': 'auto', 'right': 5+'px'});
+            }
+        }
+    }
+};

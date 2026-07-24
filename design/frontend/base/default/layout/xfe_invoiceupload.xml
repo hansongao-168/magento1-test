@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<layout version="0.1.0">
+    <!-- Customer order view: inject the upload block into the
+         order info container at the very end so it shows BELOW the
+         order totals. -->
+    <sales_order_view>
+        <reference name="order_info">
+            <block type="xfe_invoiceupload/frontend_customer_invoice_upload"
+                   name="xfe_invoiceupload.order.upload"
+                   as="invoice_upload"
+                   template="invoiceupload/upload.phtml" />
+        </reference>
+    </sales_order_view>
+</layout>

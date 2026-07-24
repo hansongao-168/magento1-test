@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<layout>
+    <!-- Rule grid/list page -->
+    <adminhtml_shippingrule_rule_index>
+        <reference name="content">
+            <block type="xfeshippingrule/adminhtml_rule" name="shipping_rule_grid" />
+        </reference>
+    </adminhtml_shippingrule_rule_index>
+
+    <!-- Rule edit page -->
+    <adminhtml_shippingrule_rule_edit>
+        <reference name="head">
+            <action method="addJs">
+                <file>mage/adminhtml/loader.js</file>
+            </action>
+            <action method="addItem">
+                <type>skin_js</type>
+                <name>xfe_shippingrule/js/condition-builder.js</name>
+            </action>
+        </reference>
+        <reference name="content">
+            <block type="xfeshippingrule/adminhtml_rule_edit" name="shipping_rule_edit" />
+        </reference>
+    </adminhtml_shippingrule_rule_edit>
+
+    <!-- Type grid/list page -->
+    <adminhtml_shippingrule_type_index>
+        <reference name="content">
+            <block type="xfeshippingrule/adminhtml_type" name="shipping_rule_type_grid" />
+        </reference>
+    </adminhtml_shippingrule_type_index>
+
+    <!-- Type edit page -->
+    <adminhtml_shippingrule_type_edit>
+        <reference name="content">
+            <block type="xfeshippingrule/adminhtml_type_edit" name="shipping_rule_type_edit" />
+        </reference>
+    </adminhtml_shippingrule_type_edit>
+</layout>

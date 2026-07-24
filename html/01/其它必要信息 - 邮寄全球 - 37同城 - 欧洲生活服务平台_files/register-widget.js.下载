@@ -1,0 +1,573 @@
+var cutomDataForm = {}; //new VarienForm();
+var cutomRegionUpdater = {}; //new RegionUpdater();
+var RegisterWidget = {
+    type: null,
+    _setCheckSiretAjax: null,
+    showModal: function(e, type) {
+        var target = jQuery(e).closest('.modal');
+        if(!target) return;
+        var id = target.attr('id');
+        if(jQuery(`${'#'+id}`)) {
+            jQuery(`${'#'+id}`).modal('hide');
+            setTimeout(()=>{
+                if(jQuery(`${'#'+type+'Modal'}`)) {
+                    jQuery(`${'#'+type+'Modal'}`).modal('show');
+                }
+            },200);
+        }
+    },
+    onSwitch: function(type, event) {
+        let parentTarget = jQuery(event).closest('[role="custom-register-wrapper"]');
+        let panelTarget = parentTarget.find('[role="panel-wrapper"]');
+        let formIndexTarget = parentTarget.find('[role="form-index-wrapper"]');
+        let particulierTarget = parentTarget.find('[role="particulier-wrapper"]');
+        let professionelTarget = parentTarget.find('[role="professionel-wrapper"]');
+        let parBtnTarget = parentTarget.find('[role="part-btn"]');
+        let proBtnTarget = parentTarget.find('[role="pro-btn"]');
+        let btnTarget = parentTarget.find('.btn-wrapper button');
+
+        this.type = type;
+
+        switch(type) {
+            case 'part':
+                panelTarget.hide();
+                professionelTarget.hide();
+                formIndexTarget.show();
+                particulierTarget.fadeIn();
+                btnTarget.removeClass('current');
+                parBtnTarget.addClass('current');
+                this.setSubmitbuttonDisabled();
+                break;
+            case 'pro':
+                panelTarget.hide();
+                particulierTarget.hide();
+                formIndexTarget.show();
+                professionelTarget.fadeIn();
+                btnTarget.removeClass('current');
+                proBtnTarget.addClass('current');
+                this.setSubmitbuttonDisabled(true);
+                break;
+            default:
+                
+        }
+    },
+    _onMobileInput: function(event) {
+        let target = event.form.mobile_phone_country;
+        
+        //observe mobile_phone_country selected value
+        if(target && target.value==='33') {
+            event.setAttribute("placeholder", Translator.translate('00 00 00 00 00'));
+            if(!(/^0/).test(event.value)){
+                event.value = "";
+            }
+            if(event.value.length>10){
+                event.value = event.value.substr(0, event.value.length-1);
+                showMessages("error-msg",Translator.translate('法国手机号不得大于10位数字'));
+            }
+        } else {
+            event.setAttribute("placeholder", "");
+        }
+
+    },
+    _onCheckCountry: function(widgetType, switchType) {
+        let form = document.querySelector('#'+widgetType+'-'+switchType+'-form');
+        let target = form?.mobile_phone_country;
+        let mobileTarget = form?.mobile_phone;
+
+        if(!form || !target || !mobileTarget) return false;
+
+        //set mobile_phone_country_id checked
+        let radioTarget = target.parentNode.querySelector('input[country_number="'+target.value+'"]');
+        radioTarget !== undefined ? radioTarget.checked = true : '';
+
+        //set mobile_country_number value
+        let mobileNumberTarget = form.mobile_country_number;
+        mobileNumberTarget !== undefined ? mobileNumberTarget.value = target.value : '';
+
+        //set mobile_phone placeholder and length limit
+        this._onMobileInput(mobileTarget);
+    },
+    _doSendVerifyCode: function(url, event, params, onSuccess, onNeedCaptcha) {
+        let msgTarget = event.form.querySelector('[role="send_mobile_phone_verify_message"]');
+
+        new Ajax.Request(url, {
+            method: "post",
+            evalJSON: "force",
+            parameters: params,
+            onSuccess: function(transport) {
+                if (transport.responseJSON) {
+                    if (transport.responseJSON.needCaptcha) {
+                        event.disabled = false;
+                        event.innerHTML = Translator.translate('Resend');
+                        if (onNeedCaptcha) {
+                            onNeedCaptcha(transport.responseJSON);
+                        } else {
+                            RegisterWidget._showCaptchaModal(url, event, params.replace(/&captcha%5Bmobile_verifycode_send%5D=[^&]*/, ''));
+                        }
+                        return;
+                    }
+                    if (transport.responseJSON.message != "") {
+                        msgTarget.innerHTML = transport.responseJSON.message;
+                    }
+                    if (transport.responseJSON.time > 0) {
+                        RegisterWidget._startCountdown(event, transport.responseJSON.time, msgTarget);
+                    } else {
+                        event.disabled = false;
+                        event.innerHTML = Translator.translate('Resend');
+                    }
+                    if (onSuccess) onSuccess();
+                } else {
+                    event.disabled = false;
+                    event.innerHTML = Translator.translate('Resend');
+                    msgTarget.innerHTML = Translator.translate('Error sending');
+                }
+            }
+        });
+        event.disabled = true;
+        event.innerHTML = Translator.translate('SENDING')+"...";
+    },
+    _startCountdown: function(event, seconds, msgTarget) {
+        event.innerHTML = Translator.translate('Resend')+"(" + seconds + ")";
+        let intervalId = window.setInterval(function() {
+            if (--seconds <= 0) {
+                window.clearInterval(intervalId);
+                event.innerHTML = Translator.translate('Resend');
+                event.disabled = false;
+                if (msgTarget) msgTarget.innerHTML = "";
+            } else {
+                event.innerHTML = Translator.translate('Resend')+"(" + seconds + ")";
+            }
+        }, 1000);
+    },
+    _showCaptchaModal: function(url, event, baseParams) {
+        let form = event.form;
+        let formId = form.id;
+        let modalId = formId.replace('-form', '-captcha-modal');
+        let modal = document.getElementById(modalId);
+        if (!modal) return;
+        let pendingBtnId = event.id;
+
+        modal.setAttribute('data-pending-url', url);
+        modal.setAttribute('data-pending-params', baseParams);
+        modal.setAttribute('data-pending-btn-id', pendingBtnId);
+
+        let parts = formId.split('-');
+        let modalMsgId = parts[0] + '-' + parts[1] + '-captcha-modal-message';
+        let modalMsg = document.getElementById(modalMsgId);
+        if (modalMsg) modalMsg.innerHTML = '';
+
+        let captchaImg = modal.querySelector('.captcha-img');
+        if (captchaImg && captchaImg.id) {
+            let captchaEl = document.getElementById(captchaImg.id);
+            if (captchaEl && captchaEl.captcha) {
+                let reloadBtn = modal.querySelector('.captcha-reload');
+                if (reloadBtn) captchaEl.captcha.refresh(reloadBtn);
+            }
+        }
+        let captchaInput = modal.querySelector('[id^="captcha_"]');
+        if (captchaInput) captchaInput.value = '';
+
+        jQuery(modal).modal('show');
+    },
+    _closeCaptchaModal: function(btn) {
+        let modal = jQuery(btn).closest('.captcha-modal');
+        if (modal.length) {
+            modal.modal('hide');
+        }
+    },
+    _onCaptchaModalConfirm: function(btn) {
+        let modal = jQuery(btn).closest('.captcha-modal');
+        if (!modal.length) return;
+
+        let captchaInput = document.getElementById('captcha_mobile_verifycode_send');
+        if (!captchaInput || captchaInput.value.trim() === '') return;
+
+        let url = modal.attr('data-pending-url');
+        let baseParams = modal.attr('data-pending-params');
+        let pendingBtnId = modal.attr('data-pending-btn-id');
+        if (!url || !baseParams || !pendingBtnId) return;
+
+        let params = baseParams + "&captcha%5Bmobile_verifycode_send%5D=" + encodeURIComponent(captchaInput.value.trim());
+        let pendingBtn = document.getElementById(pendingBtnId);
+        if (!pendingBtn) return;
+
+        let modalEl = modal[0];
+        let modalMsgId = modalEl.id.replace('-captcha-modal', '-captcha-modal-message');
+        let modalMsg = document.getElementById(modalMsgId);
+
+        RegisterWidget._doSendVerifyCode(url, pendingBtn, params, function() {
+            modal.modal('hide');
+        }, function(response) {
+            let captchaImg = modalEl.querySelector('.captcha-img');
+            if (captchaImg && captchaImg.id) {
+                let captchaEl = document.getElementById(captchaImg.id);
+                if (captchaEl && captchaEl.captcha) {
+                    let reloadBtn = modalEl.querySelector('.captcha-reload');
+                    if (reloadBtn) captchaEl.captcha.refresh(reloadBtn);
+                }
+            }
+            if (captchaInput) captchaInput.value = '';
+            if (modalMsg && response && response.message) {
+                modalMsg.innerHTML = response.message;
+            }
+        });
+    },
+    _setPassed: function(target) {
+        let iconTarget = target.querySelector('.iconfont');
+        target.classList.remove('text-danger');
+        target.classList.add('text-success');
+
+        if(typeof iconTarget !== "undefined") {
+            iconTarget.classList.remove('info-icon', 'warn-triangle-icon', 'bg-danger');
+            iconTarget.classList.add('success-icon', 'bg-success');
+        }
+    },
+    _setFailed: function(target) {
+        let iconTarget = target.querySelector('.iconfont');
+        target.classList.remove('text-success');
+        target.classList.add('text-danger');
+
+        if(typeof iconTarget !== "undefined") {
+            iconTarget.classList.remove('info-icon', 'success-icon', 'bg-success');
+            iconTarget.classList.add('warn-triangle-icon', 'bg-danger');
+        }
+    },
+    _setDefault: function(target) {
+        let iconTarget = target.querySelector('.iconfont');
+        target.classList.remove('text-success', 'text-danger');
+       
+        if(typeof iconTarget !== "undefined") {
+            iconTarget.classList.remove('info-icon', 'success-icon', 'bg-success', 'warn-triangle-icon', 'bg-danger');
+            iconTarget.classList.add('info-icon');
+        }
+    },
+    _showPassed: function(form) {
+        let i = 0,
+        target = form.querySelectorAll('[role="register-tips"]'),
+        passedIconTarget = form.querySelector('[role="tips-tick"]');
+
+        for(let t of target) {
+            if(t.classList.contains('text-success')) {
+                i++;
+            }
+        }
+
+        if(i == target.length) {
+            passedIconTarget.classList.remove('d-none');
+        } else {
+            passedIconTarget.classList.add('d-none');
+        }
+    },
+    onPasswordCheck: function(event) {
+        let form = event.form,
+        a = form.querySelector('[scope="any-tips"]'),
+        b = form.querySelector('[scope="string-tips"]'),
+        c = form.querySelector('[scope="space-tips"]');
+
+        //set confirmation value
+        form.confirmation.value = event.value;
+
+        //set passed or failed or default
+        if ((event.value).length>0) {
+            RegisterWidget._setPassed(a);
+            RegisterWidget._setFailed(b);
+            RegisterWidget._setFailed(c);
+            if ((event.value).length>=6) {
+                RegisterWidget._setPassed(b);
+            }else{
+                RegisterWidget._setFailed(b);
+            }
+
+            if (event.value[0]!=" "&&event.value[(event.value.length)-1]!=" ") {
+                RegisterWidget._setPassed(c);
+            }else{
+                RegisterWidget._setFailed(c);
+            }
+        }else{
+            RegisterWidget._setDefault(a);
+            RegisterWidget._setDefault(b);
+            RegisterWidget._setDefault(c);
+        }
+
+        //show passed icon
+        RegisterWidget._showPassed(form);
+    },
+    onOpenTips: function(event) {
+        let target = event.form.querySelector('[role="password-tips"]');
+        target.classList.remove('d-none');
+    },
+    onCloseTips: function(event) {
+        let target = event.form.querySelector('[role="password-tips"]');
+        target.classList.add('d-none');
+    },
+    onShowPassword: function(event) {
+        let form = event.form;
+        let target = form.password;
+        let icon = form.querySelector('[role="eye-icon"]');
+
+        if(target.getAttribute("type") === "password") {
+            target.setAttribute("type", "text");
+            icon.classList.remove("bi-eye-slash");
+            icon.classList.add("bi-eye");
+        } else {
+            target.setAttribute("type", "password");
+            icon.classList.remove("bi-eye");
+            icon.classList.add("bi-eye-slash");
+        }
+    },
+    onSendVerifyCode: function(url, event) {
+        let target = event.form.mobile_phone_country;
+        let mobileTarget = event.form.mobile_phone;
+        let mobileVal = mobileTarget.value;
+        let mobileCountryIdTarget = event.form.mobile_phone_country_id;
+        let msgTarget = event.form.querySelector('[role="send_mobile_phone_verify_message"]');
+        let countryId = RegisterWidget._getRadioValue(mobileCountryIdTarget);
+
+        if(mobileCountryIdTarget && countryId == '') {
+            msgTarget.innerHTML = Translator.translate('请选择号码所在国家/地区');
+            return false;
+        }
+        msgTarget.innerHTML = "";
+
+        if(!!mobileVal.length) {
+            let origNumber = mobileTarget.getAttribute("orig_number");
+            if (!origNumber || origNumber.trim() != mobileVal.trim()) {
+                let baseParams = "form_key="+event.form.form_key.value+"&phone_number=" + mobileVal + "&country_id=" + countryId;
+                RegisterWidget._doSendVerifyCode(url, event, baseParams, null, function(response) {
+                    RegisterWidget._showCaptchaModal(url, event, baseParams);
+                });
+            } else {
+                window.alert(Translator.translate('不能更改同一个手机号码'));
+            }
+        }
+    },
+    onSendEmailVerifyCode: function (url, event) {
+        let emailTarget = event.form.email;
+        let emailVal = emailTarget.value;
+
+        let msgTarget = event.form.querySelector('[role="send_email_verify_message"]');
+
+        msgTarget.innerHTML = "";
+
+        if (!!emailVal.length) {
+            var origNumber = emailTarget.getAttribute("orig_number");
+            if (!origNumber || origNumber.trim() != emailVal.trim()) {
+                new Ajax.Request(url, {
+                    method: "post",
+                    evalJSON: "force",
+                    parameters: "form_key=" + event.form.form_key.value + "&email=" + emailVal,
+                    onSuccess: function (transport) {
+                        if (transport.responseJSON) {
+                            if (transport.responseJSON.message != "") {
+                                msgTarget.innerHTML = transport.responseJSON.message;
+                            }
+
+                            event.innerHTML = transport.responseJSON.time > 0 ? Translator.translate('Resend') + "(" + transport.responseJSON.time + ")" : Translator.translate('Resend');
+                            if (transport.responseJSON.time > 0) {
+                                var intervalId = window.setInterval(function () {
+                                        if (--transport.responseJSON.time <= 0) {
+                                            window.clearInterval(intervalId);
+                                            event.innerHTML = Translator.translate('Resend');
+                                            event.disabled = false;
+                                            msgTarget.innerHTML = "";
+                                        } else {
+                                            event.innerHTML = Translator.translate('Resend') + "(" + transport.responseJSON.time + ")";
+                                        }
+                                    },
+                                    1000);
+                            } else {
+                                event.disabled = false;
+                                event.innerHTML = Translator.translate('Resend');
+                            }
+                        } else {
+                            event.disabled = false;
+                            event.innerHTML = Translator.translate('Resend');
+                            msgTarget.innerHTML = Translator.translate('Error sending');
+                        }
+                    }
+                });
+                event.disabled = true;
+                event.innerHTML = Translator.translate('SENDING') + "...";
+            } else {
+                window.alert(Translator.translate('不能更改同一个邮箱'));
+            }
+        }
+    },
+    _getRadioValue: function(elm) {
+        len = elm ? elm.length: null;
+        if (!elm) return "";
+        if (!len) return elm.checked ? elm.value: "";
+        for (var i = 0; i < len; i++) {
+            if (elm[i].checked) return elm[i].value;
+        }
+        return "";
+    },
+    toggleDistrict: function(countryHtmlId,regionHtmlId,districtHtmlId) {
+        //copy form logistic.js
+        var select = $(countryHtmlId),region = $(regionHtmlId),street1 = $(districtHtmlId),li;
+        var _parentNode = function(elm){
+            var i = 0;
+            do{if(i++>10){elm = null;break;}elm = elm.parentNode;}while(elm.tagName.toUpperCase()!='LI');
+            return elm;
+        };
+        var _setRegionValue = function(region,clear){
+            var htmlname = region.readAttribute('name'),htmlid = region.readAttribute('id'),r;
+            if(htmlname){
+                if(htmlname.indexOf('region_id')>=0){
+                    if(clear){
+                        region.setAttribute('orig-selected-index',region.selectedIndex);
+                        region.selectedIndex = 0;
+                    }else if(!isNaN(parseInt(region.getAttribute('orig-selected-index')))){
+                        region.selectedIndex = parseInt(region.getAttribute('orig-selected-index'));
+                        region.removeAttribute('orig-selected-index');
+                    }
+                    if(r = document.getElementById(htmlid.replace(/\bregion_id\b/,'region'))){
+                        if(clear){
+                            r.setAttribute('orig-value',r.value);
+                            r.value = "";
+                        }else if(r.getAttribute('orig-value')){
+                            r.value = r.getAttribute('orig-value');
+                            r.removeAttribute('orig-value');
+                        }
+                    }
+                }else{
+                    if(clear){
+                        region.setAttribute('orig-value',region.value);
+                        region.value = "";
+                    }else if(region.getAttribute('orig-value')){
+                        region.value = region.getAttribute('orig-value');
+                        region.removeAttribute('orig-value');
+                    }
+                    if(r = document.getElementById(htmlid.replace(/\bregion\b/,'region_id'))){
+                        if(clear){
+                            r.setAttribute('orig-selected-index',r.selectedIndex);
+                            r.selectedIndex = 0;
+                        }else if(!isNaN(parseInt(r.getAttribute('orig-selected-index')))){
+                            r.selectedIndex = parseInt(r.getAttribute('orig-selected-index'));
+                            r.removeAttribute('orig-selected-index');
+                        }
+                    }
+                }
+            }
+        };
+        if(select && street1){
+            if(street1){
+                if(select.options[select.selectedIndex].value=="CN"){
+                    if(street1.value=='-')street1.value = '';
+                    if(li = _parentNode(street1))$(li).removeClassName('no-display d-none');
+                    $(street1).addClassName('required-entry');
+                }else{
+                    street1.value = '-';
+                    if(li = _parentNode(street1))$(li).addClassName('no-display d-none');
+                    $(street1).removeClassName('required-entry');
+                }
+            }
+            if(region){
+                if(region.hasClassName('required-entry') || optionalStatesRequiredCountries.indexOf(select.options[select.selectedIndex].value)>=0){
+                    if(li = _parentNode(region)){
+                        $(li).removeClassName('no-display d-none');
+                        _setRegionValue(region);
+                    }
+                }else{
+                    if(li = _parentNode(region)){
+                        $(li).addClassName('no-display d-none');
+                        _setRegionValue(region,true);
+                    }
+                }
+            }
+        }
+    },
+    setSubmitbuttonDisabled: function(disabled) {
+        let parentTarget = jQuery('div[role="custom-register-wrapper"]');
+        parentTarget.find('button[type="submit"]').attr('disabled', disabled ? 'disabled' : false);
+    },
+    resetSiretStaus: function(elm) {
+        elm.parentElement.querySelector('[role="success"]').classList.add("d-none");
+        elm.parentElement.querySelector('[role="fail"]').classList.add("d-none");
+        elm.parentElement.parentElement.querySelector('[role="message"] .toast-body').innerHTML = '';
+    },
+    showSiretMessage: function(elm, message) {
+        const toastMsg = elm.parentElement.parentElement.querySelector('[role="message"]');
+        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(toastMsg);
+        toastMsg.querySelector('.toast-body').innerHTML = message;
+        toastBootstrap.show();
+    },
+    setSiretSuccess: function(elm) {
+        RegisterWidget.setSubmitbuttonDisabled();
+        elm.parentElement.querySelector('[role="success"]').classList.remove("d-none");
+    },
+    setSiretFail: function(elm) {
+        RegisterWidget.setSubmitbuttonDisabled(true);
+        elm.parentElement.querySelector('[role="fail"]').classList.remove("d-none");
+    },
+    checkSiret: function(url, elm) {
+        if (RegisterWidget.type != 'pro') {
+            return false;
+        }
+    
+        var siret = jQuery(elm).val();
+
+        if (siret) {
+            if (RegisterWidget._setCheckSiretAjax && RegisterWidget._setCheckSiretAjax.state() == 'pending') {
+                RegisterWidget._setCheckSiretAjax.abort();
+            }
+    
+            if (siret) {
+                url += (url.indexOf('?') >= 0) ? '&' : '?';
+                url += 'siret=' + siret;
+            }
+            //show loading
+            var $loadingElm = elm.parentElement.querySelector('[role="loading"]');
+            $loadingElm.classList.remove("d-none");
+           
+            //reset
+            RegisterWidget.resetSiretStaus(elm);
+
+            RegisterWidget._setCheckSiretAjax = new jQuery.ajax({
+                url: url,
+                method: 'get',
+                dataType : "json",
+                success:function(data) {
+                    if (data.success) {
+                        RegisterWidget.setSiretSuccess(elm);
+                    } else {
+                        RegisterWidget.setSiretFail(elm);
+                    }
+
+                    if(data.message) {
+                        RegisterWidget.showSiretMessage(elm, data.message);
+                    }
+                },
+                error: function(data) {
+                    RegisterWidget.setSiretFail(elm);
+                },
+                complete: function() {
+                    //hide loading
+                    $loadingElm.classList.add("d-none");
+                }
+            });
+        } else {
+            RegisterWidget.resetSiretStaus(elm)
+        }
+    }
+}
+
+
+
+jQuery(document).ready(function () {
+    if(document.getElementById('registerModal')) {
+        document.getElementById('registerModal').addEventListener('hidden.bs.modal', event => {
+            //when hidden register modal, reset hide show
+            document.querySelector('#registerModal [role="panel-wrapper"]').style.display = 'block';
+            document.querySelector('#registerModal [role="form-index-wrapper"]').style.display = 'none';
+        })
+
+        document.getElementById('registerModal').addEventListener('shown.bs.modal', event => {
+           let widgetType = 'header-register-widget';
+
+           //init country
+           RegisterWidget._onCheckCountry(widgetType, 'part');
+           RegisterWidget._onCheckCountry(widgetType, 'pro');
+        })
+    }
+})

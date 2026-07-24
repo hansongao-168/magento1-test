@@ -1,0 +1,164 @@
+function logistic_parcel_package_details() {
+    return {
+        config: {
+            formKey: null,
+            getGridUrl: null,
+            saveUrl: null,
+            deleteUrl: null,
+            editUrl: null,
+            popWindow: null,
+            fields: [],
+            formId: null,
+            joinCallback: null,
+        },
+
+        details: [],
+        addShow: false,
+        isEdit: false,
+        showDetail: null,
+        packageId: null,
+
+        init() {},
+
+        clear() {
+            this.details = [];
+            this.addShow = false;
+            this.isEdit = false;
+            this.showDetail = null;
+            this.packageId = null;
+        },
+
+        show(packageId) {
+            this.clear();
+            this.packageId = packageId;
+            this.getGrid();
+            this.showModal();
+        },
+
+        getGrid() {
+            let url = this.config.getGridUrl;
+            fetch(url, {
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            }).then(resp => resp.json()).then(result => {
+                if (result.error) {
+                    showMessages('error-msg', result.error);
+                } else {
+                    this.details = result.items;
+                }
+            });
+        },
+
+        getValue(detail, field, noShowType) {
+            if (field.key) {
+                if (noShowType && noShowType == field.type) {
+                    return '';
+                }
+                return detail[field.key] ?? '';
+            }
+            return '';
+        },
+
+        getFormatValue(detail, field, noShowType) {
+            if (field.key) {
+                if (noShowType && noShowType == field.type) {
+                    return '';
+                }
+                let v = detail[field.key + '_label'] ?? '';
+                return v || (detail[field.key] ?? '');
+            }
+            return '';
+        },
+
+        selected(detail, field, v) {
+            if (field.key && detail[field.key]) {
+                return detail[field.key] == v;
+            }
+            return false;
+        },
+
+        getName(id, field) {
+            return 'details[' + id + '][' + field.key + ']';
+        },
+
+        async deleteDetail(index, detail) {
+            let url = this.config.deleteUrl + 'id/' + detail.id;
+            return fetch(url, {
+                method: "DELETE",
+            }).then(resp => resp.json()).then(result => {
+                if (result.success) {
+                    let tr = document.querySelector('tr[data-index="' + index + '"]');
+                    if (tr.length) {
+                        tr.remove();
+                    }
+                    this.details.splice(index, 1);
+                } else {
+                    showMessages('error-msg', result.error);
+                }
+            });
+        },
+
+        getLabel(field) {
+            return field.type == 'hidden' ? '' : field.label;
+        },
+
+        isRequired(field) {
+            return field.type == 'hidden' ? false: field.required;
+        },
+
+        add(index) {
+            this.save(index);
+        },
+
+        async save(index) {
+            let detailForm = new VarienForm(this.config.formId);
+            if (!detailForm.validator.validate()) {
+                return false;
+            }
+
+            let p = Form.serialize(this.config.formId);
+
+            p = this.accumulator(p, 'form_key', this.config.formKey);
+            p = this.accumulator(p, 'index', index);
+
+            this.addShow = false;
+            return fetch(this.config.saveUrl, {
+                method: "POST",
+                headers: {
+                    'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                body: p,
+            }).then(resp => resp.json()).then(result => {
+                if (result.success) {
+                    if (index > 0) {
+                        this.details[index] = result.items;
+                    } else {
+                        this.details.push(result.items);
+                    }
+                    this.showDetail = null;
+                    this.addShow = false;
+                } else {
+                    showMessages('error-msg', result.error);
+                }
+            });
+        },
+
+        accumulator(result, key, value) {
+            return result + (result ? '&' : '')
+                + encodeURIComponent(key) + '=' + encodeURIComponent(value);
+        },
+
+        join(index) {
+            if (typeof this.config.joinCallback === 'function') {
+                this.config.joinCallback(this.packageId, this.details[index] ?? {});
+            }
+        },
+
+        showModal() {
+            if (this.config.popWindow) {
+                openPopWindow(this.config.popWindow)
+            }
+        },
+    }
+}

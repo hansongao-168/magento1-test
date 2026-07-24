@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <XFE_OrderFrontend>
+            <active>true</active>
+            <codePool>community</codePool>
+            <depends>
+                <Mage_Core/>
+                <Mage_Customer/>
+                <Mage_Sales/>
+            </depends>
+        </XFE_OrderFrontend>
+    </modules>
+</config>

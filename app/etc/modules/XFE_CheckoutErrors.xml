@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <XFE_CheckoutErrors>
+            <active>true</active>
+            <codePool>community</codePool>
+            <depends>
+                <Mage_Checkout />
+                <Mage_Adminhtml />
+            </depends>
+        </XFE_CheckoutErrors>
+    </modules>
+</config>

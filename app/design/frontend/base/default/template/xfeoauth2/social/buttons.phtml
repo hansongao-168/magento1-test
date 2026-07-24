@@ -1,0 +1,30 @@
+<?php
+/**
+ * Social Login Buttons Template
+ *
+ * @var XFE_OAuth2_Block_Social_Buttons $this
+ */
+$providers = $this->getProviders();
+if (empty($providers)): return; endif;
+?>
+<div class="xfeoauth2-social-login">
+    <div class="xfeoauth2-social-login-title">
+        <span><?php echo $this->__('Or login with') ?></span>
+    </div>
+    <div class="xfeoauth2-social-login-buttons">
+        <?php foreach ($providers as $code => $provider): ?>
+        <a href="<?php echo $this->escapeUrl($provider['url']) ?>"
+           class="xfeoauth2-btn xfeoauth2-btn-<?php echo $code ?>"
+           title="<?php echo $this->escapeHtml($provider['label']) ?>">
+            <?php if ($provider['icon']): ?>
+            <span class="xfeoauth2-btn-icon">
+                <img src="<?php echo $this->getSkinUrl('xfe_oauth2/images/btn-' . $code . '.svg') ?>"
+                     alt="<?php echo $this->escapeHtml($provider['label']) ?>"
+                     width="20" height="20" />
+            </span>
+            <?php endif; ?>
+            <span class="xfeoauth2-btn-label"><?php echo $this->escapeHtml($provider['label']) ?></span>
+        </a>
+        <?php endforeach; ?>
+    </div>
+</div>

@@ -1,0 +1,43 @@
+function logistic_parcel_package_invoice() {
+    return  {
+        config: {
+            formKey: null,
+            saveUrl: null,
+            formId : null,
+            item: {},
+        },
+        open: false,
+
+        accumulator(result, key, value) {
+            return result + (result ? '&' : '')
+                + encodeURIComponent(key) + '=' + encodeURIComponent(value);
+        },
+
+        async save() {
+            let detailForm = new VarienForm(this.config.formId);
+            if (!detailForm.validator.validate()) {
+                return false;
+            }
+
+            let p = Form.serialize(this.config.formId);
+
+            p = this.accumulator(p, 'form_key', this.config.formKey);
+
+            return fetch(this.config.saveUrl, {
+                method: "POST",
+                headers: {
+                    'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                body: p,
+            }).then(resp => resp.json()).then(result => {
+                if (result.success) {
+                    this.open = false;
+                    this.config.item = result.item;
+                } else {
+                    showMessages('error-msg', result.error);
+                }
+            });
+        },
+
+    }
+}

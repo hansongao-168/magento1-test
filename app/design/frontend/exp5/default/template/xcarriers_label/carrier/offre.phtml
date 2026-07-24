@@ -1,0 +1,72 @@
+<?php
+/**
+ * Carrier Offer Page Template (承运商列表页)
+ *
+ * @see XFE_LogisticsCarriersLabel_Block_Carrier_Offre
+ */
+$_helper   = Mage::helper('xcarrierslabel');
+$_partners = $this->getPartners();
+$_defaultTitle = $this->getDefaultTitle();
+
+/**
+ * Helper: build the "Livré par [partner]" styled label for a given partner row.
+ *
+ * @param Varien_Object $_row
+ * @return string HTML
+ */
+$_renderPartnerBadge = function ($_row) use ($_helper) {
+    $_label = $_helper->getPartnerLabelByCode(
+        $_row->getCountryCode(),
+        $_row->getShippingCompanyId()
+    );
+    return $_label['label_html'];
+};
+?>
+<div class="partner-shipping-offre">
+    <div class="page-title">
+        <h1><?php echo $this->__('Choose your shipping method') ?></h1>
+    </div>
+
+    <?php if ($_partners && $_partners->count() > 0): ?>
+        <div class="carrier-list">
+            <div class="carrier-card">
+                <!-- Main title -->
+                <h2 class="carrier-title"><?php echo $this->escapeHtml($_defaultTitle) ?></h2>
+
+                <!-- Partner labels (styled per PDF document) -->
+                <div class="partner-labels">
+                    <?php foreach ($_partners as $_partner): ?>
+                        <?php echo $_renderPartnerBadge($_partner) ?>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- Country list -->
+                <div class="country-list">
+                    <h3><?php echo $this->__('Countries served') ?></h3>
+                    <table class="country-table">
+                        <thead>
+                            <tr>
+                                <th><?php echo $this->__('Country') ?></th>
+                                <th><?php echo $this->__('Code') ?></th>
+                                <th><?php echo $this->__('Partner') ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($_partners as $_partner): ?>
+                            <tr>
+                                <td><?php echo $this->escapeHtml($_partner->getCountryName()) ?></td>
+                                <td><?php echo $this->escapeHtml($_partner->getCountryCode()) ?></td>
+                                <td>
+                                    <?php echo $_renderPartnerBadge($_partner) ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    <?php else: ?>
+        <p class="note-msg"><?php echo $this->__('No shipping partners available at this time.') ?></p>
+    <?php endif; ?>
+</div>

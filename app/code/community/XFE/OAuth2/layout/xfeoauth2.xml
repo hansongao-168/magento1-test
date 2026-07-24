@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<layout>
+    <!-- Authorize page -->
+    <xfeoauth2_authorize_index>
+        <reference name="content">
+            <block type="xfeoauth2/authorize" name="xfeoauth2.authorize" template="xfeoauth2/authorize.phtml" />
+        </reference>
+    </xfeoauth2_authorize_index>
+
+    <!-- Social login buttons on customer login page -->
+    <customer_account_login>
+        <reference name="content">
+            <block type="xfeoauth2/social_buttons" name="xfeoauth2.social.login" template="xfeoauth2/social/buttons.phtml" before="-" />
+        </reference>
+    </customer_account_login>
+
+    <!-- Social login buttons on customer register page -->
+    <customer_account_create>
+        <reference name="content">
+            <block type="xfeoauth2/social_buttons" name="xfeoauth2.social.register" template="xfeoauth2/social/buttons.phtml" before="-" />
+        </reference>
+    </customer_account_create>
+
+    <!-- Customer account - connected accounts page -->
+    <xfeoauth2_login_accounts>
+        <reference name="content">
+            <block type="xfeoauth2/social_buttons" name="xfeoauth2.social.accounts" template="xfeoauth2/social/accounts.phtml" />
+        </reference>
+    </xfeoauth2_login_accounts>
+
+    <!-- Add link to customer account navigation -->
+    <customer_account>
+        <reference name="customer_account_navigation">
+            <action method="addLink" translate="label" module="xfeoauth2">
+                <name>xfeoauth2_social_accounts</name>
+                <path>oauth2/login/accounts</path>
+                <label>Connected Accounts</label>
+            </action>
+        </reference>
+    </customer_account>
+
+    <!-- CSS inclusion on all frontend pages -->
+    <default>
+        <reference name="head">
+            <action method="addCss">
+                <stylesheet>css/xfe_oauth2/social-login.css</stylesheet>
+            </action>
+        </reference>
+    </default>
+</layout>

@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<config>
+    <sections>
+        <xfe_documentupload translate="label" module="xfe_documentupload">
+            <label>Document Upload</label>
+            <tab>sales</tab>
+            <frontend_type>text</frontend_type>
+            <sort_order>350</sort_order>
+            <show_in_default>1</show_in_default>
+            <show_in_website>1</show_in_website>
+            <show_in_store>1</show_in_store>
+            <groups>
+                <colissimo translate="label" module="xfe_documentupload">
+                    <label>Colissimo</label>
+                    <frontend_type>text</frontend_type>
+                    <sort_order>10</sort_order>
+                    <show_in_default>1</show_in_default>
+                    <show_in_website>1</show_in_website>
+                    <show_in_store>1</show_in_store>
+                    <fields>
+                        <enabled translate="label comment">
+                            <label>Enabled</label>
+                            <comment>Enable or disable the Colissimo document upload carrier.</comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>10</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                        </enabled>
+                        <accounts_json translate="label comment">
+                            <label>Accounts (JSON)</label>
+                            <comment>Configure one or more Colissimo accounts in JSON format. Each account supports: login+password OR apiKey. Password and apiKey will be encrypted automatically.
+
+Example:
+[
+  {
+    "title": "Main Account",
+    "login": "username",
+    "password": "secret",
+    "api_key": "",
+    "account_number": "12345"
+  },
+  {
+    "title": "Backup",
+    "login": "user2",
+    "password": "pass2",
+    "api_key": "",
+    "account_number": "67890"
+  }
+]</comment>
+                            <frontend_type>textarea</frontend_type>
+                            <backend_model>xfe_documentupload/system_config_backend_accounts</backend_model>
+                            <sort_order>20</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </accounts_json>
+                    </fields>
+                </colissimo>
+            </groups>
+        </xfe_documentupload>
+    </sections>
+</config>

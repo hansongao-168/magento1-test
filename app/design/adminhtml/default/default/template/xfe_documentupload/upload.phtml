@@ -1,0 +1,171 @@
+<?php
+
+/**
+ * Admin Document Upload Page Template
+ *
+ * @var $this XFE_DocumentUpload_Block_Upload_Form
+ */
+$_uploadUrl        = $this->getUploadUrl();
+$_docTypesUrl      = $this->getDocumentTypesUrl();
+$_accountsUrl      = $this->getAccountsUrl();
+$_carriers         = $this->getCarrierOptions();
+$_allDocTypesJson  = $this->getAllDocumentTypesJson();
+$_maxFileSize      = $this->getMaxFileSize();
+$_maxFileSizeKb    = $this->getMaxFileSizeKb();
+$_acceptExts       = $this->getAcceptedExtensions();
+$_isPopup          = $this->getIsPopup();
+?>
+<div class="xfe-document-upload" style="max-width: 720px;<?php echo $_isPopup ? ' margin: 10px;' : '' ?>"
+	x-data="documentUpload()"
+	x-init="init('<?php echo $_uploadUrl ?>', '<?php echo $_docTypesUrl ?>', '<?php echo $_accountsUrl ?>', <?php echo $_allDocTypesJson ?>, <?php echo $_maxFileSize ?>)">
+
+	<?php if (!$_isPopup): ?>
+		<div class="content-header">
+			<h3><?php echo $this->__('Document Upload') ?></h3>
+		</div>
+	<?php endif; ?>
+
+	<!-- Upload Form -->
+	<div class="entry-edit">
+		<div class="entry-edit-head">
+			<h4 class="icon-head head-edit-form fieldset-legend">
+				<?php echo $this->__('Upload Shipping Document') ?>
+			</h4>
+		</div>
+		<div class="fieldset">
+			<form @submit.prevent="submitUpload()" enctype="multipart/form-data">
+
+				<!-- Carrier Select -->
+				<div class="mb-3" style="margin-bottom: 15px;">
+					<label class="form-label" for="carrier_code" style="display: block; font-weight: bold; margin-bottom: 5px;">
+						<?php echo $this->__('Carrier') ?> <span style="color: red;">*</span>
+					</label>
+					<select id="carrier_code" style="width: 100%; padding: 6px;"
+						x-model="carrier"
+						@change="onCarrierChange()"
+						required>
+						<option value=""><?php echo $this->__('— Select Carrier —') ?></option>
+						<?php foreach ($_carriers as $_option): ?>
+							<option value="<?php echo $this->escapeHtml($_option['value']) ?>">
+								<?php echo $this->escapeHtml($_option['label']) ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+
+				<!-- Account Select -->
+				<div class="mb-3" style="margin-bottom: 15px;" x-show="accounts.length > 1">
+					<label class="form-label" for="account_index" style="display: block; font-weight: bold; margin-bottom: 5px;">
+						<?php echo $this->__('Colissimo Account') ?>
+					</label>
+					<select id="account_index" style="width: 100%; padding: 6px;"
+						x-model="accountIndex"
+						x-show="accounts.length > 1">
+						<template x-for="acc in accounts" :key="acc.index">
+							<option :value="acc.index" x-text="acc.title"></option>
+						</template>
+					</select>
+				</div>
+
+				<!-- Parcel Number -->
+				<div class="mb-3" style="margin-bottom: 15px;">
+					<label class="form-label" for="parcel_number" style="display: block; font-weight: bold; margin-bottom: 5px;">
+						<?php echo $this->__('Parcel Number') ?> <span style="color: red;">*</span>
+					</label>
+					<input type="text" id="parcel_number" style="width: 100%; padding: 6px;"
+						x-model="parcelNumber"
+						placeholder="<?php echo $this->__('e.g. EY607748960FR') ?>"
+						required>
+				</div>
+
+				<!-- Document Type Select -->
+				<div class="mb-3" style="margin-bottom: 15px;">
+					<label class="form-label" for="document_type" style="display: block; font-weight: bold; margin-bottom: 5px;">
+						<?php echo $this->__('Document Type') ?> <span style="color: red;">*</span>
+					</label>
+					<select id="document_type" style="width: 100%; padding: 6px;"
+						x-model="documentType"
+						:disabled="!carrier || docTypeOptions.length === 0"
+						required>
+						<option value=""><?php echo $this->__('— Select Document Type —') ?></option>
+						<template x-for="opt in docTypeOptions" :key="opt.value">
+							<option :value="opt.value" x-text="opt.label"></option>
+						</template>
+					</select>
+				</div>
+
+				<!-- File Input -->
+				<div class="mb-3" style="margin-bottom: 15px;">
+					<label class="form-label" for="file_input" style="display: block; font-weight: bold; margin-bottom: 5px;">
+						<?php echo $this->__('File') ?> <span style="color: red;">*</span>
+					</label>
+					<div style="border: 2px dashed #ccc; padding: 20px; text-align: center; cursor: pointer; border-radius: 6px; background: #fafafa;"
+						@click="$refs.fileInput.click()">
+						<input type="file" style="display: none;"
+							x-ref="fileInput"
+							id="file_input"
+							name="file"
+							accept="<?php echo $_acceptExts ?>"
+							@change="onFileChange($event)"
+							required>
+						<div x-show="!selectedFile">
+							<p style="margin: 0; color: #888;">
+								<?php echo $this->__('Click to select a file') ?>
+							</p>
+							<small style="color: #aaa;">
+								<?php echo $this->__('Accepted: PDF, JPG, PNG, TIFF — Max %s KB', $_maxFileSizeKb) ?>
+							</small>
+						</div>
+						<div x-show="selectedFile" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+							<span x-text="selectedFile ? selectedFile.name : ''"></span>
+							<small style="color: #888;"
+								x-text="selectedFile ? '(' + formatFileSize(selectedFile.size) + ')' : ''"></small>
+							<button type="button" style="color: red; border: 1px solid red; background: white; padding: 2px 8px; cursor: pointer;"
+								@click.stop="clearFile()">&times;</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- Parcel Number List (Optional) -->
+				<div class="mb-3" style="margin-bottom: 15px;">
+					<label class="form-label" for="parcel_number_list" style="display: block; font-weight: bold; margin-bottom: 5px;">
+						<?php echo $this->__('Additional Parcel Numbers') ?>
+						<small style="color: #888; font-weight: normal;">(<?php echo $this->__('optional') ?>)</small>
+					</label>
+					<input type="text" id="parcel_number_list" style="width: 100%; padding: 6px;"
+						x-model="parcelNumberList"
+						placeholder="<?php echo $this->__('Comma-separated parcel numbers') ?>">
+				</div>
+
+				<!-- Submit -->
+				<div style="margin-top: 20px;">
+					<button type="submit" class="scalable save"
+						:disabled="loading || !selectedFile"
+						style="padding: 8px 24px;">
+						<span x-show="!loading"><?php echo $this->__('Upload Document') ?></span>
+						<span x-show="loading"><?php echo $this->__('Uploading...') ?></span>
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<!-- Success Message -->
+	<div x-show="result && result.success" style="background: #e6ffed; border: 1px solid #34a853; padding: 12px; margin-top: 15px; border-radius: 4px;" x-cloak>
+		<strong style="color: #1e7e34;"><?php echo $this->__('Upload Successful!') ?></strong>
+		<p x-show="result.document_id" style="margin: 5px 0 0;">
+			<?php echo $this->__('Document ID') ?>:
+			<code x-text="result.document_id" style="background: #f1f3f5; padding: 2px 6px;"></code>
+		</p>
+	</div>
+
+	<!-- Error Messages -->
+	<div x-show="errors.length > 0" style="background: #fff0f0; border: 1px solid #dc3545; padding: 12px; margin-top: 15px; border-radius: 4px;" x-cloak>
+		<strong style="color: #dc3545;"><?php echo $this->__('Upload Failed') ?></strong>
+		<ul style="margin: 5px 0 0 20px;">
+			<template x-for="(err, idx) in errors" :key="idx">
+				<li x-text="err"></li>
+			</template>
+		</ul>
+	</div>
+</div>

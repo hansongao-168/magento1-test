@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <modules>
+        <XFE_Carrier>
+            <version>1.0.7</version>
+        </XFE_Carrier>
+    </modules>
+    <global>
+        <models>
+            <xfe_carrier>
+                <class>XFE_Carrier_Model</class>
+                <resourceModel>xfe_carrier_resource</resourceModel>
+            </xfe_carrier>
+            <xfe_carrier_resource>
+                <class>XFE_Carrier_Model_Resource</class>
+                <entities>
+                    <carrier>
+                        <table>xfe_carrier</table>
+                    </carrier>
+                    <carrier_logo>
+                        <table>xfe_carrier_logo</table>
+                    </carrier_logo>
+                    <carrier_account>
+                        <table>xfe_carrier_account</table>
+                    </carrier_account>
+                    <carrier_rule>
+                        <table>xfe_carrier_rule</table>
+                    </carrier_rule>
+                    <rule_condition_group>
+                        <table>xfe_carrier_rule_condition_group</table>
+                    </rule_condition_group>
+                    <rule_condition>
+                        <table>xfe_carrier_rule_condition</table>
+                    </rule_condition>
+                </entities>
+            </xfe_carrier_resource>
+        </models>
+        <blocks>
+            <xfe_carrier>
+                <class>XFE_Carrier_Block</class>
+            </xfe_carrier>
+        </blocks>
+        <helpers>
+            <xfe_carrier>
+                <class>XFE_Carrier_Helper</class>
+            </xfe_carrier>
+        </helpers>
+        <resources>
+            <xfe_carrier_setup>
+                <setup>
+                    <module>XFE_Carrier</module>
+                    <class>Mage_Core_Model_Resource_Setup</class>
+                </setup>
+            </xfe_carrier_setup>
+        </resources>
+    </global>
+    <admin>
+        <routers>
+            <adminhtml>
+                <args>
+                    <modules>
+                        <xfe_carrier after="Mage_Adminhtml">XFE_Carrier_Adminhtml</xfe_carrier>
+                    </modules>
+                </args>
+            </adminhtml>
+        </routers>
+    </admin>
+    <adminhtml>
+        <menu>
+            <system>
+                <children>
+                    <xfe_carrier translate="title" module="xfe_carrier">
+                        <title>閹佃儻绻嶉崯鍡欘吀閻?</title>
+                        <sort_order>130</sort_order>
+                        <action>adminhtml/carrier/index</action>
+                    </xfe_carrier>
+                </children>
+            </system>
+        </menu>
+        <acl>
+            <resources>
+                <admin>
+                    <children>
+                        <system>
+                            <children>
+                                <xfe_carrier translate="title" module="xfe_carrier">
+                                    <title>閹佃儻绻嶉崯鍡欘吀閻?</title>
+                                </xfe_carrier>
+                            </children>
+                        </system>
+                    </children>
+                </admin>
+            </resources>
+        </acl>
+        <layout>
+            <updates>
+                <xfecarrier>
+                    <file>xfecarrier.xml</file>
+                </xfecarrier>
+            </updates>
+        </layout>
+    </adminhtml>
+</config>
+
+
+

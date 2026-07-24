@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<layout>
+    <adminhtml_invoiceadjustment_adjustment_index>
+        <reference name="content">
+            <block type="invoiceadjustment/adminhtml_adjustment" name="invoice_adjustment" />
+        </reference>
+    </adminhtml_invoiceadjustment_adjustment_index>
+
+    <adminhtml_invoiceadjustment_adjustment_edit>
+        <reference name="content">
+            <block type="invoiceadjustment/adminhtml_adjustment_edit" name="invoice_adjustment_edit" />
+        </reference>
+    </adminhtml_invoiceadjustment_adjustment_edit>
+</layout>

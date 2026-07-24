@@ -1,0 +1,2883 @@
+var Parcel = {
+    carrierId: null,
+    shipperCountries: [],
+    receiverCountries: [],
+    invoiceCountries: [],
+    priceFormat: "€ 0.00",
+    baseUrl: '/',
+    urlPrefix: null,
+    submit_carrier_url: null,
+    check_additional_url: null,
+    isEsCanaryIslands: false,
+    showCountry: null,
+    hscodesInputFun: null,
+    nameInputFun: null,
+    articles: [],
+    fuelPercent: 0,
+    SaveArticlesUrl: null,
+    loadAdditionalTimeout: [6000,2000]
+};
+
+// input select动画
+function initInputSelect() {
+    let isinside = false;
+    jQuery(document).on('focus', '.el-box input.data-box', function () {
+        jQuery(this).parents('.el-box').removeClass('canuse do-nothing').addClass('focus');
+    }).on('blur', '.el-box input.data-box', e => window.setTimeout(function () {
+        var val = e.target.value, p = e.target.closest('.el-box'), nn = p && p.hasAttribute('no-nothing') || false;
+        if (!nn && (val === undefined || val === '')) {
+            jQuery(p).removeClass('canuse focus').addClass('do-nothing');
+        } else {
+            jQuery(p).removeClass('focus do-nothing').addClass('canuse');
+        }
+    }, 10));
+    jQuery(document).on('focus', '.el-box input.data-keydown', function () {
+        var ul = jQuery(this).nextAll('ul.list');
+        if (ul.length) {
+            isinside = false;
+        }
+        this.isSearching = false;
+    }).on('mousedown', 'ul.list > li[disabled]', function(){
+        isinside = true;
+    }).on('blur', '.el-box input.data-keydown', function () {
+        this.isSearching = false;
+        if (isinside) return;
+        var val = this.value;
+        var p = this.closest('.el-box');
+        var ul = this.dataList;
+        if(ul===undefined){
+            ul = this.dataList = this.parentNode.querySelector('input.data-keydown ~ ul.list');
+        }
+        let t = Parcel.getSelectedOption(this);
+        if (t) {
+            if (t.label != val) {
+                this.value = val = t.label;
+                this.style.backgroundColor = '#FFFFFF';
+            }
+        }else{
+            this.setAttribute('value-data','');
+            this.value = val = '';
+            this.style.backgroundColor = '#FFFFFF';
+        }
+
+        jQuery(p).find('.clean').show();
+        jQuery(ul).hide();
+    }).on('mousedown', '.el-box .clean', function (event) {
+        var pare = jQuery(this).hide().parents('.el-box');
+        window.setTimeout(function () {
+            pare.removeClass('focus do-nothing canuse').find('.data-box').val('').focus();
+        }, 5);
+        isinside = true;
+        //pare.find('ul').show();
+    }).on('mousedown', '.up-count', function (event) {
+        isinside = true;
+        jQuery(this).parents('.el-box').find('.data-box').focus();
+    }).on('mouseup', '.up-count', function (event) {
+        let inp = jQuery(this).parents('.el-box').find('.data-box'), ov = inp.val(), s = jQuery.isNumeric(ov) ? ov : 0,
+            max = inp.attr('max');
+        s++;
+        if (!max || s <= max) inp.val(s);
+        jQuery(this).parents('.el-box').addClass('focus');
+        inp.focus();
+        isinside = false;
+        if (ov != inp.val()) {
+            jQuery(inp).trigger("input");
+        }
+    }).on('mousedown', '.down-count', function (event) {
+        isinside = true;
+        jQuery(this).parents('.el-box').find('.data-box').focus();
+    }).on('mouseup', '.down-count', function (event) {
+        let inp = jQuery(this).parents('.el-box').find('.data-box'), ov = inp.val(), s = jQuery.isNumeric(ov) ? ov : 0,
+            min = inp.attr('min');
+        s--;
+        if (min === '' && s <= 0) {
+            inp.val('');
+        } else if (min === '0' && s <= 0) {
+            inp.val('0');
+        } else if (!min || s >= min) {
+            inp.val(s);
+        }
+        jQuery(this).parents('.el-box').addClass('focus');
+        inp.focus();
+        isinside = false;
+        if (ov != inp.val()) {
+            jQuery(inp).trigger("input");
+        }
+    });
+}
+function filterInputList(inp){
+    if(window.isInputSelectBoxFiltering){
+        window.clearTimeout(window.isInputSelectBoxFiltering);
+    }
+    window.isInputSelectBoxFiltering = window.setTimeout(function(){
+        if(inp.value || inp.preValue){
+            var ul = inp.dataList;
+            if(ul===undefined){
+                ul = inp.dataList = inp.parentNode.querySelector('input.data-keydown ~ ul.list');
+            }
+            if(ul){
+                Parcel.fillInputSelectBox(inp, undefined, true) > 0;
+                ul.setStyle({'height':'auto'});
+                setInputListSize(inp, ul);
+            }
+            inp.preValue = inp.value;
+        }
+        window.isInputSelectBoxFiltering = 0;
+    }, 1);
+}
+function setInputListSize(inp, ul){
+    const inpRect = inp.getBoundingClientRect();
+    let y = inpRect.top+inpRect.height+5, _h = jQuery(ul).height(), h = document.documentElement.clientHeight;
+    let bh = h-inpRect.top-inpRect.height, mh = y + _h > h - 5;
+    if(mh && inpRect.top>=bh && bh<=200){
+        ul.style.bottom = (inpRect.height+5)+'px';
+        if (_h > inpRect.top - 10) ul.style.height = (inpRect.top - 10)+'px';
+    }else{
+        ul.style.bottom = 'auto';
+        if (mh) ul.style.height = (h - 5 - y)+'px';
+    }
+    if(ul.getAttribute('data-max-width')==='yes' || this.clientWidth <= 40){
+        jQuery(ul).css({'width':'auto','min-width':'100%'}).find('li').css('white-space', 'nowrap');
+        let x = inpRect.left, _w = ul.clientWidth, w = document.documentElement.clientWidth;
+        if (x + _w > w - 15) jQuery(ul).width(w - x - 15).find('li').css('white-space', 'wrap');
+    }
+}
+function initPopWindow() {
+    jQuery(document).on('click', '.pop-window .el-button.cancel', function(event) {
+        jQuery(this).parents('.pop-window').fadeOut(400, function(){
+            JSExt.Event.Customize.triggerEvent('popWindowClosed', this);
+        });
+    }).on('click', '.pop-content', function(event) {
+        event.stopPropagation();
+    });
+}
+function openPopWindow(className) {
+    var _w = className && className !== undefined
+        ? className : 'pop-window', c = jQuery('.' + _w + ' .pop-content');
+    jQuery('.' + _w).css('display','flex');
+    c.addClass('full').css('height','auto');
+    JSExt.Event.Customize.triggerEvent('popWindowOpened', jQuery('.' + _w).get(0));
+
+    if (!className || className == 'submit-order-modal') {
+        window.setTimeout(function(){
+            var h = document.documentElement.clientHeight,_h = c.height();
+            if(_h>h-20)c.height(h-20);
+        },305);
+    }
+}
+
+jQuery(document).ready(()=>{
+    jQuery('input[name*="consignee_pay"]').on('change',function(){
+        jQuery('.consignee_pay_input').removeClass('active');
+        jQuery(this).parents('.consignee_pay_input').addClass('active');
+    });
+    jQuery('.select-box select.data-box').each(function(){
+        if(!jQuery('option:selected',this).length)this.selectedIndex = -1;
+    }).on('change',function(){
+        if(this.selectedIndex>=0){
+            jQuery(this).parents('.el-box').removeClass('focus do-nothing').addClass('canuse');
+        }
+    });
+    jQuery('.data-box.data-keydown').each(function(){
+        if(jQuery(this).val()){
+            jQuery(this).parents('.el-box').addClass('canuse').find('.clean').show();
+        }
+    });
+    jQuery('.el-button').on('click',function(){
+        jQuery(this).removeClass('show');
+        setTimeout(() => { jQuery(this).addClass('show'); },10);
+    });
+    jQuery('.content .el-button').on('click',function(){
+        jQuery(this).parent().find('.add-mes')
+        .toggleClass('d-flex');
+    });
+
+    initInputSelect();
+    initPopWindow();
+
+    //jQuery('.address-mes').addClass('move').css('transition','0')
+
+    // 点击新增地址按钮，显示地址编辑表单
+    jQuery('#express-parcel-create-container').on('click', '#parcel-address-container .choose-add', function() {
+        if (window.levelSelect) {
+            window.levelSelect.defaultValue = [];
+            window.levelSelect.destroy();
+        }
+        var div = $(this).up('div[address-type]');
+        if (div) {
+            Parcel.showEditAddressForm({"address_type": div.getAttribute("address-type")}, this);
+        }
+    });
+    // input 弹出 select 列表中选中事件
+    jQuery(document).on('mousedown', 'ul.list > li.get-data', Parcel.selectChangeEvent);
+
+    jQuery('#add-package-button').on('click',function(){
+        Parcel.addPackage(this);
+    });
+    jQuery('.carriers-content label.el-button',document.getElementById("express-parcel-create-container")).on('click', Parcel.selectCarrierClickHandler);
+    jQuery(document).on('input', '.el-box input.data-keydown', function(){
+        this.isSearching = true;
+        filterInputList(this);
+    }).on('focus', '.el-box input.data-keydown', function(){
+        var ul = this.dataList;
+        if(ul===undefined){
+            ul = this.dataList = this.parentNode.querySelector('input.data-keydown ~ ul.list');
+        }
+        if(ul){
+            this.select();
+            if(!this.dataOptions){
+                this.dataOptions = [];
+                let opt;
+                for(const li of ul.querySelectorAll('li.get-data')){
+                    opt = {label: li.innerHTML};
+                    for(const attr of li.attributes)opt[attr.name] = attr.value;
+                    this.dataOptions.push(opt);
+                }
+            }else{
+                Parcel.fillInputSelectBox(this);
+            }
+
+            jQuery(ul).show().css('height', 'auto');
+            setInputListSize(this, ul);
+        }
+    });
+
+    if ($('billing_address_id') && !$('billing_address_id').down('option')) {
+        JSExt.Event.Customize.addEventListener("billing_address_id_change",function(inp){
+            Parcel.saveQuoteAddress(inp.getAttribute("value-data"),"billing");
+        });
+    }
+
+    if ($('shipping_address_id') && !$('shipping_address_id').down('option')) {
+        JSExt.Event.Customize.addEventListener("shipping_address_id_change", function (inp) {
+            Parcel.saveQuoteAddress(inp.getAttribute("value-data"), "shipping");
+        });
+    }
+
+    if(document.getElementById("pickup_address_id")){
+        if (JSExt.Event.Customize.eventListener["pickup_address_id_change"]) {
+            JSExt.Event.Customize.eventListener["pickup_address_id_change"] = [];
+        }
+        JSExt.Event.Customize.addEventListener("pickup_address_id_change",function(inp){
+            Parcel.getPickupAddress(inp.getAttribute("value-data"), "pickup");
+        });
+        Parcel.getPickupAddress(document.getElementById("pickup_address_id").getAttribute("value-data"), "pickup");
+    }
+    JSExt.Event.Customize.addEventListener("invoice-address-as-customer_change",function(inp){
+        var radio = document.getElementById("invoice-address-same-as-other");
+        Parcel.saveQuoteAddress(inp.getAttribute("value-data"),"invoice");
+        if(radio)radio.checked = true;
+    });
+
+    insuranceOnInput();
+});
+function insuranceOnInput() {
+    jQuery('#parcel-insurance-button').off('click').on('click',function(){
+        Parcel.submitSaveInsuranceForm(this);
+    });
+}
+function el_dropdown(el){
+    if(jQuery(el).hasClass('ro')){
+        jQuery(el).removeClass('ro');
+        jQuery(el).parents('.el-dropdown').find('.el-dropcontent').slideUp();
+    }else{
+        jQuery(el).addClass('ro');
+        jQuery(el).parents('.el-dropdown').find('.el-dropcontent').slideDown();
+    }
+}
+function categoryChange(e) {
+    if (jQuery(e).val() == "4") {
+        jQuery('input[name$="][brand]"],input[name$="][material]"]').val('').change();
+        jQuery('input[name$="][brand]"],input[name$="][material]"]').removeClass(function(){
+            return 'required-entry';
+        });
+        jQuery('#packages-data table tr').find('th:nth-child(2),th:nth-child(3),td:nth-child(2),td:nth-child(3)').hide();
+    } else {
+        jQuery('input[name$="][brand]"],input[name$="][material]"]').addClass(function(){
+            return 'required-entry';
+        });
+        jQuery('#packages-data table tr').find('th,td').show();
+    }
+}
+
+Parcel.selectChangeEvent = function(event) {
+    if(this.hasAttribute('disabled'))return Parcel;
+    var inp = $(this).up('ul').previous('.data-box'), v = this.getAttribute('value');
+    if (inp) {
+        inp.value = this.innerText;
+        if (v !== undefined && v !== null) {
+            inp.setAttribute('value-data', v);
+        }
+        var k = inp.getAttribute('id') || inp.getAttribute('name'), ev = inp.getAttribute('on-change');
+        if (k) JSExt.Event.Customize.triggerEvent(k + "_change", inp);
+        if (ev) {
+            eval(ev.replace(/\bthis\b/gi, 'inp').replace(/\boption\b/gi, 'this'));
+        }
+    }
+    return Parcel;
+};
+
+Parcel.saveQuoteAddress = function(id,type){
+    var url = jQuery("#parcel-address-container").attr("save-url"),
+        defShippingUrl = jQuery("#parcel-address-container").attr("save-def-shipping-url");
+    if(id && url){
+        jQuery.ajax({type:"POST",url:url,data:"id="+id+"&type="+type,dataType:"json",
+            success:function(data){
+                if(data){
+                    if(data.success){
+                        var c = document.getElementById(data.address_type+"_address_html");
+                        if(c)c.innerHTML = (data.edit_button ? data.edit_button : "")+'<div class="address-html">'+data.address_html+'</div>';
+                        if (type == 'billing' && data.has_update_de_shipping) {
+                            Parcel.showCountry = "FR";
+                            Parcel.clearShippingAddress();
+                        } else {
+                            Parcel.showCountry = null;
+                            jQuery("#default-shipping-address").addClass("no-display");
+                            if (!jQuery('input[name="consignee_pay"]:checked',document.getElementById("express-parcel-create-container")).val()) {
+                                jQuery('div[address-type="shipping"]',document.getElementById("parcel-address-container")).removeClass("no-display");
+                            }
+                            if(document.getElementById("invoice-address-container"))jQuery("#invoice-address-container").removeClass("no-display");
+                            jQuery('#default_shipping_address_id').attr('value-data', '');
+                        }
+                        JSExt.Event.Customize.triggerEvent('afterSavedQuoteAddress', data);
+                    }else{
+                        showMessages("error-msg",data.message ? data.message : "保存地址出错了");
+                        if(data.address_data){
+                            var cb = function(){
+                                Parcel.showEditAddressForm(data.address_data);
+                                JSExt.Event.Customize.removeEventListener("document_body_enable_after",cb);
+                            };
+                            JSExt.Event.Customize.addEventListener("document_body_enable_after",cb);
+                            if(!data.address_data.address_type || data.address_data.address_type=="")data.address_data.address_type = data.address_type;
+                        }
+                    }
+                }
+            },
+            error:function(){showMessages("error-msg","保存地址服务器出错了");}
+        });
+    }
+    return Parcel;
+};
+Parcel.getPickupAddress = function(id,type){
+    var url = jQuery("#parcel-address-container").attr("save-url");
+    if (id && url) {
+        var shippingMethodElm = jQuery('input[name="pickup_shipping_method"]:checked'), shippingMethod = null;
+        if (shippingMethodElm && shippingMethodElm[0] && jQuery(shippingMethodElm[0]).val()) {
+            shippingMethod = jQuery(shippingMethodElm[0]).val();
+        }
+        jQuery.ajax({type:"POST",url:url,data:"id="+id+"&type="+type+'&pickup_shipping_method=' + shippingMethod,dataType:"json",
+            success:function(data){
+                jQuery('#pickup_address_error').addClass('no-display');
+                jQuery('.pickup_date_wrapper,.packages-detail').removeClass('no-display');
+                jQuery('.pickup_date_wrapper,.pickup_date_title_wrapper').removeClass('d-none');
+                if(data){
+                    if(data.success){
+                        var c = document.getElementById(data.address_type+"_address_html");
+                        if(c)c.innerHTML = (data.edit_button ? data.edit_button : "")+'<div class="address-html">'+data.address_html+'</div>';
+                    }else{
+                        if(data.address_data){
+                            var cb = function(){
+                                Parcel.showEditAddressForm(data.address_data);
+                                JSExt.Event.Customize.removeEventListener("document_body_enable_after",cb);
+                            };
+                            JSExt.Event.Customize.addEventListener("document_body_enable_after",cb);
+                            if(!data.address_data.address_type || data.address_data.address_type=="")data.address_data.address_type = data.address_type;
+                        }
+
+                        if (data.error) {
+                            var errorElm = jQuery('#pickup_address_error').find('span') || '';
+                            if (errorElm && errorElm[0]) {
+                                var c = document.getElementById(data.address_type+"_address_html");
+                                if(c)c.innerHTML = (data.edit_button ? data.edit_button : "")+'<div class="address-html">'+data.address_html+'</div>';
+                                jQuery(errorElm[0]).html(data.error);
+                                jQuery('#pickup_address_error,.pickup_date_wrapper,.packages-detail').removeClass('no-display');
+                                jQuery('.pickup_date_wrapper,.packages-detail').addClass('no-display');
+                                jQuery('.pickup_date_wrapper,.pickup_date_title_wrapper').addClass('d-none');
+                                return Parcel;
+                            }
+                        }
+
+                        showMessages("error-msg",data.message ? data.message : "保存地址出错了");
+                    }
+
+                    if (document.getElementById('_pickup_address_id')) {
+                        document.getElementById('_pickup_address_id').value = data.address_id || '';
+                    }
+                    if (document.getElementById('pickup_amount')) {
+                        document.getElementById('pickup_amount').value = data.pickup_amount || 0;
+                        jQuery(document.getElementById('pickup_amount')).change();
+                    }
+
+                    Parcel.updatePickupDateHtml(shippingMethod, data.pickup_date_html);
+                }
+            },
+            error:function(){showMessages("error-msg","保存地址服务器出错了");}
+        });
+    }
+    return Parcel;
+};
+
+Parcel.getPickupDate = function (code, url) {
+    if (code && url) {
+        jQuery.ajax({
+            type: "POST",
+            url: url,
+            data: "code=" + code,
+            dataType: "json",
+            success: function (data) {
+                if (data && data.pickup_date_html) {
+                    Parcel.updatePickupDateHtml(code, data.pickup_date_html);
+                    return Parcel;
+                }
+                showMessages("error-msg", data.message ? data.message : "获取失败");
+            },
+            error: function () {
+                showMessages("error-msg", "获取失败");
+            }
+        });
+    }
+    return Parcel;
+}
+
+Parcel.updatePickupDateHtml = function (code, content) {
+    var pickupDateElm = document.querySelector("div[data-model=\"pickup_date\"]");
+    if (pickupDateElm) {
+        jQuery(pickupDateElm).attr('data-code', code);
+        jQuery(pickupDateElm).html(content || '');
+    }
+    return Parcel;
+}
+
+Parcel.showEditAddressForm = function(data,btn){
+    if(typeof data == "string"){
+        if(btn.isLoading)return Parcel;
+        var btxt = btn.innerHTML;
+        btn.innerHTML = Translator.translate("Loading");
+        btn.isLoading = true;
+        jQuery.ajax({type:"POST",url:data,dataType:"json",
+            success:function(result){
+                if(result){
+                    if(result.success){
+                        Parcel.showEditAddressForm(result.address,btn);
+                    }else{
+                        showMessages("error-msg",result.message ? result.message : "获取地址出错了");
+                    }
+                }
+            },
+            error:function(){showMessages("error-msg","获取地址时服务器出错了");},
+            complete:function(){ btn.innerHTML = btxt;btn.isLoading = false; }
+        });
+        return Parcel;
+    }
+    var form = document.getElementById("address-edit-form");
+    if(!data || !jQuery.isPlainObject(data))data = {};
+    if(!data.country_id)data.country_id = 'FR';
+    if(!data.prefix)data.prefix = 'Mister';
+    if(!data.street)data.street = ["-",""];
+    else if(!data.street[0])data.street[0] = "-";
+    if(data.country_id=="CN" && data.street[0]=="-")data.street[0] = "";
+
+    openPopWindow(jQuery(btn).attr('data-pop-window'));
+
+    var countries = Parcel.shipperCountries;
+    if (data.address_type == 'shipping') {
+        countries = Parcel.receiverCountries;
+    } else if (data.address_type == 'invoice') {
+        countries = Parcel.invoiceCountries;
+    }
+    if(countries){
+        Parcel.fillInputSelectBox(document.getElementById("address:country_id"),countries);
+    }
+    if(typeof RegionJson !=="undefined")Parcel.buildRegion(RegionJson,data.country_id);
+    jQuery('input.data-box[type="text"],input[type="hidden"]',form).each(function(){
+        var match;
+
+        if (this.id == 'address:delivery_instructions') {
+            var elm = jQuery(this).parent().parent().parent();
+            if (data.address_type != 'shipping') {
+                jQuery(elm).removeClass('d-flex').addClass('d-none');
+            } else {
+                jQuery(elm).removeClass('d-none').addClass('d-flex');
+            }
+        }
+
+        if(this.name && (match = this.name.match(/\w+\[([^\[\]]+)\](?:\[([^\[\]]+)\])?/))){
+            if(match[2]!==null && match[2]!==undefined){
+                this.value = data[match[1]] && data[match[1]][match[2]] ? data[match[1]][match[2]] : '';
+            }else{
+                this.value = data[match[1]] ? data[match[1]] : '';
+            }
+            if(this.getAttribute("type")!="hidden"){
+                this.value=="" ? jQuery(this).parents('.el-box').removeClass('canuse') : jQuery(this).parents('.el-box').addClass('canuse');
+                if(this.value!=""){
+                    var ul = jQuery(this).nextAll('ul.list');
+                    if(ul.length){
+                        this.setAttribute("value-data",this.value);
+                        this.value = JSExt.toString(ul.children('li.get-data[value="'+this.value+'"]').text());
+                    }
+                }
+            }
+        }
+    });
+    if(window.levelSelect){
+        window.levelSelect.destroy();
+        if(data.country_id=="CN"){
+            window.levelSelect.defaultValue[0] = data.region;
+            window.levelSelect.defaultValue[1] = data.city;
+            window.levelSelect.defaultValue[2] = '*:'+data.street[0];
+            window.levelSelect.init();
+        }
+    }
+    Parcel.initGoogleAutocomplete(data.country_id);
+
+    if (typeof setSmartParseAddressPlaceholder === 'function') setSmartParseAddressPlaceholder(data.country_id);
+
+    Parcel.addressValidation();
+
+    return Parcel;
+};
+
+Parcel.addressValidation = function () {
+};
+
+
+Parcel.buildRegion = function(regionJson,countryId,v){
+    var show = false,rinp = document.getElementById("address:region_id"),rc = rinp ? $(rinp).up('div.el-box') : false,vname = "",rvinp = document.getElementById("address:region");
+    if(rc && countryId){
+        var allow = 'CA,US,CN', isAllow = allow.indexOf(countryId)>=0;
+        var rr = isAllow && regionJson.config.regions_required.indexOf(countryId)>=0,ul = isAllow && regionJson[countryId] ? $(rinp).next('ul.list') : null,li;
+        if(ul){
+            li = ul.childElements();
+            if(li.length && JSExt.isEmpty(li[0].readAttribute("value")))li.shift();
+            li.invoke("remove");
+            $H(regionJson[countryId]).each(function(pair){
+                var li = document.createElement("li");
+                ul.appendChild(li);
+                $(li).writeAttribute({"class":"get-data","value":pair.key});
+                li.innerHTML = pair.value.name;
+                if(v && v==pair.key)vname = pair.value.name;
+            });
+            rc.down(".select-box").writeAttribute("style",null);
+            rc.down(".region-input").writeAttribute("style","display:none;");
+            rr ? $(rinp).addClassName("required-entry") : $(rinp).removeClassName("required-entry");
+            vname ? rc.addClassName("canuse") : rc.removeClassName("canuse");
+            show = true;
+        }else if(rvinp){
+            if(countryId=="CN"){
+                rc.down(".select-box").writeAttribute("style","display:none;");
+                rc.down(".region-input").writeAttribute("style",null);
+                rvinp.value=="" ? rc.removeClassName("canuse") : rc.addClassName("canuse");
+                show = true;
+            }
+            rr ? $(rvinp).addClassName("required-entry") : $(rvinp).removeClassName("required-entry");
+        }
+    }
+    if(rc){
+        rc.writeAttribute("style",show ? null : "display:none;");
+    }
+    if(rinp){
+        rinp.value = vname;
+        rinp.setAttribute("value-data",v || v===0 ? v : "");
+    }
+    //显示/隐藏城市的区
+    if(countryId=="CN"){
+        $("address:street1").up("div.el-box").writeAttribute("style", null);
+        if (document.getElementById("address:street1").value == "-") document.getElementById("address:street1").value = "";
+        if (document.getElementById("address:id_card")) {
+            $("address:id_card").up("div.el-box").writeAttribute("style", null);
+        }
+    }else{
+        $("address:street1").up("div.el-box").writeAttribute("style","display:none;");
+        document.getElementById("address:street1").value = "-";
+        if (document.getElementById("address:id_card")) {
+            $("address:id_card").up("div.el-box").writeAttribute("style","display:none;");
+        }
+    }
+    return Parcel;
+};
+Parcel.submitAddress = function(url,btn){
+    if(document.getElementById("billing_address_id") && JSExt.isEmpty(document.getElementById("billing_address_id").getAttribute("value-data"))){
+        showMessages("error-msg",Translator.translate("请提供寄件人地址"));
+    }else{
+        var sa = "_no_";
+        if(document.getElementById("default_shipping_address_id").getAttribute("value-data")) {
+            sa = 1;
+        } else if (document.getElementById("consignee_pay_1") && document.getElementById("consignee_pay_1").checked && document.getElementById("consignee_pay_address_id")){
+            sa = document.getElementById("consignee_pay_address_id").getAttribute("value-data");
+        }else if(document.getElementById("shipping_address_id")){
+            sa = document.getElementById("shipping_address_id").getAttribute("value-data");
+        }
+
+        if(JSExt.isEmpty(sa)){
+            showMessages("error-msg",Translator.translate("请提供收件人地址"));
+        }else{
+            window.location.href = url ? url : "../package/";
+        }
+    }
+    return Parcel;
+};
+
+Parcel.deleteAddress = function(url,btn,event){
+    if(btn.isLoading || !window.confirm(Translator.translate("确定要删除该地址吗？")))return Parcel;
+    var btxt = btn.innerHTML;
+    btn.innerHTML = Translator.translate("Deleting");
+    btn.isLoading = true;
+
+    if (event && event.clientX) {
+        url += (url.indexOf('?') == -1) ? '?' : '&';
+        url += 'clientX=' + event.clientX;
+    }
+
+    jQuery.ajax({type:"GET",url:url,dataType:"json",
+        success:function(result){
+            if(result){
+                if (result.redirect) {
+                    window.location.href = result.redirect;
+                    return Parcel;
+                }
+
+                if(result.success){
+                    var c = document.getElementById(result.address_type+"_address_html"),inp = document.getElementById(result.address_type+"_address_id");
+                    if(c)c.innerHTML = "";
+                    if(inp && result.address_id){
+                        Parcel.removeInputSelectBoxOption(inp, result.address_id);
+                        if(inp.getAttribute("value-data")==result.address_id){
+                            inp.setAttribute("value-data","");
+                            inp.value = "";
+                            $(inp).up('.el-box').removeClassName("canuse");
+                        }
+                    }
+                    JSExt.Event.Customize.triggerEvent('afterDeletedQuoteAddress', result);
+                }else{
+                    showMessages("error-msg",result.message ? result.message : "删除地址出错了");
+                }
+            }
+        },
+        error:function(){showMessages("error-msg","删除地址时服务器出错了");},
+        complete:function(){ btn.innerHTML = btxt;btn.isLoading = false; }
+    });
+    return Parcel;
+};
+
+Parcel.updateAddressData = function (type, formatted, id, isNew) {
+    return Parcel;
+};
+
+Parcel.submitAddressForm = function(btn){
+    var validator  = new Validation("address-edit-form",{onSubmit:false,immediate:false});
+    if(validator.validate()){
+        var error = [],c = $('address:company'),f = $('address:firstname'),l = $('address:lastname'),di = $('address:delivery_instructions');
+        if(c && (!f || !l)){
+            if(c.value=="")error.push(Translator.translate("Company can not be empty"));
+        }else if(c && f && l){
+            if(c.value=="" && f.value=="" && l.value=="")error.push(Translator.translate("Fill in the name or company name"));
+        }
+        if(f && l){
+            if((f.value=="" && l.value!="") || (f.value!="" && l.value==""))error.push(Translator.translate("对不起，姓氏与名字必须两项都填写"));
+        }
+
+        if (di && di.value && di.value.length > 35) {
+            error.push(Translator.translate("Delivery instructions cannot exceed 35 characters"));
+        }
+        //if($F('address:address_type')=="billing" && $F('address:prefix')==""){
+        //    error.push(Translator.translate("对不起，有些派送商需要提供寄件人称呼，所以请您填写寄件人称呼"));
+        //}
+        if(error.length){
+            showMessages("error-msg",error.join("<br />"));
+        }else{
+            var formData = validator.form.serialize(true);
+            jQuery('input[value-data]',validator.form).each(function(){
+                if(this.name)formData[this.name] = this.getAttribute("value-data");
+            });
+            btn.disabled = true;
+            jQuery.ajax({type:"POST",url:validator.form.readAttribute("action"),processData:true,data:formData,dataType:"json",
+                success:function(data){
+                    if(data){
+                        if(data.success){
+                            if(data.address_type){
+                                var c = document.getElementById(data.address_type+"_address_html");
+                                if(c)c.innerHTML = data.edit_button+'<div class="address-html">'+data.address_html+'</div>';
+                                if(data.address_type=="invoice" && jQuery(btn).attr('data-type') != 'invoice'){
+                                    var radio = document.getElementById("invoice-address-use");
+                                    radio.checked = true;
+                                    radio.setAttribute("onclick","Parcel.setInvoiceAddress(this,'"+radio.getAttribute("set_invoice_url")+"')");
+                                    radio.removeAttribute("set_invoice_url");
+                                    jQuery('label[for="invoice-address-use"]',radio.parentNode.parentNode).html(data.address_formatted+data.edit_button);
+                                }else{
+                                    document.getElementById(data.address_type+"_address_id").value = data.address_formatted;
+                                    document.getElementById(data.address_type+"_address_id").setAttribute("value-data",data.address_id);
+                                    $(data.address_type+"_address_id").up(".el-box").addClassName("canuse");
+
+                                    if ($(data.address_type+"_address_id") && $(data.address_type+"_address_id").type == 'text') {
+                                        Parcel.addInputSelectBoxOption(document.getElementById(data.address_type+"_address_id"),{value:data.address_id,label:data.address_formatted,'data-country':data.country_id ? data.country_id : (formData.country_id ? formData.country_id : null)},true);
+                                    } else {
+                                        var select = $(data.address_type + '_address_id'),
+                                            option = select.down('option[value="' + data.address_id + '"]'),
+                                            isNew = false;
+
+                                        if (option) {
+                                            option.innerHTML = data.address_formatted;
+                                        } else {
+                                            select.insert(
+                                                {top: '<option value="' + data.address_id + '">' + data.address_formatted + '</option>'}
+                                            );
+                                            isNew = true;
+                                        }
+                                        Parcel.updateAddressData(data.address_type, data.address_formatted, data.address_id, isNew);
+                                    }
+                                }
+
+                                if (data.address_type == 'billing' && data.has_update_de_shipping) {
+                                    Parcel.showCountry = "FR";
+                                    Parcel.clearShippingAddress();
+                                } else {
+                                    Parcel.showCountry = null;
+                                    jQuery("#default-shipping-address").addClass("no-display");
+                                    jQuery('div[address-type="shipping"]',document.getElementById("parcel-address-container")).removeClass("no-display");
+                                    if(document.getElementById("invoice-address-container"))jQuery("#invoice-address-container").removeClass("no-display");
+                                    jQuery('#default_shipping_address_id').attr('value-data', '');
+                                }
+
+                                JSExt.Event.Customize.triggerEvent('afterSavedQuoteAddress', data);
+                            }else{
+                                showMessages("success-msg","地址已保存成功");
+                            }
+
+                            if (document.getElementById('pickup_amount')) {
+                                document.getElementById('pickup_amount').value = data.pickup_amount || 0;
+                                jQuery(document.getElementById('pickup_amount')).change();
+                            }
+                            if (document.getElementById('_pickup_address_id')) {
+                                document.getElementById('_pickup_address_id').value = data.address_id || '';
+                            }
+
+                            var cancelBtn = jQuery('.el-button.cancel',validator.form);
+                            if(cancelBtn.length==0){
+                                cancelBtn = jQuery('.el-button.cancel',$(validator.form).up('.modal-content'));
+                            }
+                            cancelBtn.trigger('click');
+                        }else{
+                            showMessages("error-msg",data.message ? data.message : "保存地址出错了");
+                        }
+                    }
+                },
+                error:function(){showMessages("error-msg","保存地址服务器出错了");},
+                complete:function(){ btn.disabled = false; }
+            });
+        }
+    }
+    return Parcel;
+};
+Parcel.setInvoiceAddress = function(radio,url){
+    jQuery.ajax({type:"POST",url:url,processData:false,data:"type="+radio.value,dataType:"json",
+        success:function(data){
+            if(data){
+                if(!data.success){
+                    showMessages("error-msg",data.message ? data.message : "保存地址出错了");
+                    radio.checked = false;
+                }
+            }
+        },
+        error:function(){showMessages("error-msg","保存地址服务器出错了");radio.checked = false;}
+    });
+    return Parcel;
+};
+Parcel.setConsigneePayAddress = function(url,aid){
+    jQuery.ajax({type:"POST",url:url,processData:false,data:"address_id="+aid,dataType:"json",
+        success:function(data){
+            if(data){
+                if(data.success){
+                    var c = document.getElementById("consignee_pay_address_html");
+                    if(c)c.innerHTML = data.address_html ? '<div class="address-html">'+data.address_html+'</div>' : "";
+                    JSExt.Event.Customize.triggerEvent('afterSavedQuoteAddress', data, true);
+                }else{
+                    showMessages("error-msg",data.message ? data.message : "保存地址出错了");
+                }
+            }
+        },
+        error:function(){showMessages("error-msg","保存地址服务器出错了");}
+    });
+    return Parcel;
+};
+Parcel.setDefaultShippingAddress = function(url,aid,fun){
+    jQuery.ajax({type:"POST",url:url,processData:false,data: {},dataType:"json",
+        success:function(data){
+            if(data){
+                if(data.success){
+                    var c = document.getElementById("default-shipping-address-html");
+                    if (c) {
+                        c.innerHTML = data.address_html ? '<div class="address-html">'+data.address_html+'</div>' : "";
+                        jQuery('#default_shipping_address_id').attr('value-data', data.address_id || 1);
+                    }
+
+                    if (typeof fun === "function") fun();
+                }else{
+                    showMessages("error-msg",data.message ? data.message : "保存地址出错了");
+                }
+            }
+        },
+        error:function(){showMessages("error-msg","保存地址服务器出错了");}
+    });
+    return Parcel;
+};
+Parcel.clearShippingAddress = function(){
+    var c = document.getElementById("shipping_address_html");
+    if (c) {
+        c.innerHTML = "";
+        jQuery('#shipping_address_id').attr('value-data', 0).val("");
+    }
+    return Parcel;
+};
+Parcel.useDefAddress = function () {
+    return Parcel;
+};
+Parcel.setHscodes = function () {
+    jQuery(document).find('input[name*="articles["]').each(function () {
+        Parcel.setHscodesInput(this);
+    });
+    return Parcel;
+};
+Parcel.setHscodesInput = function (input) {
+    if (typeof Parcel.hscodesInputFun !== "function") {
+        return Parcel;
+    }
+
+    if (!jQuery(input).attr('data-button') == 'hscode') {
+        return Parcel;
+    }
+
+    if (!jQuery(input).attr('name')) {
+        return Parcel;
+    }
+
+    var m = jQuery(input).attr('name').match(new RegExp('\\[(\\d+)\\]\\[(\\d+)\\]\\[(\\w+)\\]$', 'i')), e1, e2;
+    if (m[1] && m[2] && m[3] == 'name') {
+        var hs_code = 'articles-' + m[1] + '-' + m[2] + '-' + 'hs_code';
+
+        if (document.getElementById(hs_code)) {
+            e1 = new Parcel.hscodesInputFun(input.id, hs_code);
+            //e2 = new hscodesInput(hs_code, this.id, true);
+        }
+    }
+    return Parcel;
+};
+
+Parcel.setArticles = function (tr) {
+    let d = tr || document;
+    jQuery(d).find('input[name*="articles["]').each(function () {
+        Parcel.setNameInput(this);
+    });
+    return Parcel;
+};
+
+Parcel.setNameInput = function (input) {
+    if (typeof Parcel.nameInputFun !== "function") {
+        return Parcel;
+    }
+
+    if (!jQuery(input).attr('data-button') == 'name') {
+        return Parcel;
+    }
+
+    if (!jQuery(input).attr('name')) {
+        return Parcel;
+    }
+
+    var m = jQuery(input).attr('name').match(new RegExp('\\[(\\d+)\\]\\[(\\d+)\\]\\[(\\w+)\\]$', 'i')), e1, e2;
+    if (m[1] && m[2] && m[3] == 'name') {
+        var hs_code = 'articles-' + m[1] + '-' + m[2] + '-' + 'hs_code';
+
+        if (document.getElementById(hs_code)) {
+            e1 = new Parcel.nameInputFun(input.id, hs_code, this.articles);
+        }
+    }
+    return Parcel;
+};
+
+Parcel.searchConsigneePayAddress = function(url,inp,btn){
+    var v = $F(inp);
+    if(!Validation.get('IsEmpty').test(v)){
+        if(btn.isLoading)return Parcel;
+        var btxt = btn.innerHTML;
+        btn.innerHTML = 'Search...';
+        btn.isLoading = true;
+        jQuery.ajax({type:"POST",url:url,data:"kw="+v,dataType:"json",
+            success:function(result){
+                if(result){
+                    if(result.success){
+                        var inp = document.getElementById("consignee_pay_address_id"),ul = $(inp).next('ul.list');
+                        if(ul){
+                            inp.dataOptions = [];
+                            if(result.addresses && result.addresses.length){
+                                inp.dataOptions.push({value:"",label:Translator.translate("选择收件人地址")});
+                                result.addresses.each(row => inp.dataOptions.push({value:row.address_id, label:row.address_formatted}));
+                                inp.removeAttribute("disabled");
+                                inp.focus();
+                                inp.setAttribute("value-data","");
+                                jQuery(inp).val("").trigger("input");
+                            }else{
+                                inp.dataOptions.push({value:"",label:Translator.translate("查询没有发现任何信息！")});
+                                inp.setAttribute("value-data","");
+                                inp.value = Translator.translate("查询没有发现任何信息！");
+                                inp.setAttribute("disabled","disabled");
+                            }
+                        }
+                    }else{
+                        showMessages("error-msg",result.message ? result.message : "获取地址出错了");
+                    }
+                }
+            },
+            error:function(){showMessages("error-msg","获取地址时服务器出错了");},
+            complete:function(){ btn.innerHTML = btxt;btn.isLoading = false; }
+        });
+    }else{
+        $(inp).focus();
+    }
+    return Parcel;
+};
+Parcel.parseInvalidAddress = function(){
+    var u = window.location.hash;
+    if(u==="#invalid-billing"){
+        if(jQuery('ul.messages > li.error-msg').length>0){
+            jQuery('.edit-btn a[onclick^="Parcel.showEditAddressForm"]',document.getElementById("billing_address_html")).click();
+        }
+    }else if(u==="#invalid-shipping"){
+        if(jQuery('ul.messages > li.error-msg').length>0){
+            jQuery('.edit-btn a[onclick^="Parcel.showEditAddressForm"]',document.getElementById("shipping_address_html")).click();
+        }
+    }else if(u==="#invalid-invoice"){
+        if(jQuery('ul.messages > li.error-msg').length>0){
+            jQuery('.invoice-address-options .edit-btn a[onclick^="Parcel.showEditAddressForm"]',document.getElementById("invoice-address-container")).click();
+        }
+    }
+    return Parcel;
+};
+Parcel.loadAllAddresses = function(url, inp){
+    var ul;
+    if(inp){
+        ul = inp.dataList ? inp.dataList : jQuery(inp).nextAll('ul.list').get(0);
+        jQuery(ul).append('<li class="loading">Loading...</li>');
+    }
+    return jQuery.get(url).done(function(result){
+        if(result && result.success && inp){
+            Parcel.fillInputSelectBox(inp, result.list);
+            if(document.activeElement === inp){
+                ul.setStyle({'height':'auto'});
+                setInputListSize(inp, ul);
+            }
+        }
+    })
+    .always(() => ul ? jQuery(ul).children('li.loading').remove() : null);
+};
+Parcel.ajaxAddress = function (url) {
+    return Parcel;
+};
+Parcel.fillInputSelectBox = function(inp,options,filter){
+    var i = 0;
+    if(inp){
+        if(!inp.dataList)inp.dataList = jQuery(inp).nextAll('ul.list').get(0);
+        if(!inp.dataList)return i;
+
+        var li, listLimit = inp.dataList.getAttribute('list-limit'), loading = jQuery(inp.dataList).children('.loading');
+        var fragment = document.createDocumentFragment();
+        var kw = filter || inp.isSearching ? inp.value : '';
+        var isFilterCountry = Parcel.showCountry && inp.dataList.getAttribute('filter-country')==='true';
+        if(options && typeof options === 'object'){
+            inp.dataOptions = options;
+        }else{
+            options = inp.dataOptions ? inp.dataOptions : [];
+        }
+        inp.dataList.innerHTML = '';
+        for(const option of options){
+            if(listLimit && listLimit!=='0' && i>=listLimit){
+                break;
+            }
+            li = document.createElement("li");
+            li.textContent = option['label'];
+            if((!isFilterCountry || Parcel.showCountry==option['data-country']) && (kw==='' || Parcel.isMatchInputSelectBoxOption(kw,li))){
+                for (const k in option) {
+                    if(k!=='label' && option[k]!==null && option.hasOwnProperty(k))li.setAttribute(k,option[k]);
+                }
+                fragment.appendChild(li);
+                li.classList.add('get-data');
+                i++;
+            }
+        }
+        if(i){
+            inp.dataList.appendChild(fragment);
+            if(kw!=='')inp.style.backgroundColor = '#fff';
+        }else if(kw!==''){
+            inp.style.backgroundColor = '#f66';
+        }
+        if(loading.length)inp.dataList.appendChild(loading[0]);
+    }
+    return i;
+};
+Parcel.isMatchInputSelectBoxOption = function(kw,li){
+    var text = li.innerText;
+    var s = kw + '~|~' + text;
+    s = Parcel.str_replace(s);
+    s = s.split('~|~');
+    var isMatch = s[1].toUpperCase().indexOf(s[0].toUpperCase())>=0;
+    if(isMatch){
+        li.innerHTML = s[1].replace(new RegExp('('+s[0].replace(/([\|\$\(\)\*\+\.\[\]\?\\\^\{\}])/g,'\\\\$1')+')','i'),'<span style="background-color:#f15a24;color:#FFFFFF;">$1</span>');
+    }
+    return isMatch;
+};
+Parcel.getSelectedOption = function(inp, k){
+    var v = inp.getAttribute('value-data');
+    return Parcel.getInputSelectBoxOption(inp, v ? v : '', k);
+};
+Parcel.getInputSelectBoxOption = function(inp, v, k){
+    if(inp && inp.dataOptions && !!inp.dataOptions.length){
+        let options = inp.dataOptions, len = options.length, i = 0;
+        while(i<=len){
+            if(options[i].value===v)return k ? i : options[i];
+            if(options[len-1].value===v)return k ? len-1 : options[len-1];
+            i++;
+            len--;
+        }
+    }
+    return null;
+};
+Parcel.addInputSelectBoxOption = function(inp, option, top){
+    if(inp.dataOptions){
+        let k = Parcel.getInputSelectBoxOption(inp, option['value'], true);
+        if(k){
+            inp.dataOptions[k] = option;
+        }else{
+            top ? inp.dataOptions.unshift(option) : inp.dataOptions.push(option);
+        }
+    }
+    if(!inp.dataList)inp.dataList = jQuery(inp).nextAll('ul.list').get(0);
+    if(inp.dataList){
+        var li = jQuery(inp).children('li.get-data[value="'+option['value']+'"]').get(0);
+        if(!li){
+            li = document.createElement("li");
+            top ? inp.dataList.insertBefore(li,inp.dataList.firstChild) : inp.dataList.appendChild(li);
+        }
+        li.textContent = option['label'];
+        for (const k in option) {
+            if(k!=='label' && option[k]!==null && option.hasOwnProperty(k))li.setAttribute(k,option[k]);
+        }
+        li.classList.add('get-data');
+        return li;
+    }
+    return null;
+};
+Parcel.removeInputSelectBoxOption = function(inp, value){
+    var k = Parcel.getInputSelectBoxOption(inp, value, true), li = jQuery(inp).nextAll('ul.list > li.get-data[value="'+value+'"]');
+    if(k)inp.dataOptions.splice(k,1);
+    if(li.length){
+        li.remove();
+        return li.get(0);
+    }
+    return null;
+};
+Parcel.addPackage = function(elm,graceful){
+    var c = jQuery('#packages-container'),index = JSExt.toInt(c.attr("count")),data = {'qty':1},len = 0,elements = [],lis = [];
+
+    jQuery(elm.parentNode).find('div,span').removeClass('validation-failed');
+
+    jQuery(elm.parentNode).find('div,span,label').removeClass('required');
+    jQuery(elm.parentNode).find('.hint').addClass('no-display');
+    jQuery(elm.parentNode).find('input[name],select[name]').each(function(){
+        if(this.name && !this.hasAttribute('data-favorites')){
+            var v = jQuery(this).val();
+            if(!JSExt.toBool(this.getAttribute('can-be-empty')) && (JSExt.isEmpty(v) || jQuery.trim(v)==="")){
+                if(!graceful){
+                    this.focus();
+                    jQuery(this).parents('.el-box').find('.hint').removeClass('no-display');
+                    jQuery(this).parent().parent().addClass('required');
+                    jQuery(this).parents('.el-box').addClass('focus');
+                }
+                len = 0;
+                return false;
+            }
+            if(v.indexOf(",")>-1){
+                jQuery(this).val(v = v.replace(/,+/g,".").replace(/\s+/g,""));//把逗号替换成小数点
+            }
+            if(this.name=="qty") {
+                v = JSExt.toInt(v);
+                if (v <= 0) {
+                    v = 1;
+                    jQuery(this).val(v);
+                }
+            }else if(
+                this.name=="platform_order_number"
+                || this.name=="original_ident"
+                || this.name=="artref"
+                || this.name=="original_invoice_number"
+                || this.name=="original_invoice_date"
+                || this.name=="original_parcel_number"
+            ){
+                v = v.trim();
+            }else if(v!==""){
+                v = JSExt.toFloat(v);
+                if(v<0){
+                    v *= -1;
+                    jQuery(this).val(v);
+                }
+            }
+            data[this.name] = v;
+            len++;
+            if(this.tagName.toLowerCase()=="input"){ elements.push(this); }
+        }
+    });
+
+    if(len>0){
+        var volMultiple = Parcel.volMultiple || 5000;
+        for(var i = 0,p;i<data.qty;i++){
+            p = jQuery('#packages-container > .pack-li').get(0);
+            p = index<1 ? jQuery(p) : jQuery(p).clone();
+            p.find('.p-l-num').html(Translator.translate("附加保险")+': '+(JSExt.isEmpty(data.insurance_amount) || data.insurance_amount<=0 ? Translator.translate("不需要") : data.insurance_amount+'€'));
+            if(typeof data.length!="undefined"){
+                p.find('.p-l-l').html(data.length>0 ? data.length : "-");
+                p.find('.p-l-w').html(data.width>0 ? data.width : "-");
+                p.find('.p-l-h').html(data.height>0 ? data.height : "-");
+                p.find('.p-l-v').html(data.length*data.width*data.height>0 ? JSExt.round(data.length*data.width*data.height/volMultiple,4) : "-");
+            }
+            if (index > 0) {
+                c.append(p);
+                jQuery(p).find('p').removeClass('required');
+                jQuery(p).find('.volume ').removeClass('required');
+            }
+            p.removeClass('no-display');
+            p.find('input[name^="packages["]').each(function(){
+                var match = this.getAttribute("name").match(/\[\d*\]\[(\w+)\]$/i);
+                if(match){
+                    if(match[1]=='item_id'){
+                        jQuery(this).remove();
+                    }else{
+                        this.setAttribute("name",'packages['+index+']['+match[1]+']');
+                        this.value = match[1]=='qty' ? '1' : data[match[1]] ? data[match[1]] : '';
+                        this.setAttribute("value",this.value);
+                        if(this.getAttribute("type")!='hidden'){
+                            this.setAttribute("orig-value",this.value);
+                        }
+                    }
+                }
+            });
+            index++;
+            c.attr("count",index);
+            lis.push(p);
+        }
+        jQuery.each(elements,function(i,v){
+            if(!v.disabled && v.getAttribute('readonly')===null){
+                if (v.name == 'qty') {
+                    jQuery(v).val("1").parents(".el-box");
+                } else {
+                    jQuery(v).val("").parents(".el-box").removeClass("canuse");
+                }
+            }
+        });
+        jQuery('.pack-mes').hasClass('show') || jQuery('.pack-mes').addClass('move');
+        Parcel.updatePackageTotals();
+
+        let cindex = jQuery('#packages-container .pack-li').length;
+        let ci = 1;
+        jQuery('#packages-container .pack-li').each(function(){
+            jQuery(this).find('h1 span').html(cindex-- == 0 ? ci :  ci++);
+        });
+
+        Parcel.packageWeightFocus();
+        JSExt.Event.Customize.triggerEvent('parcelAddPackageAfter', lis, index);
+    }
+
+    return Parcel;
+};
+
+Parcel.packageWeightEnter = function() {
+    var elm = document.getElementById('package-weight');
+    if (elm) {
+        elm.onkeyup = function (event) {
+            var e = event || window.event;
+            if (e && e.keyCode == 13) {
+                document.getElementById('add-package-button').click();
+            }
+        }
+    }
+    return Parcel;
+}
+
+Parcel.packageWeightFocus = function() {
+    var elm = document.getElementById('package-weight');
+    if (!elm) return Parcel;
+    jQuery(elm).focus();
+    jQuery(elm).parent().parent().removeClass('canuse do-nothing').addClass('focus');
+    return Parcel;
+}
+
+Parcel.clonePackage = function(elm){
+    var clone = jQuery(elm).parents('.pack-li').clone(),index = JSExt.toInt(jQuery('#packages-container').attr("count"));
+    jQuery('#packages-container').append(clone);
+    clone.removeClass('no-display');
+    clone.find('input[name^="packages["]').each(function(){
+        if(this.name.indexOf("[item_id]")>-1){
+            jQuery(this).remove();
+        }else{
+            this.name = this.name.replace(/^packages\[\d+\]/,'packages['+index+']');
+        }
+    });
+    index++;
+    jQuery('#packages-container').attr("count",index);
+    Parcel.updatePackageTotals();
+    let cindex = jQuery('#packages-container .pack-li').length;
+    let ci = 1;
+    jQuery('#packages-container .pack-li').each(function(){
+        jQuery(this).find('h1 span').html(cindex-- == 0 ? ci :  ci++);
+    });
+    JSExt.Event.Customize.triggerEvent('parcelClonePackageAfter', clone, index);
+    return Parcel;
+};
+Parcel.removePackage = function(elm,url){
+    var li = jQuery(elm).parents('.pack-li');
+    var len = li.parent().find('.pack-li').length,id = JSExt.toInt(li.find('input[name$="[item_id]"]').val());
+
+    if(len<2){//全都删完了
+        li.addClass('no-display');
+        jQuery('#packages-container').attr("count","0");
+        li.find('input[name^="packages["][name!="form_key"]').val('');
+    }else{
+        li.remove();
+    }
+    Parcel.updatePackageTotals();
+    if(url && id){
+        jQuery.get(url,"id="+id);
+    }
+
+    let cindex = jQuery('#packages-container .pack-li').length;
+    let ci = 1;
+    jQuery('#packages-container .pack-li').each(function(){
+        jQuery(this).find('h1 span').html(cindex-- == 0 ? ci :  ci++);
+    });
+
+    JSExt.Event.Customize.triggerEvent('parcelRemovePackageAfter', li);
+    return Parcel;
+};
+Parcel.updatePackageTotals = function(){
+    var w = 0,a = 0,q = 0;
+    jQuery('#packages-container input[name^="packages["]').each(function(){
+        var name = this.getAttribute("name"),_q;
+        if(name.indexOf("[weight]")>0){
+            _q = JSExt.toFloat(jQuery(this).parents('.pack-li').find('input[name^="packages["][name$="][qty]"]').val()) || 1;
+            w += JSExt.toFloat(this.value) * _q;
+        }else if(name.indexOf("[amount]")>0){
+            _q = JSExt.toFloat(jQuery(this).parents('.pack-li').find('input[name^="packages["][name$="][qty]"]').val()) || 1;
+            a += JSExt.toFloat(this.value) * _q;
+        }else if(name.indexOf("[qty]")>0){
+            q += JSExt.toFloat(this.value);
+        }
+    });
+    if(q<=0){
+        jQuery('.pack-mes',document.getElementById("express-parcel-create-container")).removeClass('move');
+    }else{
+        jQuery('.h-pk',document.getElementById("express-parcel-create-container")).html(JSExt.round(q,2));
+        jQuery('.h-kg',document.getElementById("express-parcel-create-container")).html(JSExt.round(w,2));//解决出现类似76.30000000000001数字的问题
+    }
+    return Parcel;
+};
+Parcel.submitPackage = function(btn,url,nexUrl){
+    Parcel.addPackage(document.getElementById("add-package-button"),true);
+
+    if(JSExt.toInt(jQuery('#packages-container').attr("count"))>0){
+        var c = document.getElementById('packages-container');
+        var eventData = {params:Form.serialize(c,true),needSubmit:false,checkRequired:true,canSubmit:true};
+
+        jQuery(c).trigger('onSubmitPackage', [eventData]);
+        if(!eventData.canSubmit)return Parcel;
+
+        var p = eventData.params,
+            p2 = {},
+            needSubmit = eventData.needSubmit,
+            checkRequired = eventData.checkRequired;
+        jQuery(c).find('.volume').removeClass('required');
+        jQuery.each(p,function(k,v){
+            var match = k.match(/(.+)\[(\w+)\]$/i),inp,inp2;
+
+            if(match){
+                inp = jQuery('input[type="text"][name="'+k+'"]',c);
+                inp2 = jQuery('input[type="hidden"][name="'+k+'"]',c);
+
+                if (jQuery(inp2).hasClass('required-entry')) {
+                    var dataKey = jQuery(inp2).attr('data-key');
+                    if (dataKey) {
+                        jQuery('span[data-' + dataKey + ']').each(function(k1, v1) {
+                            if (!jQuery(v1).html() || jQuery(v1).html() == '-') {
+                                jQuery(v1).parent().parent().parent().addClass('required');
+                                checkRequired = false;
+                            }
+                        });
+                    }
+                }
+
+                if(!p2[match[1]])p2[match[1]] = {};
+                if(!p2[match[1]]['is_modified'] && inp.attr('orig-value')!=inp.val())p2[match[1]]['is_modified'] = true;
+                if(!p2[match[1]]['is_modified'] && inp2.attr('orig-value')!==undefined && inp2.attr('orig-value')!=inp2.val())p2[match[1]]['is_modified'] = true;
+                p2[match[1]][match[2]] = v;
+            }
+        });
+
+        jQuery('.parcel-package .el-box').removeClass('required');
+        jQuery('.parcel-package .el-box .hint').addClass('no-display');
+
+        if (!checkRequired) {
+            return Parcel;
+        }
+
+        p = {"form_key":p.form_key || ""};
+        jQuery.each(p2,function(k,v){
+            if(!v.item_id || v.item_id==0 || v.is_modified){
+                jQuery.each(v,function(_k,_v){
+                    if(_k!="is_modified")p[k+"["+_k+"]"] = _v;
+                });
+                needSubmit = true;
+            }
+        });
+
+        if(needSubmit){
+            var isOk = false;
+            btn.disabled = true;
+            jQuery.ajax({type:"POST",url:url,processData:true,data:p,dataType:"json",
+                success:function(data){
+                    if(data){
+                        if(data.success){
+                            isOk = true;
+                            window.location.href = data.redirect ? data.redirect : nexUrl;
+                        }else{
+                            showMessages("error-msg",data.message ? data.message : "保存包裹出错了");
+                        }
+                    }
+                },
+                error:function(){showMessages("error-msg","保存包裹信息时服务器出错了");},
+                complete:function(){ if(!isOk)btn.disabled = false; }
+            });
+        }else{
+            window.location.href = nexUrl;
+        }
+    }else{
+        //showMessages("error-msg",Translator.translate("至少要填写一个包裹"));
+        Parcel.addPackage(document.getElementById("add-package-button"),false);
+    }
+    return Parcel;
+};
+Parcel.submitCarrier = function(btn,url,insUrl,aUrl){
+    var sid = JSExt.getElementValue(jQuery('.carriers-content input[name="shipping_company_id"]',document.getElementById("express-parcel-create-container")));
+    var is_insurance = document.getElementById('insurance_' + sid);
+
+    if(JSExt.isEmpty(sid)) {
+        showMessages("error-msg", Translator.translate("请选择派送商") + 'J01');
+    } else if(Parcel.isEsCanaryIslands && (sid == 12 || sid == 27)) {
+        Parcel.showMessagePromptContent();
+    }else{
+        if (is_insurance
+                && is_insurance.checked
+                && insUrl) {
+            url = insUrl;
+            window.location.href = url + "shipping/" + sid + "/";
+        } else {
+            Parcel.checkAdditional(btn, url, aUrl, sid);
+        }
+    }
+    return Parcel;
+};
+Parcel.getElementValue = function (elm) {
+    var len = elm.length;
+    if (!len) {
+        return null;
+    }
+
+    for (var i = 0; i < len; i++) {
+        if (elm[i].checked) {
+            return elm[i].value;
+        }
+    }
+    return null;
+};
+Parcel.nextAdditional = function (btn, insUrl, url) {
+    var container = document.getElementById("express-parcel-create-container");
+    var list = jQuery('.carriers-content input[name="shipping_company_id"]', container);
+    var sid = Parcel.getElementValue(list);
+    var is_insurance = document.getElementById('insurance_' + sid);
+
+    if (JSExt.isEmpty(sid)) {
+        var sel = jQuery(".carriers-content label.el-button.save.cg.show");
+        if (sel && sel[0]) {
+            var _inp = jQuery(sel[0]).prev('input');
+            if (_inp && _inp[0]) {
+                jQuery(_inp[0]).click();
+                sid = Parcel.getElementValue(list);
+            }
+        }
+    }
+
+    if (JSExt.isEmpty(sid)) {
+        if (!container) {
+            showMessages("error-msg", Translator.translate("not container"));
+        } else if (!list || list.length <= 0) {
+            showMessages("error-msg", Translator.translate("not shipping list"));
+        } else if (!sid) {
+            showMessages("error-msg",Translator.translate("请选择派送商") + ' .');
+        } else {
+            showMessages("error-msg",Translator.translate("请选择派送商") + 'J02');
+        }
+    } else if(Parcel.isEsCanaryIslands && (sid == 12 || sid == 27)) {
+        Parcel.showMessagePromptContent();
+    }else{
+        if (is_insurance
+                && is_insurance.checked
+                && insUrl) {
+            window.location.href = insUrl + "shipping/" + sid + "/";
+        } else {
+            var btn = jQuery('.bottom-btn .el-button.carriers');
+            if(btn.length){
+                btn.click();
+            }else if(url){
+                window.location.href = url + "shipping/" + sid + "/";
+            }
+        }
+    }
+    return Parcel;
+};
+
+Parcel.ajaxCarrierTotals = function (sid) {
+};
+Parcel.getAdditionalElement = function(){
+    return document.documentElement.clientWidth > 1327 ? document.getElementById("additional-html") : document.getElementById("m-additional-html");
+};
+Parcel.getLoadAdditionalTimeout = function(){
+    return Parcel.loadAdditionalTimeout[2] || Parcel.loadAdditionalTimeout[0];
+};
+Parcel.loadAdditionalTimeoutIncrement = function(){
+    Parcel.loadAdditionalTimeout[2] = Parcel.getLoadAdditionalTimeout()+Parcel.loadAdditionalTimeout[1];
+    return Parcel.loadAdditionalTimeout[2];
+};
+Parcel.resetLoadAdditionalTimeout = function(){
+    Parcel.loadAdditionalTimeout[2] = Parcel.loadAdditionalTimeout[0];
+    return Parcel.loadAdditionalTimeout[2];
+};
+Parcel.checkAdditional = function (btn, url, aUrl, sid, notGoAdditional) {
+    var isOk = false;
+    var additional = Parcel.getAdditionalElement();
+    jQuery(additional).parent().attr("style", "display:none !important");
+    jQuery.ajax({type:"POST",url:aUrl,processData:true,data:"shipping="+sid,dataType:"json",timeout:btn.isInitAction ? 0 : Parcel.getLoadAdditionalTimeout(),
+        success:function(data){
+            if(data){
+                if (data.is_back_url) {
+                    if(typeof data.is_back_url==='string' && data.is_back_url.indexOf('http')===0){
+                        window.location.href = data.is_back_url;
+                    }else{
+                        jQuery(".el-button.back").click();
+                    }
+                    return false;
+                }
+
+                if(data.success){
+                    Parcel.carrierId = sid;
+                    isOk = true;
+                    if (data.step_additional) {
+                        Parcel.goAdditional(url, sid, notGoAdditional);
+                    } else {
+                        if (data.additional_html) {
+                            Parcel.ajaxCarrierTotals(sid);
+                            if (additional) {
+                                jQuery(additional).html(data.additional_html);
+                                jQuery(additional).parent().attr("style", "display:'';");
+                                jQuery(".bottom-btn button").addClass("no-display");
+                                if (document.documentElement.clientWidth > 1327) {
+                                    jQuery(".bottom-btn .el-button.reselect").attr("style", "display:none;");
+                                    jQuery(".bottom-btn .el-button.back").removeClass("no-display");
+                                } else {
+                                    jQuery(".carriers-content label.el-button.save.cg.show").parent().parent().attr("style", "display:;");
+                                    jQuery(".bottom-btn .el-button.reselect").attr("style", "display:block;");
+                                }
+                                jQuery(".bottom-btn .el-button.go2").removeClass("no-display");
+
+                                if (document.getElementById("pickup_address_id")) {
+                                    if (JSExt.Event.Customize.eventListener["pickup_address_id_change"]) {
+                                        JSExt.Event.Customize.eventListener["pickup_address_id_change"] = [];
+                                    }
+                                    JSExt.Event.Customize.addEventListener("pickup_address_id_change", function (inp) {
+                                        Parcel.getPickupAddress(inp.getAttribute("value-data"), "pickup");
+                                    });
+                                    Parcel.getPickupAddress(document.getElementById("pickup_address_id").getAttribute("value-data"), "pickup");
+                                }
+                            }
+                        } else {
+                            Parcel.goAdditional(url, sid, notGoAdditional);
+                        }
+                    }
+                }else{
+                    Parcel.goAdditional(url, sid, notGoAdditional);
+                }
+            }
+            Parcel.resetLoadAdditionalTimeout();
+            JSExt.Event.Customize.triggerEvent('parcelCheckAdditionalAfter', data, additional, sid, btn);
+        },
+        error:function(xhr){
+            if(xhr.statusText==='timeout'){
+                showMessages("error-msg", Translator.translate("网络超时，请重新选择"));
+                Parcel.loadAdditionalTimeoutIncrement();
+                jQuery('.carriers-content input[name="shipping_company_id"]:checked',document.getElementById("express-parcel-create-container")).prop('checked', false).nextAll('label.cg').removeClass('cg').parents('tr.selected').removeClass('selected');
+                Parcel.ajaxCarrierTotals(undefined);
+            }else{
+                Parcel.goAdditional(url, sid, notGoAdditional);
+            }
+        },
+        complete:function(xhr){
+            if(!isOk && btn)btn.disabled = false;
+            JSExt.Event.Customize.triggerEvent('parcelCheckAdditionalComplete', xhr, isOk);
+        }
+    });
+    return Parcel;
+};
+Parcel.goAdditional = function (url, sid, notGoAdditional) {
+    if (!notGoAdditional) {
+        window.location.href = url + "shipping/" + sid + "/";
+    }
+    return Parcel;
+};
+Parcel.selectCarrierClickHandler = function(event){
+    jQuery(".bottom-btn button",document.getElementById("express-parcel-create-container")).addClass("no-display");
+    jQuery(".bottom-btn .el-button.reselect",document.getElementById("express-parcel-create-container")).attr("style", "display:none;");
+    jQuery(".bottom-btn button.el-button.back,.bottom-btn button.el-button.go1",document.getElementById("express-parcel-create-container")).removeClass("no-display");
+    jQuery(".carriers-content table tbody tr").attr("style", "display:'';");
+
+    var additional = Parcel.getAdditionalElement();
+    jQuery(additional).html('');
+    jQuery(additional).parent().attr("style", 'display:none !important');
+
+    jQuery(this).parents('.carriers-content').find('.el-button.cg').removeClass('cg');
+    jQuery(this).addClass('cg');
+    jQuery('.carriers-mes').hasClass('show') || jQuery('.carriers-mes').addClass('move');
+    var radio = document.getElementById(this.getAttribute("for"));
+    if(radio){
+        var t = radio.getAttribute("title"),p = JSExt.toFloat(radio.getAttribute("price")),pt = JSExt.toFloat(radio.getAttribute("price_incl_tax")),pf = radio.getAttribute("price_format");
+        jQuery(".parcel-right .carriers-mes .carrier-label",document.getElementById("express-parcel-create-container")).html(t);
+        jQuery(".parcel-right .carriers-mes .shipping-amount-ttc",document.getElementById("express-parcel-create-container")).html(pf.replace('0.00',JSExt.round(pt,2,true))+" TTC");
+        if(pt-p>=0.01){
+            jQuery(".parcel-right .carriers-mes .shipping-amount-tax",document.getElementById("express-parcel-create-container"))
+                .html(pf.replace(/0[\.\,]00/,JSExt.round(p,2,true))+" HT + "+pf.replace(/0[\.\,]00/,JSExt.round(pt-p,2,true))+" TVA");
+        }
+    }
+
+    var insurance = document.getElementById("insurance_" + radio.value);
+    if ((!insurance || insurance.checked) && event.target) {
+        //自动下一步
+        window.setTimeout('jQuery(".bottom-btn button.el-button.next",document.getElementById("express-parcel-create-container")).click()',10);
+    } else {
+        Parcel.checkAdditional(
+            event.target || this,
+            Parcel.submit_carrier_url,
+            Parcel.check_additional_url,
+            radio.value,
+            true
+        );
+    }
+};
+Parcel.reselectCarrier = function(){
+    jQuery(".carriers-content table tbody tr").attr("style", "display:'';");
+    jQuery(".bottom-btn .el-button.reselect").attr("style", "display:none;");
+    jQuery(".bottom-btn .el-button.back").removeClass("no-display");
+    jQuery("#m-additional-html").html('');
+    return Parcel;
+};
+Parcel.submitNewAdditional = function(btn,url,sig){
+    var validator  = new Validation("parcel-additional-form",{onSubmit:false,immediate:false});
+
+    if(!sig && document.getElementById("signature_image") && typeof drawSignature=="object"){
+        btn.disabled = true;
+        drawSignature.toBase64(function(s1,s2){
+            document.getElementById("signature_image").value = s2;
+            btn.disabled = false;
+            Parcel.submitAdditional(btn,url,true);
+        });
+        return Parcel;
+    }
+
+    var params = Form.serialize("parcel-additional-form",true),error = [];
+    jQuery('#parcel-additional-form input[value-data]').each(function () {
+        if (this.name) params[this.name] = this.getAttribute("value-data");
+    });
+
+    if(validator.validate()){
+        if(error.length){
+            showMessages("error-msg",error.join("<br />"));
+        }else{
+
+            var isOk = false;
+            btn.disabled = true;
+            jQuery.ajax({type:"POST",url:url,processData:true,data:params,dataType:"json",
+                success:function(data){
+                    if(data){
+                        if(data.success){
+                            isOk = true;
+                            window.location.href = data.redirect ? data.redirect : "../intros/";
+                        }else{
+                            Parcel.submitSaveArticles(params);
+                            showMessages("error-msg",data.message ? data.message : "保存包裹出错了");
+                        }
+                    } else {
+                        Parcel.submitSaveArticles(params);
+                    }
+                },
+                error:function(){
+                    Parcel.submitSaveArticles(params);
+                    showMessages("error-msg","保存包裹信息时服务器出错了");
+                },
+                complete:function(){ if(!isOk)btn.disabled = false; }
+            });
+        }
+    } else {
+        Parcel.submitSaveArticles(params);
+
+        showMessages("error-msg", Parcel.showRequiredMessages() + ' 01');
+    }
+    return Parcel;
+};
+Parcel.submitInsurance = function (btn, url) {
+    window.location.href = url;
+    return Parcel;
+};
+Parcel.copyArticle = function (btn, packageId) {
+    Parcel.addArticle(btn, packageId, true);
+    return Parcel;
+}
+Parcel.addArticle = function(btn,packageId,isCopy, data){
+    var c = document.getElementById('package-articles-'+packageId),tr,index,selIndex,otr;
+
+    if(!c)return false;
+
+    index = JSExt.toInt(jQuery(c).attr("count"));
+
+    if (isCopy) {
+        otr = $(btn.parentNode).up("tr");
+    } else {
+        otr = $(c).down("tr");
+    }
+
+    tr = jQuery(otr).clone(true);
+
+    if (index <= 0) index = 1;
+
+    jQuery(c).append(tr);
+
+    let isSaveData = data && Object.keys(data) && Object.keys(data).length > 0 ? true : false;
+
+    tr.find('input[name^="articles["]').each(function(){
+        var name = this.name;
+        if(name.indexOf("[item_id]")>-1){
+            jQuery(this).remove();
+        }else{
+            this.name = name.replace(/^(articles\[\d+\])\[\d+\]/,'$1['+index+']');
+
+            if (isSaveData) {
+                if (this.getAttribute("data-key") == 'origin_country') {
+                    this.setAttribute("value-data", data[this.getAttribute("data-key")] ?? '');
+                    this.value = data[this.getAttribute("data-key") + '_label'] ?? '';
+                } else {
+                    this.value = data[this.getAttribute("data-key")] ?? '';
+                }
+            } else {
+                if (!isCopy) {
+                    this.value = "";
+                    if (this.hasAttribute("value-data")) this.setAttribute("value-data", "");
+                }
+            }
+
+            if(otr.querySelector('input[name="'+name+'"]').dataOptions){
+                this.dataOptions = otr.querySelector('input[name="'+name+'"]').dataOptions;
+                jQuery(this).nextAll('ul.list').html('');
+            }
+            if(this.id){
+                this.id = this.id.replace(/^(articles\-\d+)\-\d+\-/,'$1-'+index+'-');
+            }
+            if(this.next() && this.next().id){
+                this.next().id = this.next().id.replace(/^(articles\-\d+)\-\d+\-/,'$1-'+index+'-');
+            }
+            // Parcel.setHscodesInput(this);
+        }
+        JSExt.Event.Customize.triggerEvent('parcelAddArticleChange', this);
+        JSExt.Event.Customize.triggerEvent('parcelAddArticleBlur', this);
+    });
+    tr.find('.validation-failed').removeClass("validation-failed");
+    tr.find('.validation-passed').removeClass("validation-passed");
+    tr.find('.validation-advice').remove();
+    index++;
+    jQuery(c).attr("count",index);
+    JSExt.Event.Customize.triggerEvent('parcelAddArticleAfter', tr);
+    Parcel.setHscodes(jQuery(tr));
+    Parcel.setArticles(jQuery(tr));
+    return tr.get(0);
+};
+
+Parcel.AddArticleInitialize = function () {
+    Parcel.AddArticleChangeInitialize();
+    Parcel.AddArticleBlurInitialize();
+};
+
+Parcel.AddArticleChangeInitialize = function () {
+    JSExt.Event.Customize.addEventListener(
+        'parcelAddArticleChange',
+        e => e.addEventListener('change', function () {
+            Parcel.AddArticleValidate(this);
+        })
+    );
+};
+
+Parcel.AddArticleBlurInitialize = function () {
+    JSExt.Event.Customize.addEventListener(
+        'parcelAddArticleBlur',
+        e => e.addEventListener('blur', function () {
+            Parcel.AddArticleValidate(this);
+        })
+    );
+};
+
+Parcel.AddArticleValidate = function (elm) {
+    let allow = elm.getAttribute('data-allow');
+    if (allow && allow == elm.getAttribute('data-key')) {
+        setTimeout(
+            function () {
+                let validator = new Validation("parcel-additional-form");
+                Parcel.articleValidate(validator, elm);
+            },
+            500
+        );
+    }
+}
+
+Parcel.articleValidate = function (validator, elm) {
+    var result = false;
+    var useTitles = validator.options.useTitles;
+    var callback = validator.options.onElementValidate;
+
+    try {
+        if (elm.hasClassName('local-validation') && !validator.isElementInForm(elm, validator.form)) {
+            return true;
+        }
+        result = Validation.validate(elm, {useTitle: useTitles, onElementValidate: callback});
+    } catch (e) {
+    }
+
+    if (!result && validator.options.focusOnError) {
+        try {
+            $(elm).hasClassName('validation-failed').first().focus();
+        } catch (e) {
+        }
+    }
+    validator.options.onFormValidate(result, validator.form);
+    return result;
+};
+
+Parcel.clearEmptyArticle = function (packageId) {
+    var c = document.getElementById('package-articles-' + packageId);
+    if (!c) return false;
+    jQuery(c).find('tr').each(function () {
+        clearEmptyArticle(this, c);
+    });
+};
+
+async function clearEmptyArticle(tr, c) {
+    try {
+        let isEmpty = await checkEmptyArticle(tr);
+        if (isEmpty) {
+            let elm = jQuery(tr).find('svg[onclick*="Parcel.removeArticle("]') || '';
+            if (elm && elm[0]) {
+                jQuery(elm[0]).click();
+                let index = JSExt.toInt(jQuery(c).attr("count"));
+                index -= 1;
+                if (index <= 0) index = 1;
+            }
+        }
+    } catch (e) {
+        console.log(e);
+    }
+}
+
+async function checkEmptyArticle(tr, c) {
+    let isEmpty = true;
+    jQuery(tr).find('input[name^="articles["],select[name^="articles["]').each(function () {
+        let e = this, key = this.getAttribute("data-key") || '', value = jQuery(e).val() || '';
+        if (key == 'origin_country') {
+            if (jQuery(this).attr("value-data") != '') {
+                return isEmpty = false;
+            }
+        } else {
+            if (value != '') {
+                return isEmpty = false;
+            }
+        }
+    });
+    return isEmpty;
+}
+
+Parcel.removeArticle = function(btn,packageId,url){
+    var c = $(btn.parentNode).up("tr"),id;
+    if(!c)return false;
+    if(c.up().childElements().length>1){
+        c.remove();
+    }else{
+        jQuery(c).find('input[name^="articles["]:not([type="hidden"])').val("");
+    }
+    id = JSExt.toInt(jQuery(c).find('input[name$="[item_id]"]').val());
+    if(id && url){
+        jQuery.get(url,"pid="+packageId+"&id="+id);
+    }
+    return c;
+};
+Parcel.getArticleTotals = function(){
+    var totals = {};
+    if(Parcel.packageIds){
+        var qty,amount,weight,q,a,w;
+        for(var i = 0,len = Parcel.packageIds.length,c,tr;i<len;i++){
+            if(c = document.getElementById('package-articles-'+Parcel.packageIds[i])){
+                qty = amount = weight = 0;
+                tr = $(c).down("tr");
+                while(tr){
+                    q = a = w = 0;
+                    tr.select('input[name]').each(function(inp){
+                        var match = inp.name ? inp.name.match(/(\w+)\[(\d+)\]\[(\d*)\]\[(\w+)\]/i) : null;
+                        if(match && match[2]==Parcel.packageIds[i]){
+                            if(match[4]=="qty")q = Math.abs(JSExt.toFloat(inp.value));
+                            else if(match[4]=="amount")a = Math.abs(JSExt.toFloat(inp.value));
+                            else if(match[4]=="weight")w = Math.abs(JSExt.toFloat(inp.value));
+                        }
+                    });
+                    qty += q;
+                    amount += q*a;
+                    weight += q*w;
+                    tr = tr.next();
+                }
+                totals[Parcel.packageIds[i]] = {"qty":qty,"amount":amount,"weight":weight};
+            }
+        }
+    }
+    return totals;
+};
+Parcel.getArticleTotalsAmount = function(){
+    var totals = 0;
+    if(Parcel.packageIds){
+        var qty,amount,weight,q,a,w;
+        for(var i = 0,len = Parcel.packageIds.length,c,tr;i<len;i++){
+            if(c = document.getElementById('package-articles-'+Parcel.packageIds[i])){
+                qty = amount = weight = 0;
+                tr = $(c).down("tr");
+                while(tr){
+                    q = a = w = 0;
+                    tr.select('input[name]').each(function(inp){
+                        var match = inp.name ? inp.name.match(/(\w+)\[(\d+)\]\[(\d*)\]\[(\w+)\]/i) : null;
+                        if(match && match[2]==Parcel.packageIds[i]){
+                            if(match[4]=="qty")q = Math.abs(JSExt.toFloat(inp.value));
+                            else if(match[4]=="amount")a = Math.abs(JSExt.toFloat(inp.value));
+                            else if(match[4]=="weight")w = Math.abs(JSExt.toFloat(inp.value));
+                        }
+                    });
+                    qty += q;
+                    amount += q*a;
+                    weight += q*w;
+                    tr = tr.next();
+                }
+                totals += amount;
+            }
+        }
+    }
+    return totals ? totals.toFixed() : 0;
+};
+Parcel.articleOnInput = function(inp){
+    var match = inp.name ? inp.name.match(/(\w+)\[(\d+)\]\[(\d*)\]\[(\w+)\]/i) : null,totals;
+    if(match && (match[4]=="qty" || match[4]=="amount" || match[4]=="weight") && inp.value.length>1){
+        if(inp.value.indexOf("-")>-1)inp.value = inp.value.replace(/-+/g,"");
+        if(inp.value.indexOf(" ")>-1)inp.value = inp.value.replace(/\s+/g,"");
+        if(inp.value.indexOf(",")>-1)inp.value = inp.value.replace(/,+/g,".");
+    }
+    if(match && (match[4]=="qty" || match[4]=="amount"/* || match[4]=="weight"*/) && (Parcel.packageAmountElement/* || Parcel.packageWeightElement*/)){
+        totals = Parcel.getArticleTotalsAmount();
+        if(Parcel.packageAmountElement)Parcel.packageAmountElement.value = totals;
+//        if(totals[match[2]]){
+//            if(Parcel.packageAmountElement)Parcel.packageAmountElement.value = totals[match[2]].amount;
+//            //if(Parcel.packageWeightElement)Parcel.packageWeightElement.value = totals[match[2]].weight;
+//        }
+    }
+
+    if (match && (match[4] == "qty" || match[4] == "amount")) {
+        Parcel.calculateArticlesTotal();
+    }
+
+    return Parcel;
+};
+
+Parcel.calculateArticlesTotal = function () {
+    jQuery('#packages-data').find('tbody[id*="package-articles-"]').each(function () {
+        let r = Parcel.calculateArticlesTrTotal(this),
+            id = jQuery(this).attr('data-id'),
+            aE = jQuery('span[data-id="package-articles-total-amount-' + id + '"]'),
+            qE = jQuery('span[data-id="package-articles-total-qty-' + id + '"]');
+
+        if (aE && aE[0]) {
+            jQuery(aE[0]).html(r.total_amount || '');
+        }
+
+        if (qE && qE[0]) {
+            jQuery(qE[0]).html(r.total_qty || 0);
+        }
+    });
+    return Parcel;
+};
+
+Parcel.calculateArticlesTrTotal = function(e){
+    let total_amount = 0, total_qty = 0;
+    jQuery(e).find('tr').each(function () {
+        let tr = this,
+            q = jQuery(tr).find('input[data-key="qty"]'),
+            a = jQuery(tr).find('input[data-key="amount"]');
+        if (q && q[0] && a && a[0]) {
+            q = parseFloat(q[0].value || 0);
+            a = parseFloat(a[0].value || 0);
+            total_amount += q * a;
+            total_qty += q;
+        }
+    });
+
+    if (total_amount) total_amount = parseFloat(total_amount.toFixed(2));
+
+    return {
+        "total_amount": total_amount + ' € HT',
+        "total_qty": total_qty
+    };
+};
+
+Parcel.productOnChange = function(inp,li){
+    var match = inp.name ? inp.name.match(/(\w+)\[(\d+)\]\[(\d*)\]\[(\w+)\]/i) : null,totals;
+    if(match && match[4]=="product_id"){
+        var tr = $(inp).up('tr'),a = JSExt.toFloat(li.getAttribute('amount')),w = JSExt.toFloat(li.getAttribute('weight')),lq = JSExt.toInt(li.getAttribute('qty_limit'));
+        if(tr){
+            jQuery('input[name="'+inp.name.replace(/\[product_id\]$/,'[amount]')+'"]',tr).val(a);
+            jQuery('input[name="'+inp.name.replace(/\[product_id\]$/,'[weight]')+'"]',tr).val(w);
+            jQuery('input[name="'+inp.name.replace(/\[product_id\]$/,'[name]')+'"]',tr).val(inp.value);
+            if(lq>0){
+                jQuery('input[name="'+inp.name.replace(/\[product_id\]$/,'[qty]')+'"]',tr).attr('max',lq);
+            }else{
+                jQuery('input[name="'+inp.name.replace(/\[product_id\]$/,'[qty]')+'"]',tr).removeAttr('max');
+            }
+        }
+        if(Parcel.packageAmountElement){
+            totals = Parcel.getArticleTotals();
+            if(totals[match[2]]){
+                Parcel.packageAmountElement.value = totals[match[2]].amount;
+            }
+        }
+    }
+    return Parcel;
+};
+Parcel.formatUpsLocatorData = function(data){
+    var html = '';
+    var addr = [];
+    if(data.addLine1)addr.push(data.addLine1);
+    if(data.addLine2)addr.push(data.addLine2);
+    if(data.addLine3)addr.push(data.addLine3);
+    if(data.addLine4)addr.push(data.addLine4);
+    html += '<strong>Name:</strong> '+data.name+'<br />';
+    html += '<strong>Address:</strong> '+addr.join('<br />')+'<br />';
+    html += '<strong>City:</strong> '+data.city+'<br />';
+    html += '<strong>Postal Code:</strong> '+data.postal;
+    return html;
+};
+Parcel.showUpsLocatorInfo = function(data){
+    var html = '';
+    if(!data || typeof(data)!=="object" || !data.orderId || !data.action || data.action!="select"){
+        if(document.getElementById("ups_locator_info_value").value==""){
+            html += '<span style="color:red;">'+Translator.translate("使用UPS，必须要选择一个UPS网点才允许下单！")+'</span>';
+            html += '<br />[ <a href="javascript:;" class="show-ups-map">'+Translator.translate("选择UPS网点")+'</a> ]';
+            jQuery(".ups-locator-info",document.getElementById("ups-locator-info-container")).removeClass("no-display").html(html);
+        }
+    }else{
+        html += Parcel.formatUpsLocatorData(data);
+        document.getElementById("ups_locator_info_value").value = JSON.stringify(data);
+        html += '<br />[<a href="javascript:;" class="show-ups-map">'+Translator.translate("重新选择")+'</a>]';
+        jQuery(".ups-locator-info",document.getElementById("ups-locator-info-container")).removeClass("no-display").html(html);
+    }
+    return html;
+};
+Parcel.showUpsLocatorMap = function(url){
+    var c = document.getElementById("ups-locator-info-container");
+    if(url){
+        if(jQuery(".ups-locator-map",c).hasClass("no-display")){
+            var html = '<iframe id="ups-locator-map" src="'+url+'" width="100%" height="700" border="0" frameborder="0" marginwidth="0" marginheight="0"></iframe>';
+            jQuery(".ups-locator-map",c).removeClass("no-display").html(html);
+        }
+    }else{
+        jQuery(".ups-locator-map",c).addClass("no-display").html('');
+    }
+    return Parcel;
+};
+Parcel.formatMondialrelayLocatorData = function(data){
+    var html = '';
+    var addr = [];
+    if(data.Adresse1)addr.push(data.Adresse1);
+    if(data.Adresse2)addr.push(data.Adresse2);
+
+    html += '<strong>Name:</strong> '+data.Nom+'<br />';
+    html += '<strong>Address:</strong> '+addr.join('<br />')+'<br />';
+    html += '<strong>Postal Code:</strong> '+data.CP;
+    return html;
+};
+Parcel.showMondialrelayLocatorInfo = function(data){
+    var html = '';
+    if(!data || typeof(data)!=="object" || !data.ID || !data.Adresse1){
+        if(document.getElementById("mondialrelay_locator_info_value").value==""){
+            html += '<span style="color:red;">'+Translator.translate("使用Mondialrelay，必须要选择一个Mondialrelay网点才允许下单！")+'</span>';
+            html += '<br />[ <a href="javascript:;" class="show-mondialrelay-map">'+Translator.translate("选择Mondialrelay网点")+'</a> ]';
+            jQuery(".mondialrelay-locator-info",document.getElementById("mondialrelay-locator-info-container")).removeClass("no-display").html(html);
+        }
+    }else{
+        html += Parcel.formatMondialrelayLocatorData(data);
+        document.getElementById("mondialrelay_locator_info_value").value = JSON.stringify(data);
+        html += '<br />[<a href="javascript:;" class="show-mondialrelay-map">'+Translator.translate("重新选择")+'</a>]';
+        jQuery(".mondialrelay-locator-info",document.getElementById("mondialrelay-locator-info-container")).removeClass("no-display").html(html);
+    }
+    return html;
+};
+Parcel.showMondialrelayLocatorMap = function(url){
+    var c = document.getElementById("mondialrelay-locator-info-container");
+    if(url){
+        if(jQuery(".mondialrelay-locator-map",c).hasClass("no-display")){
+            var html = '<iframe id="mondialrelay-locator-map" src="'+url+'" width="100%" height="700" border="0" frameborder="0" marginwidth="0" marginheight="0"></iframe>';
+            jQuery(".mondialrelay-locator-map",c).removeClass("no-display").html(html);
+        }
+    }else{
+        jQuery(".mondialrelay-locator-map",c).addClass("no-display").html('');
+    }
+    return Parcel;
+};
+Parcel.uploadCommercialInvoice = function(packageId,url,inp){
+    var formData = new FormData();
+    formData.append("form_key",jQuery('#parcel-additional-form input[name="form_key"]').val());
+    formData.append("commercial_invoice",inp.files[0]);
+    formData.append("package_id",packageId);
+    JSExt.documentBody.disable();
+    jQuery.ajax({url:url,data:formData,type:"post",processData:false,contentType:false,dataType:"json",success:function(data){
+        if(data){
+            if(data.success){
+                var div = document.getElementById("remove_commercial_invoice_"+data.package_id);
+                if(!div){
+                    div = document.createElement("div");
+                    div.setAttribute("id","remove_commercial_invoice_"+data.package_id);
+                    $("upload_commercial_invoice_"+data.package_id).insert({after:div});
+                }else{
+                    $(div).removeClassName("no-display");
+                }
+                inp.setAttribute('value',data.file);
+                div.innerHTML = '<a href="'+data.url+'" target="_blank">'+data.name+'</a> [<a href="javascript:;" onclick="Parcel.removeCommercialInvoice(\''+data.package_id+'\',\''+data.remove_url+'\',this)">'+Translator.translate("Delete")+'</a>]';
+                $("upload_commercial_invoice_"+data.package_id).addClassName("no-display");
+            }else{
+                window.setTimeout('showMessages("error-msg","'+(data.message ? data.message : "文件上传失败")+'");',200);
+            }
+        }
+    },error:function(data){window.alert(data.message || Translator.translate('文件上传失败，请重试。'));},complete:function(){JSExt.documentBody.enable();}});
+    return Parcel;
+};
+Parcel.removeCommercialInvoice = function(packageId,url,btn){
+    JSExt.documentBody.disable();
+    jQuery.ajax({url:url,type:"post",data:"package_id="+packageId,dataType:"json",success:function(data){
+        if(data){
+            if(data.success){
+                var div = document.getElementById("remove_commercial_invoice_"+data.package_id);
+                if(div){
+                    div.innerHTML = '';
+                    $(div).addClassName("no-display");
+                }
+                $("upload_commercial_invoice_"+data.package_id).removeClassName("no-display");
+                if(
+                    document.getElementById("commercial_invoice_"+data.package_id).value
+                    || document.getElementById("commercial_invoice_"+data.package_id).getAttribute("value")
+                ){
+                    //Parcel.clearInvoiceFileInputValue(document.getElementById("commercial_invoice_"+data.package_id));
+                    document.getElementById("commercial_invoice_"+data.package_id).value = '';
+                }
+            }else{
+                window.setTimeout('showMessages("error-msg","'+(data.message ? data.message : "文件删除失败")+'");',200);
+            }
+        }
+    },error:function(){window.alert('请求超时，请重试');},complete:function(){JSExt.documentBody.enable();}});
+    return Parcel;
+};
+Parcel.clearInvoiceFileInputValue = function(inp){
+    var id = inp.getAttribute("id"),_inp = document.createElement("input"),_t = $(inp).next('div.translate-input-box');
+    ['type','name','class','onchange'].each(function(s){
+        if(inp.getAttribute(s))_inp.setAttribute(s,inp.getAttribute(s));
+    });
+    inp.parentNode.insertBefore(_inp,inp);
+    $(inp).remove();
+    if(id)_inp.setAttribute("id",id);
+    if(_t){
+        _t.remove();
+        translateInput(jQuery(_inp),Translator.translate("选择文件"),Translator.translate("未选择任何文件"));
+    }
+    return _inp;
+};
+Parcel.sendStoreChangeAfter = function(sel,sendType,sid){
+    var sku = sel.options[sel.selectedIndex].getAttribute("sku"),isZZ = sku && /^(YJ|SM|ZZ)/i.test(sku);
+    for(var len = sendType.options.length;len--;){
+        if((isZZ && sendType.options[len].getAttribute("sku")=="ZZ") || (!isZZ && sendType.options[len].getAttribute("sku")=="MD")){
+            sendType.options[len].selected = true;
+            var p1 = JSExt.toFloat(sel.options[sel.selectedIndex].getAttribute("price")),p2 = JSExt.toFloat(sendType.options[len].getAttribute("price"));
+            if(p2)Parcel.showProductCustomOptionNote(sel,p1+p2,sid);
+            break;
+        }
+    }
+    return Parcel;
+};
+Parcel.payStoreChangeAfter = function (sel, sendStore, sid) {
+    var sku = sel.options[sel.selectedIndex].value;
+    for (var len = sendStore.options.length; len--;) {
+        if (sendStore.options[len].getAttribute("sku") == sku) {
+            sendStore.options[len].selected = true;
+            jQuery(sendStore).change();
+            break;
+        }
+    }
+    return Parcel;
+};
+Parcel.commonCategoryChangeAfter = function(sel,sid,itemType){
+    var category;
+    try{ category = $F(sel); }catch(ex){ category = "3"; }
+    if (sid == "7" || sid == "25") {
+        console.log(sid);
+        Parcel.setUploadInvoiceRequired('#commercial_invoice_all', category == "4" ? false : true);
+    } else if (sid == "29") {
+        var itemType = $F(itemType);
+        Parcel.setUploadInvoiceRequired('#commercial_invoice_all', category == "3" && itemType == "2" ? true : false);
+    }
+
+    return Parcel;
+};
+Parcel.setUploadInvoiceRequired = function(selector,required){
+    if(required){
+        jQuery(selector).addClass("required-file-entry");
+        jQuery(selector).parents("div.input-box").prev("label").find("em.required").removeClass("no-display");
+
+    }else{
+        jQuery(selector).removeClass("required-file-entry");
+        jQuery(selector).parents("div.input-box").prev("label").find("em.required").addClass("no-display");
+    }
+};
+Parcel.showProductCustomOptionNote = function(elm,price,sid,showFree){
+    var div = elm.optionNoteElement,
+        iSel = elm.tagName.toLowerCase() == "select",
+        opt = iSel ? elm.options[elm.selectedIndex] : false,
+        note;
+    if(opt){
+        if(price===undefined || price===null)price = JSExt.toFloat(opt.getAttribute("price"));
+    }else if(elm.getAttribute("type")=="checkbox"){
+        if(price===undefined || price===null)price = elm.checked ? JSExt.toFloat(elm.getAttribute("price")) : 0;
+    }
+
+    if (price && Parcel.fuelPercent) {
+        price += price * Parcel.fuelPercent;
+        price = Math.round(price * 100) / 100;
+    }
+
+    if(price !== undefined && price!=0){
+        note = price<0 ? '- ' : '+ ';
+        note += Parcel.priceFormat.replace(/0[\.\,]00/,JSExt.round(price,2,true))+" HT";
+    }
+
+    if (showFree && price == 0) {
+        note = " (Offert)";
+    }
+
+    if(!div)div = $(elm).next();
+    if(!div || !div.hasClassName('option-note'))div = $(elm.parentNode).next();
+    if(note){
+        if (iSel) {
+            elm.parentNode.addClassName('input-group').addClassName('d-flex').addClassName('align-items-center');
+        }
+
+        if(!div || !div.hasClassName('option-note')){
+            var label = $(elm).next("label");
+            if(!label && elm.parentNode.tagName.toLowerCase()=="label")label = elm.parentNode;
+            div = document.createElement('span');
+            if (iSel) {
+                div.setAttribute('class', 'option-note position-absolute start-50');
+            } else {
+                div.setAttribute('class', 'option-note');
+            }
+            div.innerHTML = note+'&nbsp;/&nbsp;colis';
+            $(label ? label : elm).insert({after: div});
+            elm.optionNoteElement = div;
+        }else{
+            div.innerHTML = note+'&nbsp;/&nbsp;colis';
+            div.show();
+        }
+    }else if(div && div.hasClassName('option-note')){
+        div.hide();
+        if (iSel) {
+            elm.parentNode.removeClassName('input-group').removeClassName('d-flex').addClassName('align-items-center');
+        }
+    }
+
+    Parcel.ajaxCarrierTotals(sid);
+
+    return Parcel;
+};
+
+Parcel.submitAdditional = function(btn,url,sig){
+    var validator  = new Validation("parcel-additional-form",{onSubmit:false,immediate:false});
+    var params = Form.serialize("parcel-additional-form", true), error = [];
+    jQuery('#parcel-additional-form input[value-data]').each(function () {
+        if (this.name) params[this.name] = this.getAttribute("value-data");
+    });
+
+    if(!sig && document.getElementById("signature_image") && typeof drawSignature=="object"){
+        btn.disabled = true;
+        drawSignature.toBase64(function(s1,s2){
+            document.getElementById("signature_image").value = s2;
+            btn.disabled = false;
+            Parcel.submitAdditional(btn,url,true);
+        });
+        return Parcel;
+    }
+
+    if (validator.validate()) {
+        if (error.length) {
+            showMessages("error-msg", error.join("<br />"));
+        } else {
+            var isOk = false;
+            btn.disabled = true;
+            jQuery.ajax({
+                type: "POST", url: url, processData: true, data: params, dataType: "json",
+                success: function (data) {
+                    if (data) {
+                        if (data.success) {
+                            isOk = true;
+                            window.location.href = data.redirect ? data.redirect : "../intros/";
+                        } else {
+                            Parcel.submitSaveArticles(params);
+                            showMessages("error-msg", data.message ? data.message : "保存包裹出错了");
+                        }
+                    } else {
+                        Parcel.submitSaveArticles(params);
+                    }
+                },
+                error: function () {
+                    Parcel.submitSaveArticles(params);
+                    showMessages("error-msg", "保存包裹信息时服务器出错了");
+                },
+                complete: function () {
+                    if (!isOk) btn.disabled = false;
+                }
+            });
+        }
+    } else {
+        Parcel.submitSaveArticles(params);
+
+        showMessages("error-msg", Parcel.showRequiredMessages() + ' 02');
+    }
+    return Parcel;
+};
+
+Parcel.submitSaveArticles = function (params) {
+    if (Parcel.SaveArticlesUrl) {
+        jQuery.ajax({
+            type: "POST", url: Parcel.SaveArticlesUrl, processData: true, data: params, dataType: "json",
+            success: function (data) {
+                if (data) {
+                    if (data.success) {
+                        console.log("Update Success");
+                    } else {
+                        console.log(data.message ? data.message : "保存包裹出错了");
+                    }
+                }
+                return false;
+            }
+        });
+    }
+    return Parcel;
+};
+
+Parcel.validationFailedError = function () {
+    var vArr = jQuery('.validation-failed'), arr = [], err = '';
+    if (vArr && vArr.length) {
+        vArr.each(function (i, o) {
+            var _id = o.id, _l = _id ? jQuery('label[for="' + _id + '"]') : '';
+            if (_l && _l.text()) {
+                arr.push(_l.text());
+            }
+        });
+    }
+
+    if (arr.length) {
+        err = arr.join(',');
+    }
+
+    return err;
+};
+
+Parcel.showRequiredMessages = function () {
+    var err = Translator.translate("Required fields cannot be empty");
+    var vErr = Parcel.validationFailedError();
+    if (vErr) {
+        err +=  ' [' + vErr + ']';
+    }
+    return err;
+};
+
+Parcel.applyCoupon = function(btn,url){
+    var v;
+    if(document.getElementById("coupon-code-input").disabled){
+        v = "";
+    }else{
+        v = $F("coupon-code-input");
+        if(v==""){
+            document.getElementById("coupon-code-input").focus();
+            return false;
+        }
+    }
+    JSExt.documentBody.disable();
+    new Ajax.Request(url,{
+        method:'post',parameters:'coupon_code='+v,onSuccess:function(transport){
+            var data = transport.responseJSON;
+            if(!data && transport.responseText.isJSON())data = transport.responseText.evalJSON();
+            if(!data.success){
+                showMessages("error-msg",data.message ? data.message : "使用优惠券出错了");
+                //JSExt.documentBody.enable();
+                document.getElementById("coupon-code-input").focus();
+            }else{
+                window.location.reload();
+            }
+        }
+    });
+    return Parcel;
+};
+Parcel.applyPoint = function(btn,url){
+    var inp = document.getElementById("rewardpoints-input"),ov = inp.getAttribute("origValue"),v = inp.value;
+    if(v==ov){
+        inp.focus();
+        return false;
+    }
+    JSExt.documentBody.disable();
+    new Ajax.Request(url,{
+        method:'post',parameters:'point='+v,onSuccess:function(transport){
+            var data = transport.responseJSON;
+            if(!data && transport.responseText.isJSON())data = transport.responseText.evalJSON();
+            if(!data.success){
+                showMessages("error-msg",data.message ? data.message : "出错了");
+                //JSExt.documentBody.enable();
+                document.getElementById("rewardpoints-input").focus();
+            }else{
+                window.location.reload();
+            }
+        }
+    });
+    return Parcel;
+};
+Parcel.showAgreementContent = function(){
+    var mw = document.getElementById("express-parcel-create-container").clientWidth-100,mh = document.documentElement.clientHeight-100;
+    jQuery("#is-read-notes .read-notes-list .read-notes-des").css("max-height",mh);
+    jQuery('#is-read-notes').removeClass('no-display');
+    JSExt.documentBody.center(jQuery("#is-read-notes .read-notes-list").width(mw));
+    return Parcel;
+};
+Parcel.showOrderSubmitImportantHintContent = function(){
+    var cW = document.getElementById("express-parcel-create-container").clientWidth,
+        mw = cW - cW/2.5,
+        mh = document.documentElement.clientHeight-100;
+    jQuery("#order-submit-important-hint .read-notes-list .read-notes-des").css("max-height",mh);
+    jQuery('#order-submit-important-hint').removeClass('no-display');
+    JSExt.documentBody.center(jQuery("#order-submit-important-hint .read-notes-list").width(mw));
+    return Parcel;
+};
+Parcel.showMessagePromptContent = function(){
+    var cW = document.getElementById("express-parcel-create-container").clientWidth,
+        mw = cW - cW/2.5,
+        mh = document.documentElement.clientHeight-100;
+    jQuery("#message-prompt .read-notes-list .read-notes-des").css("max-height",mh);
+    jQuery('#message-prompt').removeClass('no-display');
+    JSExt.documentBody.center(jQuery("#message-prompt .read-notes-list").width(mw));
+    return Parcel;
+};
+Parcel.messagePromptNext = function(){
+    Parcel.isEsCanaryIslands = false;
+    jQuery('.bottom-btn .el-button.next').click();
+    $('message-prompt').addClassName('no-display');
+    return Parcel;
+};
+Parcel.submitOrder = function(btn,url,cb){
+    var pc = $("checkout-payment-method-load"),lsc = $("label-size-container"),oc = $("other-container"),pm = pc ? JSExt.getElementValue(pc.select('input[name="payment[method]"]')) : false,ls = "",iaid = "";
+    if(pm){
+        if(lsc)ls = JSExt.getElementValue(lsc.select('input[name="label_size"]'));
+        if (document.getElementById('order-submit-important-hint')) {
+            $('order-submit-important-hint').addClassName('no-display');
+        }
+
+        var adn = oc && JSExt.getElementValue(oc.select('input[name="auxiliary_delivery_note"]')) || 0;
+
+        JSExt.documentBody.disable();
+
+        var params = 'payment_method=' + pm + '&label_size=' + ls + '&auxiliary_delivery_note=' + adn;
+        var emailElm = document.getElementById('shipping_address_email');
+        if (emailElm) {
+            params += '&shipping_address_email=' + emailElm.value;
+        }
+        var iaElm = document.getElementById('invoice_address_id');
+        if (iaElm) {
+            iaid = iaElm.getAttribute('value-data') || "";
+        }
+
+        new Ajax.Request(url,{
+            method:'post',parameters:params,onSuccess:function(transport){
+                var data = transport.responseJSON;
+                if(!data && transport.responseText.isJSON())data = transport.responseText.evalJSON();
+                if(typeof cb === 'function')cb(btn,data);
+                if(!data.success){
+                    showMessages("error-msg",data.message ? data.message : "保存订单出错了");
+                    if(data.redirect){
+                        window.location.href = data.redirect;
+                    }
+                }else{
+                    window.location.href = data.redirect ? data.redirect : "../../create/success/";
+                }
+            }
+        });
+    }else{
+        window.alert("请选择付款方式");
+    }
+    return Parcel;
+};
+
+Parcel.newSubmitOrder = function(btn,url,cb){
+    if (btn.isLoading) return Parcel;
+
+    var pc = $("checkout-payment-method-load"),
+        oc = $("other-container"),
+        lsc = $("label-size-container"),
+        pm = pc ? JSExt.getElementValue(pc.select('input[name="payment[method]"]')) : false,
+        ls = "",
+        renElm = $("recipient-email-notification"),
+        ren = "",
+        iaid = "";
+    if(pm){
+        if (lsc) ls = JSExt.getElementValue(lsc.select('input[name="label_size"]'));
+        if (renElm && renElm.checked) ren = 1;
+        if (document.getElementById('order-submit-important-hint')) {
+            $('order-submit-important-hint').addClassName('no-display');
+        }
+
+        var adn = oc && JSExt.getElementValue(oc.select('input[name="auxiliary_delivery_note"]')) || 0;
+
+        var iaElm = document.getElementById('invoice_address_id');
+        if (iaElm) {
+            iaid = iaElm.getAttribute('value-data') || "";
+        }
+
+        var params = 'payment_method='+pm+'&label_size='+ls+'&recipient_email_notification=' + ren;
+        params += '&invoice_address_id=' + iaid;
+        params += '&auxiliary_delivery_note=' + adn;
+        var emailElm = document.getElementById('shipping_address_email');
+        if (emailElm && emailElm.value) {
+            params += '&shipping_address_email=' + emailElm.value;
+        }
+
+        var btxt = btn.innerHTML;
+        btn.innerHTML = Translator.translate("Loading");
+        btn.isLoading = true;
+        new Ajax.Request(url,{
+            method:'post',parameters:params,onSuccess:function(transport){
+                var data = transport.responseJSON;
+                if(!data && transport.responseText.isJSON())data = transport.responseText.evalJSON();
+                if(typeof cb === 'function')cb(btn,data);
+                if(!data.success){
+                    showMessages("error-msg",data.message ? data.message : "保存订单出错了");
+                    if(data.redirect){
+                        Parcel.showPayForm(data.redirect, btn, pm);
+                    }
+                }else{
+                    Parcel.showPayForm(data.redirect ? data.redirect : Parcel.getUrl("express/parcel/success"), btn, pm);
+                }
+            },
+            onComplete:function(){
+                btn.innerHTML = btxt;
+                btn.isLoading = false;
+            }
+        });
+    }else{
+        window.alert("请选择付款方式");
+    }
+    return Parcel;
+};
+
+Parcel.getUrl = function(ac) {
+    if (!Parcel.urlPrefix) {
+        var url = window.location.href.split("/");
+        Parcel.urlPrefix = url[0] + '/' + url[1] + '/' + url[2] + '/' + url[3] + '/';
+    }
+    return Parcel.urlPrefix + ac + "/";
+};
+
+Parcel.showPayForm = function (redirect, btn, pm) {
+    openPopWindow('parcel-order-pay-div');
+    jQuery('.pop-content iframe').attr('src', redirect);
+    if (pm && document.getElementById('parcel-order-pay-div')) {
+        jQuery('#parcel-order-pay-div').addClass(pm + '-pay');
+    }
+    return Parcel;
+};
+
+Parcel.paramsToArray = function(params){
+    var arr = {};
+    jQuery.each(params,function(key,value){
+        var match = key.match(/^([^\[\]]+)\[/),re,_match,_match1 = key.match(/\[([^\[\]]+)\]$/),tmp;
+        if(match && _match1){
+            if(typeof arr[match[1]] === "undefined")arr[match[1]] = {};
+            re = /\[(\w+)\]/g;
+            tmp = arr[match[1]];
+            while((_match = re.exec(key)) !== null){
+                if(typeof tmp[_match[1]] === "undefined")tmp[_match[1]] = {};
+                if(_match1[1]==_match[1]){
+                    tmp[_match[1]] = value;
+                }else{
+                    tmp = tmp[_match[1]];
+                }
+            }
+        }else{
+            arr[key] = value;
+        }
+    });
+    return arr;
+};
+Parcel.postCodeCityRelation = function(input){
+    if(typeof FVILLE !=="object")return false;
+    var id = input.getAttribute("id"),onblur = input.getAttribute("onblur"),isCity = id.indexOf("city")>=0,country = document.getElementById(id.replace(isCity ? /\bcity\b/ : /\bpostcode\b/,"country_id")),countryId = "";
+    if(country)countryId = country.getAttribute("value-data") || $F(country);
+    if(countryId=="FR"){
+        Parcel.showPostCodeCityList(input,FVILLE,isCity,function(){
+            var i = this.getAttribute("data-index"),inp;
+            if(i!==null && i!==undefined && FVILLE[i]){
+                if(isCity){
+                    inp = document.getElementById(id.replace(/\bcity\b/,"postcode"));
+                    if(typeof(FVILLE[i][1])=="string")input.value = FVILLE[i][1];
+                    if(inp){
+                        $(inp).up(".el-box").addClassName("canuse");
+                        inp.value = FVILLE[i][0];
+                    }
+                }else{
+                    input.value = FVILLE[i][0];
+                    inp = document.getElementById(id.replace(/\bpostcode\b/,"city"));
+                    if(typeof(FVILLE[i][1])=="string" && inp){
+                        $(inp).up(".el-box").addClassName("canuse");
+                        inp.value = FVILLE[i][1];
+                    }
+                }
+            }
+        });
+    }
+    if(!onblur || onblur.indexOf('Parcel.showPostCodeCityList')<0){
+        input.setAttribute("onblur","window.setTimeout('Parcel.showPostCodeCityList(false)',200)");
+    }
+    return Parcel;
+};
+Parcel.showPostCodeCityList = function(input,data,isCity,click){
+    var maxListCount = 20,ul = document.getElementById("post-code-city-list"),value = input ? input.value : "",isShow = false;
+    if(!ul){
+        ul = document.createElement("ul");
+        ul.setAttribute("id","post-code-city-list");$(ul).setStyle({"position":"fixed","z-index":1030,"background-color":"#FFF","border":"1px solid #cccccc","overflow-y":"scroll","max-height":"350px"});
+        document.body.appendChild(ul);
+    }else{
+        ul.innerHTML = "";
+    }
+    if(value || value==='0'){
+        for(var i = 0,len = data.length,li,txt;i<len;i++){
+            txt = "";
+            if(isCity && typeof(data[i][1])=="string" && data[i][1].toUpperCase().indexOf(value.toUpperCase())===0){
+                txt += '<span style="display:inline-block;padding:10px 6px;line-height:100%;">'+data[i][1]+'</span>';
+                txt += '<span style="display:inline-block;padding:10px 6px;line-height:100%;">'+data[i][0]+'</span>';
+            }else if(!isCity && typeof(data[i][0])=="string" && data[i][0].indexOf(value)===0){
+                txt += '<span style="display:inline-block;padding:10px 6px;line-height:100%;">'+data[i][0]+'</span>';
+                if(typeof(data[i][1])=="string")txt += '<span style="display:inline-block;padding:10px 6px;line-height:100%;">'+data[i][1]+'</span>';
+            }
+            if(txt!=""){
+                li = document.createElement("li");
+                ul.appendChild(li);
+                li.setAttribute("data-index",i);
+                $(li).setStyle({"padding":0,"margin":0,"line-height":"100%","cursor":"default","white-space":"nowrap","border-top":"1px solid #F2F2F2"});
+                li.innerHTML = txt;
+                li.onclick = click;
+                if(!isShow)isShow = true;
+                if(maxListCount--<=1)break;
+            }
+        }
+    }
+    if(isShow){
+        $(ul).show();
+        var a = $(input).viewportOffset(),b = $(input).getDimensions();
+        $(ul).setStyle({"min-width":b.width+"px","top":(b.height+a.top)+"px","left":a.left+"px"});
+    }else{
+        $(ul).hide();
+    }
+    return ul;
+};
+
+var _submitSaveInsuranceAjax = null;
+Parcel.submitSaveInsuranceForm = function (btn) {
+    var p = Form.serialize("parcel-insurance-form" , true), url = document.getElementById("parcel-insurance-form").action;
+
+    var elb = jQuery(".bottom-btn .el-button.next")[0] || '';
+    if (elb) {
+        jQuery(elb).attr("disabled", true);
+    }
+
+    if (_submitSaveInsuranceAjax && _submitSaveInsuranceAjax.state() == "pending") {
+        _submitSaveInsuranceAjax.abort();
+    }
+
+    _submitSaveInsuranceAjax = jQuery.ajax({type: "POST", url: url, processData: true, data: p, dataType: "json",
+        success: function (data) {
+            if (data) {
+                if (data.success) {
+                    if (data.items_html) {
+                        var items = document.getElementById("parcel-insurance-items-html");
+                        if (items) {
+                            items.innerHTML = data.items_html;
+                            setTimeout(() => { insuranceOnInput(); },10);
+                        }
+                    }
+
+                    if (data.totals_html) {
+                        var total = document.getElementById("parcel-insurance-total-html");
+                        if (total) {
+                            total.innerHTML = data.totals_html;
+                        }
+                    }
+
+                    if (elb
+                            && data.insurance_total
+                            && parseFloat(data.insurance_total) > 0) {
+                        jQuery(elb).attr("disabled", false);
+                    }
+                } else {
+                    showMessages("error-msg", data.message ? data.message : "设置保险出错了");
+                }
+            }
+        }
+    });
+
+    return Parcel;
+};
+
+var googleAutocomplete;
+Parcel.setGoogleAutocompleteCountry = function (country) {
+    if (googleAutocomplete) {
+        if (country == 'NB' || country == 'SF' || country == 'EN' || country == 'WL') {
+            country = 'GB';
+        }
+        googleAutocomplete.setComponentRestrictions({
+            country: country
+        });
+    }
+    return Parcel;
+};
+Parcel.initGoogleAutocomplete = function (country_id) {
+    let input = document.getElementById('address:street2'),
+        countryElm = document.getElementById('address:country_id'),
+        country = country_id || countryElm && countryElm.getAttribute('value-data') || 'FR';
+
+    if (country == 'NB' || country == 'SF' || country == 'EN' || country == 'WL') {
+        country = 'GB';
+    }
+
+    if (googleAutocomplete) {
+        googleAutocomplete.setComponentRestrictions({
+            country: country
+        });
+    }
+
+    if (typeof(google) === 'undefined' || googleAutocomplete) return this;
+
+    const options = {
+        componentRestrictions: { country: country },
+        fields: ['address_components', 'geometry', 'name', 'formatted_address'],
+        // types: ['address'],
+    };
+    googleAutocomplete = new google.maps.places.Autocomplete(input, options);
+
+    googleAutocomplete.addListener('place_changed', function () {
+        let place = googleAutocomplete.getPlace(),
+            street2 = '', postcode = '', city = '', district = '', region = '';
+        for (let component of place.address_components) {
+            let componentType = component.types[0];
+            switch (componentType) {
+                case 'street_number': {
+                    street2 = `${component.long_name} ${street2}`;
+                    break;
+                }
+                case 'route': {
+                    street2 += component.short_name;
+                    break;
+                }
+                case 'postal_code_prefix':
+                case 'postal_code':{
+                    postcode = `${component.long_name}${postcode}`;
+                    break;
+                }
+                case 'locality':
+                    case 'neighborhood':
+                    if (
+                        !document.getElementById('address:city').value
+                        || place.formatted_address.indexOf(component.long_name) > 0
+                    ) {
+                        city = component.long_name;
+                    }
+                    break;
+                case 'sublocality_level_1':
+                    district = component.long_name;
+                    break;
+                case 'administrative_area_level_1':
+                    region = component.long_name;
+                    break;
+            }
+        }
+        // input.value = street2;
+        // jQuery('[id="address:postcode"]').val(postcode);
+        // jQuery('[id="address:city"]').val(city);
+console.log(place);
+        input.value = Parcel.str_replace(street2);
+        jQuery('[id="address:postcode"]').val(postcode);
+        jQuery('[id="address:city"]').val(Parcel.str_replace(city));
+
+        for(let elm of [jQuery('[id="address:postcode"]'), jQuery('[id="address:city"]')]) {
+            if(!!elm.closest('.el-box').length) {
+                elm.closest('.el-box').addClass('canuse');
+            }
+        }
+    });
+    return Parcel;
+};
+
+Parcel.str_replace = function (str) {
+    if (!str) {
+        return str;
+    }
+    return str.replace(/(ā|á|ǎ|à|â|ä|ã|å|ȁ|ȃ|ạ|ả|ấ|ầ|ẩ|ẫ|ậ|ắ|ằ|ẳ|ẵ|ặ)/g,"a")
+        .replace(/(ɓ|ʙ|ʛ|ḃ|ḅ|ḇ|ƀ|ƃ|ƅ)/g,"b")
+        .replace(/(ç|ć|ĉ|ċ|č|ƈ|ȼ|ḉ)/g,"c")
+        .replace(/(ď|đ|ɖ|ɗ|ḋ|ḍ|ḏ|ḑ|ḓ|ð)/g,"d")
+        .replace(/(ē|é|ě|è|ê|ë|ĕ|ė|ę|ȅ|ȇ|ẹ|ẻ|ẽ|ế|ề|ể|ễ|ệ)/g,"e")
+        .replace(/(ƒ|ḟ)/g,"f")
+        .replace(/(ĝ|ğ|ġ|ḡ|ǵ|ǧ|ǥ|ƃ|ɠ)/g,"g")
+        .replace(/(ĥ|ħ|ȟ|ḣ|ḥ|ḧ|ḩ|ḫ|ⱨ|ɦ)/g,"h")
+        .replace(/(ī|í|ǐ|ì|î|ï|ĩ|ĭ|į|ı|ȉ|ȋ|ị|ỉ|ȷ)/g,"i")
+        .replace(/(ĵ|ǰ|ʝ|ɉ)/g,"j")
+        .replace(/(ķ|ƙ|ĸ|ḱ|ḳ|ḵ)/g,"k")
+        .replace(/(ĺ|ļ|ľ|ŀ|ł|ḷ|ḹ|ḻ|ḽ)/g,"l")
+        .replace(/(ḿ|ṁ|ṃ|ɱ)/g,"m")
+        .replace(/(ñ|ń|ņ|ň|ŉ|ṅ|ṇ|ṋ|ṉ|ɲ|ƞ)/g,"n")
+        .replace(/(ō|ó|ǒ|ò|ô|ö|õ|ő|ȍ|ȏ|ơ|ǫ|ọ|ỏ|ố|ồ|ổ|ỗ|ộ|ớ|ờ|ở|ỡ|ợ|ø)/g,"o")
+        .replace(/(ṕ|ṗ|ƥ|ᵽ)/g,"p")
+        .replace(/(ŕ|ŗ|ř|ṙ|ṛ|ṝ|ṟ|ɍ|ɽ)/g,"r")
+        .replace(/(ś|ŝ|ş|š|ṡ|ṣ|ṥ|ṧ|ṩ|ß)/g,"s")
+        .replace(/(ţ|ț|ŧ|ṫ|ṭ|ṯ|ṱ|ẗ|ʈ|ẖ)/g,"t")
+        .replace(/(ū|ú|ǔ|ù|û|ü|ǖ|ǘ|ǚ|ǜ|ũ|ŭ|ů|ű|ų|ư|ȕ|ȗ|ụ|ủ|ứ|ừ|ử|ữ|ự)/g,"u")
+        .replace(/(ṽ|ṿ|ⱱ|ʋ)/g,"v")
+        .replace(/(ŵ|ẁ|ẃ|ẅ|ẇ|ẉ|ẘ)/g,"w")
+        .replace(/(ẋ|ẍ)/g,"x")
+        .replace(/(ý|ÿ|ŷ|ẏ|ỹ|ȳ|ẙ|ỷ|ỵ)/g,"y")
+        .replace(/(ź|ż|ž|ẑ|ẓ|ẕ|ƶ)/g,"z")
+        .replace(/(œ)/g,"ce")
+        .replace(/(æ)/g,"ae")
+        .replace(/(À|Â|Ā|Á|Ǎ)/g,"A")
+        .replace(/(Ē|É|Ě|È|Ê|Ë)/g,"E")
+        .replace(/(Ī|Í|Ǐ|Ì|Î|Ï)/g,"I")
+        .replace(/(Ō|Ó|Ǒ|Ò|Ô|Ö)/g,"O")
+        .replace(/(Ū|Ú|Ǔ|Ù|Û|Ǖ|Ǘ|Ǚ|Ǜ|Ü)/g,"U")
+        .replace(/(Ç)/g,"C")
+        .replace(/(Œ)/g,"CE")
+        .replace(/(Æ)/g,"AE");
+};
+
+jQuery(document).ready(function(){
+    Validation.addAllThese([
+        ['validate-details-name-fr',"Please fill in the French",function(v,elm){
+            if(!v || v==="")return true;
+            if(elm.getAttribute("value-data")!==undefined && elm.getAttribute("value-data")!==null)return true;
+            if(/^\d+$/.test(v))return false;
+            return /^[\s\w\'\-_",\.°àâèéêîïôöùûüçœæ€ÀÂÈÉÊËÎÏÔÖÙÛÇŒÆ%]+$/.test(v);
+        }],
+        ['validate-details-name-en-fr',"Please fill in the French or English",function(v,elm){
+            if(!v || v==="")return true;
+            if(elm.getAttribute("value-data")!==undefined && elm.getAttribute("value-data")!==null)return true;
+            if(/^\d+$/.test(v))return false;
+            return /^[A-Za-z0-9\'\-_\/&",.°àâèéêîïôöùûüçœæ€]+[ A-Za-z0-9\'\-_\/&",.°àâèéêîïôöùûüçœæ€]*$/.test(v);
+        }],
+        ['data-box',"This is a required field.",function(v,elm){
+            var vd = elm.getAttribute("value-data");
+            if(vd!==undefined && vd!==null && $(elm).hasClassName("required-entry")){
+                return !JSExt.isEmpty(vd);
+            }
+            return true;
+        }],
+        ['required-file-entry',"This is a required field.",function(v,elm){
+            var _elm = $(elm).previous(".translate-input-box") || $(elm),_vre = true;
+            if(v==="" || v===undefined || v===null)v = elm.getAttribute('value');
+            if(!v && v!=="0"){
+                if(_elm)_elm.addClassName("validation-failed");
+                _vre = false;
+            }else if(_elm){
+                _elm.removeClassName("validation-failed");
+            }
+            return _vre;
+        }],
+        ['validate-invoice-number',"发票号只允许填英文字母数字",function(v,elm){
+            return Validation.get('IsEmpty').test(v) || /^[\w\-_\/]+$/.test(v);
+        }],
+        ['validate-details-barcode',"只允许填英文字母数字",function(v,elm){
+            return Validation.get('IsEmpty').test(v) || /^[\w\-_\/]+$/.test(v);
+        }],
+        ['validate-standard-date','Please enter a valid date.',function(v,elm){
+            var m;
+            if(Validation.get('IsEmpty').test(v))return true;
+            if(m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)){
+                var test = new Date(m[1],m[2],m[3]);
+                return !isNaN(test);
+            }
+            return false;
+        }],
+        ['validate-fourteen-num', 'Please fill in the 14 digits', function (v) {
+            v = v.replace(/(^\s+)|(\s+$)/g, '');
+            return Validation.get('IsEmpty').test(v) || /^\d{14}$/.test(v);
+        }],
+        ['validate-details-spec',"物品名称、品牌、材质组合不能超过33个字符",function(v){
+            var ok = true;
+            jQuery('#packages-data tr').each(function() {
+                var input = jQuery(this).find("input") || "", spec = "";
+                if (input) {
+                    for (var i = 0; i < input.length; i++) {
+                        if (input[i]
+                                && input[i].value
+                                && (jQuery(input[i]).hasClass("validate-details-name")
+                                    || jQuery(input[i]).hasClass("validate-details-brand")
+                                    || jQuery(input[i]).hasClass("validate-details-material"))) {
+                            if (!jQuery(input[i]).hasClass("validate-details-name")) {
+                                spec += "/";
+                            }
+                            spec += input[i].value;
+                        }
+                    }
+                }
+
+                if (spec && spec.length > 35) {
+                    ok = false;
+                    return false;
+                }
+            });
+            return ok;
+        }],
+        ['validate-required-signature','请提供您的手写签名',function(v,elm){
+            return !Validation.get('IsEmpty').test(v);
+        }],
+        ['validate-telephone-len-18', 'Le numéro de téléphone saisi est trop long. Veuillez saisir un seul numéro de téléphone (mobile de préférence).', function (v) {
+            v = v.replace(/(^\s+)|(\s+$)/g, '');
+            return v.length <= 18;
+        }],
+    ]);
+});

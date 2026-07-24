@@ -1,0 +1,43 @@
+//theme.js ———— global js
+import "../../bootstrap5/js/bootstrap.bundle.min.js";//Import the Bootstrap bundle
+import sideControl from "../modules/sideControl.js";
+import dropdownMenu from "../modules/dropdownMenu.js";
+import mobileMenu from "../modules/mobileMenu.js";
+import chatDialog from "../modules/chatDialog.js";
+import {notifications, default as notificationsInit} from "../modules/notifications.js";
+
+//After DOM load
+jQuery(document).ready(function () {
+    //init show or hidden ToTopControl
+    sideControl.toggleToTop(window.scrollY);
+    notificationsContainer = notificationsInit('[data-role="view-notification-button"]');
+    chatDialog.init('[role="live-chat"][href]')
+        //.setContainerZIndex(notifications.containerZIndex)
+        .setDialogTpl(notifications.getWrapperTemplate.bind(notifications));
+
+    //dropdown-center set dropdown-menu center
+    dropdownMenu.setCenter();
+    
+    //on mobile, handle menu
+    mobileMenu.initParcelRightEvent();
+    if (document.body.clientWidth <= 992) {
+        mobileMenu.init();
+        mobileMenu.initParcelRightPosition();
+    }
+});
+
+//on scroll
+document.addEventListener("scroll", function() {
+    //show or hidden ToTopControl when on scroll
+    sideControl.toggleToTop(window.scrollY);
+});
+//on resize
+window.addEventListener('resize', function() {
+    if (document.body.clientWidth <= 992) {
+        mobileMenu.initParcelRightPosition();
+        //notifications.setContainerZIndex(notificationsContainer);
+        //chatDialog.setContainerZIndex(notifications.containerZIndex);
+    }
+});
+
+var notificationsContainer = null;

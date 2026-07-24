@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<config>
+    <acl>
+        <resources>
+            <admin>
+                <children>
+                    <sales>
+                        <children>
+                            <invoiceadjustment translate="title">
+                                <title>Invoice Adjustments</title>
+                            </invoiceadjustment>
+                        </children>
+                    </sales>
+                </children>
+            </admin>
+        </resources>
+    </acl>
+</config>

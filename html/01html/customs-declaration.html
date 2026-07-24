@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>报关信息 - 邮寄全球 - 37同城 - 欧洲生活服务平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ex37-color: #7C3AED;
+            --ex37-dark: #5B21B6;
+            --ex37-light: #EDE9FE;
+            --text-dark-purple: #3A2449;
+            --text-gray: #5D4D67;
+            --text-light-gray: #9CA3AF;
+            --bg-light: #F9FAFB;
+            --border-color: #E5E7EB;
+            --warning-bg: #FEF7EB;
+            --warning-text: #FBB03B;
+            --danger-bg: #FEF2F2;
+            --danger-text: #DC2626;
+            --success-color: #10B981;
+            --white: #FFFFFF;
+            --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #F3F4F6;
+            color: var(--text-dark-purple);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* ===== Header / Top Bar ===== */
+        .header-bar {
+            background: var(--white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .header-bar .logo {
+            height: 32px;
+            width: auto;
+        }
+
+        .header-bar .brand-text {
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: var(--ex37-color);
+            letter-spacing: -0.5px;
+        }
+
+        .header-bar .nav-link-header {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-gray);
+            padding: 6px 16px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .header-bar .nav-link-header:hover {
+            background: var(--ex37-light);
+            color: var(--ex37-color);
+        }
+
+        .header-bar .nav-link-header.active-link {
+            background: var(--ex37-light);
+            color: var(--ex37-color);
+        }
+
+        /* ===== Breadcrumb ===== */
+        .breadcrumb-wrapper {
+            background: var(--white);
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .breadcrumb-custom {
+            display: flex;
+            align-items: center;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.875rem;
+        }
+
+        .breadcrumb-custom li {
+            display: flex;
+            align-items: center;
+        }
+
+        .breadcrumb-custom li a {
+            color: var(--text-gray);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .breadcrumb-custom li a:hover {
+            color: var(--ex37-color);
+        }
+
+        .breadcrumb-custom li .separator {
+            margin: 0 8px;
+            color: var(--text-light-gray);
+        }
+
+        .breadcrumb-custom li.current {
+            color: var(--ex37-color);
+            font-weight: 600;
+        }
+
+        /* ===== Main Layout ===== */
+        .main-wrapper {
+            padding: 24px 0 60px;
+            min-height: calc(100vh - 200px);
+        }
+
+        .parcel-layout {
+            display: flex;
+            gap: 24px;
+        }
+
+        .parcel-left {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .parcel-right {
+            width: 380px;
+            flex-shrink: 0;
+        }
+
+        /* ===== Step Progress Bar ===== */
+        .step-progress {
+            display: flex;
+            align-items: center;
+            padding: 20px 24px;
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .step-item .step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            transition: all 0.3s;
+        }
+
+        .step-item.completed .step-circle {
+            background: var(--ex37-color);
+            color: white;
+        }
+
+        .step-item.active .step-circle {
+            background: var(--ex37-light);
+            color: var(--ex37-color);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+        }
+
+        .step-item.upcoming .step-circle {
+            background: #E5E7EB;
+            color: var(--text-light-gray);
+        }
+
+        .step-item .step-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .step-item.completed .step-label {
+            color: var(--ex37-color);
+        }
+
+        .step-item.active .step-label {
+            color: var(--ex37-dark);
+        }
+
+        .step-item.upcoming .step-label {
+            color: var(--text-light-gray);
+        }
+
+        .step-divider {
+            flex: 1;
+            height: 2px;
+            background: #E5E7EB;
+            margin: 0 16px;
+            min-width: 30px;
+        }
+
+        .step-divider.completed {
+            background: var(--ex37-color);
+        }
+
+        /* ===== Section Card ===== */
+        .section-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .section-card .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .section-card .section-header .section-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--ex37-light);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            color: var(--ex37-color);
+        }
+
+        .section-card .section-header .section-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-dark-purple);
+            margin: 0;
+        }
+
+        .section-card .section-header .section-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-gray);
+            margin: 0;
+        }
+
+        /* ===== Warning/Info Banner ===== */
+        .warning-banner {
+            background: var(--warning-bg);
+            border: 1px solid rgba(251, 176, 59, 0.3);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .warning-banner .warning-icon {
+            font-size: 1.5rem;
+            color: var(--warning-text);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .warning-banner .warning-content {
+            flex: 1;
+        }
+
+        .warning-banner .warning-title {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--warning-text);
+            margin-bottom: 8px;
+        }
+
+        .warning-banner .warning-langs {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.82rem;
+            color: #92400E;
+            line-height: 1.5;
+        }
+
+        .warning-banner .warning-langs .lang-label {
+            font-weight: 700;
+            display: inline-block;
+            min-width: 28px;
+            color: var(--warning-text);
+        }
+
+        /* ===== Customs Table ===== */
+        .customs-table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 0;
+        }
+
+        .customs-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.85rem;
+        }
+
+        .customs-table thead th {
+            background: #F8F7FF;
+            padding: 12px 10px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: var(--text-dark-purple);
+            border-bottom: 2px solid var(--ex37-light);
+            white-space: nowrap;
+            text-align: left;
+        }
+
+        .customs-table thead th .lang-hint {
+            display: block;
+            font-weight: 400;
+            font-size: 0.7rem;
+            color: var(--text-light-gray);
+            margin-top: 2px;
+        }
+
+        .customs-table tbody td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #F3F4F6;
+            vertical-align: middle;
+        }
+
+        .customs-table tbody tr:hover {
+            background: #FAFAFE;
+        }
+
+        .customs-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .customs-table input,
+        .customs-table select {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 0.85rem;
+            font-family: inherit;
+            transition: all 0.2s;
+            background: var(--white);
+            color: var(--text-dark-purple);
+        }
+
+        .customs-table input:focus,
+        .customs-table select:focus {
+            outline: none;
+            border-color: var(--ex37-color);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        .customs-table .quantity-input,
+        .customs-table .unit-value-input,
+        .customs-table .unit-weight-input {
+            text-align: right;
+        }
+
+        .customs-table .hs-code-input {
+            width: 110px;
+        }
+
+        .customs-table .origin-select {
+            width: 120px;
+        }
+
+        .customs-table .quantity-input {
+            width: 70px;
+        }
+
+        .customs-table .unit-value-input {
+            width: 90px;
+        }
+
+        .customs-table .unit-weight-input {
+            width: 90px;
+        }
+
+        .customs-table .row-total {
+            font-weight: 600;
+            color: var(--ex37-color);
+            white-space: nowrap;
+            font-size: 0.8rem;
+            text-align: right;
+        }
+
+        .btn-remove-row {
+            background: none;
+            border: 1px solid #FCA5A5;
+            color: #EF4444;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            padding: 0;
+        }
+
+        .btn-remove-row:hover {
+            background: #FEF2F2;
+            border-color: #EF4444;
+        }
+
+        .btn-add-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--ex37-light);
+            color: var(--ex37-color);
+            border: 1px dashed var(--ex37-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn-add-row:hover {
+            background: var(--ex37-color);
+            color: white;
+            border-style: solid;
+        }
+
+        .customs-summary {
+            display: flex;
+            justify-content: flex-end;
+            gap: 24px;
+            padding: 12px 10px;
+            background: #F8F7FF;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .customs-summary .summary-item {
+            color: var(--text-gray);
+        }
+
+        .customs-summary .summary-item span {
+            color: var(--ex37-color);
+            font-weight: 700;
+        }
+
+        /* ===== Form Elements ===== */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-dark-purple);
+            margin-bottom: 6px;
+        }
+
+        .form-group label .required {
+            color: #EF4444;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: all 0.2s;
+            background: var(--white);
+            color: var(--text-dark-purple);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--ex37-color);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 16px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        /* ===== File Upload ===== */
+        .file-upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--bg-light);
+        }
+
+        .file-upload-zone:hover {
+            border-color: var(--ex37-color);
+            background: var(--ex37-light);
+        }
+
+        .file-upload-zone .upload-icon {
+            font-size: 2rem;
+            color: var(--ex37-color);
+            margin-bottom: 8px;
+        }
+
+        .file-upload-zone .upload-text {
+            font-weight: 600;
+            color: var(--ex37-color);
+            font-size: 0.9rem;
+        }
+
+        .file-upload-zone .upload-hint {
+            font-size: 0.8rem;
+            color: var(--text-light-gray);
+            margin-top: 4px;
+        }
+
+        .file-upload-zone input[type="file"] {
+            display: none;
+        }
+
+        .uploaded-file-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #ECFDF5;
+            border-radius: 8px;
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: var(--success-color);
+        }
+
+        /* ===== Auto Generate Invoice Button ===== */
+        .btn-generate-invoice {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--ex37-color), #8B5CF6);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+        }
+
+        .btn-generate-invoice:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        }
+
+        .btn-generate-invoice:active {
+            transform: translateY(0);
+        }
+
+        /* ===== Right Panel ===== */
+        .summary-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            position: sticky;
+            top: 80px;
+        }
+
+        .summary-card .summary-header {
+            padding: 16px 20px;
+            background: var(--ex37-light);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .summary-card .summary-header h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--ex37-dark);
+            margin: 0;
+        }
+
+        .summary-card .summary-section {
+            padding: 16px 20px;
+            border-bottom: 1px solid #F3F4F6;
+        }
+
+        .summary-card .summary-section:last-of-type {
+            border-bottom: none;
+        }
+
+        .summary-card .summary-section .section-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .summary-card .summary-section .section-label .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--ex37-color);
+        }
+
+        .summary-card .address-box {
+            font-size: 0.85rem;
+            color: var(--text-dark-purple);
+            line-height: 1.6;
+        }
+
+        .summary-card .address-box .arrow-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 8px 0;
+            color: var(--ex37-color);
+            font-size: 1.2rem;
+        }
+
+        .summary-card .package-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-dark-purple);
+        }
+
+        .summary-card .carrier-info-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .summary-card .carrier-icon-placeholder {
+            width: 36px;
+            height: 36px;
+            background: var(--ex37-light);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--ex37-color);
+            font-size: 0.8rem;
+        }
+
+        /* ===== Bottom Buttons ===== */
+        .bottom-actions {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px 0;
+        }
+
+        .btn-prev {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 28px;
+            background: var(--white);
+            color: var(--text-dark-purple);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn-prev:hover {
+            border-color: var(--text-gray);
+            background: var(--bg-light);
+        }
+
+        .btn-next {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 28px;
+            background: var(--ex37-color);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+        }
+
+        .btn-next:hover {
+            background: var(--ex37-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        }
+
+        /* ===== Footer ===== */
+        .footer-bar {
+            background: var(--white);
+            border-top: 1px solid var(--border-color);
+            padding: 16px 0;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-light-gray);
+        }
+
+        /* ===== Invoice Preview Modal ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content-custom {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-content-custom .modal-header-custom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-content-custom .modal-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-dark-purple);
+        }
+
+        .btn-close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-gray);
+            cursor: pointer;
+            padding: 4px;
+            line-height: 1;
+        }
+
+        .btn-close-modal:hover {
+            color: var(--text-dark-purple);
+        }
+
+        /* ===== Invoice Template ===== */
+        .invoice-preview {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            font-size: 0.85rem;
+        }
+
+        .invoice-preview .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #000;
+        }
+
+        .invoice-preview .invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+        }
+
+        .invoice-preview .invoice-table th,
+        .invoice-preview .invoice-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 0.8rem;
+        }
+
+        .invoice-preview .invoice-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+
+        .invoice-preview .invoice-footer {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #ddd;
+        }
+
+        .disabled-input {
+            background: #F3F4F6 !important;
+            color: var(--text-light-gray) !important;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 992px) {
+            .parcel-layout {
+                flex-direction: column;
+            }
+            .parcel-right {
+                width: 100%;
+            }
+            .form-row {
+                flex-direction: column;
+            }
+            .step-progress {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                padding: 16px;
+            }
+            .step-divider {
+                min-width: 20px;
+                margin: 0 8px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .section-card {
+                padding: 16px;
+            }
+            .customs-table {
+                font-size: 0.75rem;
+            }
+            .customs-table input,
+            .customs-table select {
+                padding: 6px 8px;
+                font-size: 0.75rem;
+            }
+            .bottom-actions {
+                flex-direction: column-reverse;
+                gap: 12px;
+            }
+            .btn-prev, .btn-next {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<div class="header-bar">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-3">
+                <a href="#" class="d-flex align-items-center gap-2 text-decoration-none">
+                    <span class="brand-text">37EXPRESS</span>
+                </a>
+            </div>
+            <nav class="d-none d-lg-flex align-items-center gap-1">
+                <a href="#" class="nav-link-header">37商城</a>
+                <a href="#" class="nav-link-header active-link">邮寄全球</a>
+                <a href="#" class="nav-link-header">包税专线</a>
+                <a href="#" class="nav-link-header">上门取货</a>
+                <a href="#" class="nav-link-header">我的包裹</a>
+                <a href="#" class="nav-link-header">物流追踪</a>
+                <a href="#" class="nav-link-header">价格表</a>
+                <a href="#" class="nav-link-header">客服咨询</a>
+            </nav>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-light text-dark">中文 ▼</span>
+                <span class="d-flex align-items-center gap-2" style="font-size:0.85rem;color:var(--text-gray);">
+                    <span style="width:28px;height:28px;border-radius:50%;background:var(--ex37-light);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--ex37-color);">U</span>
+                    欢迎，用户
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Breadcrumb ===== -->
+<div class="breadcrumb-wrapper">
+    <div class="container">
+        <ul class="breadcrumb-custom">
+            <li><a href="#">首页</a></li>
+            <li><span class="separator">›</span></li>
+            <li><a href="#">邮寄全球</a></li>
+            <li><span class="separator">›</span></li>
+            <li><span class="current">报关信息</span></li>
+        </ul>
+    </div>
+</div>
+
+<!-- ===== Main Content ===== -->
+<div class="main-wrapper">
+    <div class="container">
+        <div class="parcel-layout">
+
+            <!-- ===== Left Panel: Form ===== -->
+            <div class="parcel-left">
+
+                <!-- Step Progress -->
+                <div class="step-progress">
+                    <div class="step-item completed">
+                        <div class="step-circle">✓</div>
+                        <span class="step-label">地址</span>
+                    </div>
+                    <div class="step-divider completed"></div>
+                    <div class="step-item completed">
+                        <div class="step-circle">✓</div>
+                        <span class="step-label">包裹</span>
+                    </div>
+                    <div class="step-divider completed"></div>
+                    <div class="step-item active">
+                        <div class="step-circle">3</div>
+                        <span class="step-label">报关</span>
+                    </div>
+                    <div class="step-divider"></div>
+                    <div class="step-item upcoming">
+                        <div class="step-circle">4</div>
+                        <span class="step-label">承运商</span>
+                    </div>
+                    <div class="step-divider"></div>
+                    <div class="step-item upcoming">
+                        <div class="step-circle">5</div>
+                        <span class="step-label">重要通知</span>
+                    </div>
+                </div>
+
+                <!-- Warning Banner -->
+                <div class="warning-banner">
+                    <div class="warning-icon">⚠️</div>
+                    <div class="warning-content">
+                        <div class="warning-title">商品描述必须用英文填写 — 海关清关强制要求</div>
+                        <div class="warning-langs">
+                            <div><span class="lang-label">FR</span> Les descriptions d'articles doivent être rédigées en anglais — obligatoire pour le dédouanement.</div>
+                            <div><span class="lang-label">ZH</span> 商品描述必须用英文填写——海关清关强制要求。</div>
+                            <div><span class="lang-label">EN</span> Item descriptions must be written in English — mandatory for customs clearance.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customs Declaration Form -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon">📋</div>
+                        <div>
+                            <h2 class="section-title">报关信息</h2>
+                            <p class="section-subtitle">线路 #6  #29  #38  #54 — 独立报关步骤</p>
+                        </div>
+                    </div>
+
+                    <!-- Items Table -->
+                    <div style="margin-bottom: 16px;">
+                        <label style="font-weight:700;font-size:0.9rem;color:var(--text-dark-purple);margin-bottom:10px;display:block;">
+                            物品明细 <span style="color:#EF4444;">*</span>
+                            <span style="font-weight:400;font-size:0.75rem;color:var(--text-light-gray);margin-left:8px;">— 请用英文填写</span>
+                        </label>
+
+                        <div class="customs-table-wrapper">
+                            <table class="customs-table" id="customs-items-table">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width:200px;">
+                                            物品详细描述
+                                            <span class="lang-hint">FR: Description détaillée / EN: Detailed description</span>
+                                        </th>
+                                        <th style="min-width:100px;">
+                                            HS Code
+                                            <span class="lang-hint">例: 6204.62</span>
+                                        </th>
+                                        <th style="min-width:100px;">
+                                            原产国
+                                            <span class="lang-hint">FR: Pays d'origine / EN: Country of origin</span>
+                                        </th>
+                                        <th style="min-width:70px;">
+                                            数量
+                                            <span class="lang-hint">FR: Quantité / EN: Quantity</span>
+                                        </th>
+                                        <th style="min-width:90px;">
+                                            单价 (€)
+                                            <span class="lang-hint">FR: Valeur unitaire / EN: Unit value</span>
+                                        </th>
+                                        <th style="min-width:90px;">
+                                            单件重量 (kg)
+                                            <span class="lang-hint">FR: Poids unitaire / EN: Unit weight</span>
+                                        </th>
+                                        <th style="min-width:80px;">
+                                            小计 (€)
+                                            <span class="lang-hint">FR: Total / EN: Subtotal</span>
+                                        </th>
+                                        <th style="min-width:50px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="items-tbody">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <button type="button" class="btn-add-row" onclick="addItemRow()">
+                                <span style="font-size:1.2rem;">+</span> 添加物品
+                            </button>
+                            <div class="customs-summary" id="customs-total-summary">
+                                <span class="summary-item">物品总数: <span id="total-quantity-display">0</span> 件</span>
+                                <span class="summary-item">总价值: <span id="total-value-display">€0.00</span></span>
+                                <span class="summary-item">总重量: <span id="total-weight-display">0.00 kg</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Info Section -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon">📝</div>
+                        <div>
+                            <h2 class="section-title">额外信息</h2>
+                            <p class="section-subtitle">发票相关信息和补充说明</p>
+                        </div>
+                    </div>
+
+                    <!-- Additional Remarks -->
+                    <div class="form-group">
+                        <label for="additional-remarks">额外备注</label>
+                        <textarea id="additional-remarks" rows="3" placeholder="如有特殊清关要求或备注信息，请在此填写..."></textarea>
+                    </div>
+
+                    <!-- Invoice Number & Date Row -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="invoice-number">
+                                发票号 <span class="required">*</span>
+                                <span style="font-weight:400;font-size:0.75rem;color:var(--text-light-gray);margin-left:4px;">— 需要提交在生成发票上</span>
+                            </label>
+                            <input type="text" id="invoice-number" placeholder="例: INV-2026-0001">
+                        </div>
+                        <div class="form-group">
+                            <label for="invoice-date">
+                                发票日期 <span class="required">*</span>
+                                <span style="font-weight:400;font-size:0.75rem;color:var(--text-light-gray);margin-left:4px;">— 需要提交在生成发票上</span>
+                            </label>
+                            <input type="date" id="invoice-date">
+                        </div>
+                    </div>
+
+                    <!-- Auto Generate Invoice -->
+                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px;">
+                        <button type="button" class="btn-generate-invoice" onclick="generateInvoice()">
+                            📄 自动生成报关发票
+                        </button>
+                        <span style="font-size:0.8rem;color:var(--text-light-gray);">
+                            基于报关信息自动生成标准化商业发票 (Proforma Invoice)
+                        </span>
+                    </div>
+
+                    <!-- File Upload -->
+                    <div style="margin-top: 20px;">
+                        <label style="font-weight:600;font-size:0.875rem;color:var(--text-dark-purple);margin-bottom:8px;display:block;">
+                            上传报关发票 <span style="color:#EF4444;">*</span>
+                            <span style="font-weight:400;font-size:0.75rem;color:var(--text-light-gray);margin-left:4px;">— 支持 PDF, JPG, PNG 格式</span>
+                        </label>
+                        <div class="file-upload-zone" id="file-upload-zone" onclick="document.getElementById('invoice-file-input').click()">
+                            <div class="upload-icon">📤</div>
+                            <div class="upload-text">点击选择文件或拖拽文件到此处</div>
+                            <div class="upload-hint">支持 .pdf, .jpg, .png 格式，最大 10MB</div>
+                            <input type="file" id="invoice-file-input" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileUpload(event)">
+                        </div>
+                        <div id="uploaded-file-info" style="margin-top: 8px;"></div>
+                    </div>
+                </div>
+
+                <!-- Bottom Actions -->
+                <div class="bottom-actions">
+                    <button type="button" class="btn-prev" onclick="goToPrevious()">
+                        ← 上一步
+                    </button>
+                    <button type="button" class="btn-next" onclick="goToNext()">
+                        下一步 →
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- ===== Right Panel: Summary ===== -->
+            <div class="parcel-right">
+                <div class="summary-card">
+                    <div class="summary-header">
+                        <h3>📦 您的包裹</h3>
+                    </div>
+
+                    <!-- Address -->
+                    <div class="summary-section">
+                        <div class="section-label">
+                            <span class="dot"></span> 地址
+                        </div>
+                        <div class="address-box">
+                            <div><strong>发件人:</strong><br>Jean Dupont<br>61 Rue de Caire<br>75002 Paris, 法国<br>+33 6 12 34 56 78</div>
+                            <div class="arrow-icon">⬇</div>
+                            <div><strong>收件人:</strong><br>张三<br>北京市朝阳区建国路88号<br>100000 北京, 中国<br>+86 138 0000 0000</div>
+                        </div>
+                    </div>
+
+                    <!-- Package -->
+                    <div class="summary-section">
+                        <div class="section-label">
+                            <span class="dot"></span> 包裹
+                        </div>
+                        <div class="package-info">
+                            <span><strong>1</strong> 个包裹</span>
+                            <span><strong>5.0</strong> kg</span>
+                            <span><strong>30 × 25 × 15</strong> cm</span>
+                        </div>
+                    </div>
+
+                    <!-- Carrier -->
+                    <div class="summary-section">
+                        <div class="section-label">
+                            <span class="dot"></span> 承运商
+                        </div>
+                        <div class="carrier-info-display">
+                            <div class="carrier-icon-placeholder">CE</div>
+                            <div>
+                                <div style="font-weight:600;font-size:0.85rem;">Chrono Express</div>
+                                <div style="font-size:0.75rem;color:var(--text-gray);">投递点: 巴黎13区门店</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Route Info -->
+                    <div class="summary-section">
+                        <div class="section-label">
+                            <span class="dot"></span> 线路信息
+                        </div>
+                        <div style="font-size:0.85rem;color:var(--text-dark-purple);">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                                <span>线路编号:</span>
+                                <span style="font-weight:600;">#6 / #29 / #38 / #54</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                                <span>独立报关:</span>
+                                <span style="color:var(--success-color);font-weight:600;">✓ 已启用</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;">
+                                <span>自动生成发票:</span>
+                                <span style="color:var(--success-color);font-weight:600;">✓ 已启用</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ===== Footer ===== -->
+<div class="footer-bar">
+    <div class="container">
+        <p style="margin:0;">© 2026 37EXPRESS 欧洲生活服务平台. 在确认创建包裹后，我们默认您已经阅读了寄送包裹的<a href="#" style="color:var(--ex37-color);">《销售条款》</a></p>
+    </div>
+</div>
+
+<!-- ===== Invoice Preview Modal ===== -->
+<div class="modal-overlay" id="invoice-modal">
+    <div class="modal-content-custom">
+        <div class="modal-header-custom">
+            <h3 class="modal-title">📄 报关发票预览 (Proforma Invoice)</h3>
+            <button class="btn-close-modal" onclick="closeInvoiceModal()">✕</button>
+        </div>
+        <div id="invoice-preview-content"></div>
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px;">
+            <button class="btn-prev" onclick="closeInvoiceModal()" style="font-size:0.85rem;padding:8px 20px;">关闭</button>
+            <button class="btn-next" onclick="downloadInvoice()" style="font-size:0.85rem;padding:8px 20px;">⬇ 下载发票</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== Country List =====
+const countries = [
+    { code: 'CN', name: '中国' },
+    { code: 'FR', name: '法国' },
+    { code: 'DE', name: '德国' },
+    { code: 'IT', name: '意大利' },
+    { code: 'ES', name: '西班牙' },
+    { code: 'GB', name: '英国' },
+    { code: 'US', name: '美国' },
+    { code: 'JP', name: '日本' },
+    { code: 'KR', name: '韩国' },
+    { code: 'BE', name: '比利时' },
+    { code: 'NL', name: '荷兰' },
+    { code: 'CH', name: '瑞士' },
+    { code: 'PT', name: '葡萄牙' },
+    { code: 'AT', name: '奥地利' },
+    { code: 'PL', name: '波兰' },
+    { code: 'SE', name: '瑞典' },
+    { code: 'DK', name: '丹麦' },
+    { code: 'NO', name: '挪威' },
+    { code: 'FI', name: '芬兰' },
+    { code: 'IE', name: '爱尔兰' },
+    { code: 'CA', name: '加拿大' },
+    { code: 'AU', name: '澳大利亚' },
+    { code: 'NZ', name: '新西兰' },
+    { code: 'HK', name: '中国香港' },
+    { code: 'TW', name: '中国台湾' },
+    { code: 'MO', name: '中国澳门' },
+    { code: 'SG', name: '新加坡' },
+    { code: 'MY', name: '马来西亚' },
+    { code: 'TH', name: '泰国' },
+    { code: 'VN', name: '越南' },
+    { code: 'IN', name: '印度' },
+    { code: 'BR', name: '巴西' },
+    { code: 'RU', name: '俄罗斯' },
+    { code: 'AE', name: '阿拉伯联合酋长国' },
+    { code: 'SA', name: '沙特阿拉伯' },
+    { code: 'TR', name: '土耳其' },
+    { code: 'ZA', name: '南非' },
+    { code: 'MX', name: '墨西哥' },
+    { code: 'GR', name: '希腊' },
+    { code: 'CZ', name: '捷克' },
+    { code: 'HU', name: '匈牙利' },
+    { code: 'RO', name: '罗马尼亚' },
+    { code: 'BG', name: '保加利亚' },
+    { code: 'HR', name: '克罗地亚' },
+    { code: 'LU', name: '卢森堡' }
+];
+
+// ===== Create Country Select Options =====
+function getCountryOptions(selectedCode) {
+    return countries.map(c =>
+        `<option value="${c.code}"${c.code === selectedCode ? ' selected' : ''}>${c.name}</option>`
+    ).join('');
+}
+
+// ===== Item Management =====
+let itemRowCounter = 0;
+const DEFAULT_ITEMS = 3;
+
+function createItemRow(data) {
+    itemRowCounter++;
+    const i = itemRowCounter;
+    const desc = data ? data.desc : '';
+    const hsCode = data ? data.hsCode : '';
+    const origin = data ? data.origin : 'FR';
+    const qty = data ? data.qty : '1';
+    const unitValue = data ? data.unitValue : '';
+    const unitWeight = data ? data.unitWeight : '';
+
+    return `
+        <tr id="item-row-${i}">
+            <td>
+                <input type="text" class="desc-input" placeholder="英文描述，例: Women's cotton dress, blue, size M"
+                       value="${escapeHtml(desc)}" onchange="recalculate()" data-key="desc">
+            </td>
+            <td>
+                <input type="text" class="hs-code-input" placeholder="例: 6204.62" value="${escapeHtml(hsCode)}"
+                       onchange="recalculate()" data-key="hsCode">
+            </td>
+            <td>
+                <select class="origin-select" onchange="recalculate()" data-key="origin">
+                    ${getCountryOptions(origin)}
+                </select>
+            </td>
+            <td>
+                <input type="number" class="quantity-input" min="1" step="1" value="${qty}"
+                       onchange="recalculate()" data-key="qty">
+            </td>
+            <td>
+                <input type="number" class="unit-value-input" min="0" step="0.01" value="${unitValue}"
+                       onchange="recalculate()" data-key="unitValue" placeholder="0.00">
+            </td>
+            <td>
+                <input type="number" class="unit-weight-input" min="0" step="0.01" value="${unitWeight}"
+                       onchange="recalculate()" data-key="unitWeight" placeholder="0.00">
+            </td>
+            <td>
+                <span class="row-total" id="row-total-${i}">€0.00</span>
+            </td>
+            <td>
+                <button type="button" class="btn-remove-row" onclick="removeItemRow(${i})" title="删除此行">
+                    🗑
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
+function addItemRow(data) {
+    const tbody = document.getElementById('items-tbody');
+    const html = createItemRow(data || null);
+    tbody.insertAdjacentHTML('beforeend', html);
+    if (data) {
+        recalculate();
+    }
+}
+
+function removeItemRow(id) {
+    const row = document.getElementById('item-row-' + id);
+    if (row) {
+        row.remove();
+        recalculate();
+    }
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// ===== Recalculate Totals =====
+function recalculate() {
+    const rows = document.querySelectorAll('#items-tbody tr');
+    let totalQty = 0;
+    let totalValue = 0;
+    let totalWeight = 0;
+
+    rows.forEach(row => {
+        const qtyEl = row.querySelector('[data-key="qty"]');
+        const unitValueEl = row.querySelector('[data-key="unitValue"]');
+        const unitWeightEl = row.querySelector('[data-key="unitWeight"]');
+        const rowTotalEl = row.querySelector('.row-total');
+
+        const qty = parseInt(qtyEl?.value) || 0;
+        const unitValue = parseFloat(unitValueEl?.value) || 0;
+        const unitWeight = parseFloat(unitWeightEl?.value) || 0;
+        const rowTotal = qty * unitValue;
+
+        if (rowTotalEl) {
+            rowTotalEl.textContent = '€' + rowTotal.toFixed(2);
+        }
+
+        totalQty += qty;
+        totalValue += rowTotal;
+        totalWeight += qty * unitWeight;
+    });
+
+    document.getElementById('total-quantity-display').textContent = totalQty;
+    document.getElementById('total-value-display').textContent = '€' + totalValue.toFixed(2);
+    document.getElementById('total-weight-display').textContent = totalWeight.toFixed(2) + ' kg';
+}
+
+// ===== Initialize Table =====
+function initItemsTable() {
+    const sampleItems = [
+        { desc: "Women's cotton dress, short sleeve, size M", hsCode: '6204.42', origin: 'FR', qty: '2', unitValue: '45.00', unitWeight: '0.35' },
+        { desc: "Men's leather belt, black, 110cm", hsCode: '4203.30', origin: 'IT', qty: '3', unitValue: '28.50', unitWeight: '0.20' },
+        { desc: "Baby milk powder (Infant formula), 900g can", hsCode: '1901.10', origin: 'FR', qty: '4', unitValue: '15.80', unitWeight: '0.95' }
+    ];
+
+    sampleItems.forEach(item => addItemRow(item));
+}
+
+// ===== File Upload =====
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+        alert('请上传 PDF, JPG 或 PNG 格式的文件。');
+        return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+        alert('文件大小不能超过 10MB。');
+        return;
+    }
+
+    const infoDiv = document.getElementById('uploaded-file-info');
+    infoDiv.innerHTML = `
+        <div class="uploaded-file-info">
+            ✅ ${file.name} (${(file.size / 1024).toFixed(1)} KB)
+            <button onclick="clearFileUpload()" style="background:none;border:none;cursor:pointer;color:#EF4444;margin-left:auto;">✕</button>
+        </div>
+    `;
+}
+
+function clearFileUpload() {
+    document.getElementById('invoice-file-input').value = '';
+    document.getElementById('uploaded-file-info').innerHTML = '';
+}
+
+// ===== Generate Invoice =====
+function generateInvoice() {
+    const invoiceNumber = document.getElementById('invoice-number').value || 'INV-' + new Date().getFullYear() + '-0001';
+    const invoiceDate = document.getElementById('invoice-date').value || new Date().toISOString().split('T')[0];
+    const remarks = document.getElementById('additional-remarks').value;
+
+    const rows = document.querySelectorAll('#items-tbody tr');
+    if (rows.length === 0) {
+        alert('请至少添加一件物品。');
+        return;
+    }
+
+    let items = [];
+    rows.forEach(row => {
+        const desc = row.querySelector('[data-key="desc"]')?.value || '';
+        const hsCode = row.querySelector('[data-key="hsCode"]')?.value || '';
+        const origin = row.querySelector('[data-key="origin"]')?.value || '';
+        const qty = parseInt(row.querySelector('[data-key="qty"]')?.value) || 0;
+        const unitValue = parseFloat(row.querySelector('[data-key="unitValue"]')?.value) || 0;
+        const unitWeight = parseFloat(row.querySelector('[data-key="unitWeight"]')?.value) || 0;
+        items.push({ desc, hsCode, origin, qty, unitValue, unitWeight, total: qty * unitValue });
+    });
+
+    const totalQty = items.reduce((sum, i) => sum + i.qty, 0);
+    const totalValue = items.reduce((sum, i) => sum + i.total, 0);
+    const totalWeight = items.reduce((sum, i) => sum + (i.qty * i.unitWeight), 0);
+
+    const itemsRowsHtml = items.map((item, idx) => `
+        <tr>
+            <td>${idx + 1}</td>
+            <td>${escapeHtml(item.desc)}</td>
+            <td>${escapeHtml(item.hsCode)}</td>
+            <td>${escapeHtml(getCountryName(item.origin))}</td>
+            <td style="text-align:right;">${item.qty}</td>
+            <td style="text-align:right;">€${item.unitValue.toFixed(2)}</td>
+            <td style="text-align:right;">${item.unitWeight.toFixed(2)} kg</td>
+            <td style="text-align:right;">€${item.total.toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    const previewHtml = `
+        <div class="invoice-preview" id="invoice-print-area">
+            <div class="invoice-header">
+                <div>
+                    <h3 style="margin:0 0 4px 0;font-size:1.1rem;">COMMERCIAL INVOICE / PROFORMA INVOICE</h3>
+                    <p style="margin:0;font-size:0.8rem;color:#666;">Invoice No: <strong>${escapeHtml(invoiceNumber)}</strong></p>
+                    <p style="margin:0;font-size:0.8rem;color:#666;">Date: <strong>${invoiceDate}</strong></p>
+                </div>
+                <div style="text-align:right;">
+                    <p style="margin:0;font-weight:700;">37EXPRESS</p>
+                    <p style="margin:0;font-size:0.8rem;">61 Rue de Caire, 75002 Paris, France</p>
+                    <p style="margin:0;font-size:0.8rem;">VAT: FRXX 999999999</p>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:40px;margin:16px 0;font-size:0.85rem;">
+                <div>
+                    <strong>Shipper (Exporter):</strong><br>
+                    Jean Dupont<br>
+                    61 Rue de Caire<br>
+                    75002 Paris, France<br>
+                    Tel: +33 6 12 34 56 78
+                </div>
+                <div>
+                    <strong>Consignee (Importer):</strong><br>
+                    Zhang San<br>
+                    No.88 Jianguo Road, Chaoyang District<br>
+                    Beijing 100000, China<br>
+                    Tel: +86 138 0000 0000
+                </div>
+            </div>
+
+            <p style="margin:0 0 4px 0;font-weight:700;">Incoterm: <strong>DAP</strong></p>
+            <p style="margin:0 0 4px 0;font-weight:700;">Country of Export: <strong>France</strong></p>
+            <p style="margin:0 0 4px 0;font-weight:700;">Country of Import: <strong>${getCountryName(items[0]?.origin || 'FR')}</strong></p>
+            <p style="margin:0 0 16px 0;font-weight:700;">Reason for Export: <strong>Sale of Goods</strong></p>
+
+            <table class="invoice-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Description of Goods</th>
+                        <th>HS Code</th>
+                        <th>Country of Origin</th>
+                        <th style="text-align:right;">Qty</th>
+                        <th style="text-align:right;">Unit Value</th>
+                        <th style="text-align:right;">Unit Weight</th>
+                        <th style="text-align:right;">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsRowsHtml}
+                </tbody>
+                <tfoot>
+                    <tr style="font-weight:700;background:#f9f9f9;">
+                        <td colspan="4">TOTAL</td>
+                        <td style="text-align:right;">${totalQty} pcs</td>
+                        <td style="text-align:right;">—</td>
+                        <td style="text-align:right;">${totalWeight.toFixed(2)} kg</td>
+                        <td style="text-align:right;">€${totalValue.toFixed(2)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div class="invoice-footer">
+                <p style="margin:0;font-weight:700;">Total Value: €${totalValue.toFixed(2)}</p>
+                <p style="margin:4px 0 0 0;font-size:0.8rem;color:#666;">
+                    We certify that the information in this invoice is true and correct and that the goods are of French origin.
+                </p>
+                ${remarks ? `<p style="margin:8px 0 0 0;font-size:0.8rem;font-style:italic;">Remarks: ${escapeHtml(remarks)}</p>` : ''}
+                <div style="margin-top:24px;display:flex;justify-content:space-between;">
+                    <div>
+                        <p style="margin:0;font-size:0.8rem;">___________________________</p>
+                        <p style="margin:0;font-size:0.75rem;">Date</p>
+                    </div>
+                    <div>
+                        <p style="margin:0;font-size:0.8rem;">___________________________</p>
+                        <p style="margin:0;font-size:0.75rem;">Signature & Company Stamp</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('invoice-preview-content').innerHTML = previewHtml;
+    document.getElementById('invoice-modal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function getCountryName(code) {
+    const c = countries.find(c => c.code === code);
+    return c ? c.name : code;
+}
+
+function closeInvoiceModal() {
+    document.getElementById('invoice-modal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function downloadInvoice() {
+    const printArea = document.getElementById('invoice-print-area');
+    if (!printArea) return;
+
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>报关发票 - ${document.getElementById('invoice-number').value || 'INV'}</title>
+            <style>
+                body { font-family: 'Manrope', Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+                .invoice-preview { font-size: 13px; }
+                table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+                th { background: #f5f5f5; font-weight: 600; }
+                @media print { body { padding: 0; } }
+            </style>
+        </head>
+        <body>${printArea.outerHTML}</body>
+        </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+}
+
+// ===== Navigation =====
+function goToPrevious() {
+    alert('返回上一页（承运商选择）');
+}
+
+function goToNext() {
+    const rows = document.querySelectorAll('#items-tbody tr');
+    if (rows.length === 0) {
+        alert('请至少添加一件物品。');
+        return;
+    }
+
+    let hasEmpty = false;
+    rows.forEach(row => {
+        const desc = row.querySelector('[data-key="desc"]')?.value;
+        if (!desc || !desc.trim()) hasEmpty = true;
+    });
+
+    if (hasEmpty) {
+        if (!confirm('部分物品描述为空，是否继续？')) return;
+    }
+
+    alert('报关信息已保存，进入下一步（承运商选择）。');
+}
+
+// ===== Initialize =====
+document.addEventListener('DOMContentLoaded', () => {
+    initItemsTable();
+    document.getElementById('invoice-date').valueAsDate = new Date();
+
+    // Click outside modal to close
+    document.getElementById('invoice-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeInvoiceModal();
+        }
+    });
+
+    // Escape key to close modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeInvoiceModal();
+        }
+    });
+});
+</script>
+
+</body>
+</html>

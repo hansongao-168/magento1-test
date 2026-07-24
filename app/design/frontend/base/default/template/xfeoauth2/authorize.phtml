@@ -1,0 +1,51 @@
+<?php
+/**
+ * OAuth2 Authorization Confirmation Page
+ *
+ * @var XFE_OAuth2_Block_Authorize $this
+ */
+$client = $this->getClient();
+$request = $this->getAuthorizeRequest();
+$scope = $request ? $request->query('scope') : '';
+$scopeLabels = array(
+    'basic' => $this->__('View products and categories'),
+    'orders' => $this->__('Access your orders'),
+    'customers' => $this->__('Access your account information'),
+);
+?>
+<div class="page-title">
+    <h1><?php echo $this->__('Authorize Application') ?></h1>
+</div>
+<div class="oauth2-authorize-box">
+    <div class="box">
+        <div class="box-title">
+            <h2><?php echo $this->__('"%s" would like to:', $this->escapeHtml($client ? $client->getName() : '')) ?></h2>
+        </div>
+        <div class="box-content">
+            <ul class="oauth2-scopes">
+                <?php foreach (explode(' ', $scope) as $s): ?>
+                <li><?php echo isset($scopeLabels[$s]) ? $this->__($scopeLabels[$s]) : $this->escapeHtml($s) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    </div>
+    <form action="<?php echo $this->getConfirmUrl() ?>" method="post" id="oauth2-authorize-form">
+        <?php foreach ($request ? $request->query->all() : array() as $key => $val): ?>
+            <?php if (is_array($val)): ?>
+                <?php foreach ($val as $v): ?>
+                    <input type="hidden" name="<?php echo $this->escapeHtml($key) ?>[]" value="<?php echo $this->escapeHtml($v) ?>" />
+                <?php endforeach; ?>
+            <?php else: ?>
+                <input type="hidden" name="<?php echo $this->escapeHtml($key) ?>" value="<?php echo $this->escapeHtml($val) ?>" />
+            <?php endif; ?>
+        <?php endforeach; ?>
+        <div class="buttons-set">
+            <button type="submit" name="authorized" value="0" class="button btn-cancel">
+                <span><span><?php echo $this->__('Deny') ?></span></span>
+            </button>
+            <button type="submit" name="authorized" value="1" class="button btn-primary">
+                <span><span><?php echo $this->__('Approve') ?></span></span>
+            </button>
+        </div>
+    </form>
+</div>

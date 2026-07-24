@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <carrier_modules>
+        <carrier translate="label" module="xfe_carrier">
+            <label>承运商</label>
+            <modules>
+                <logo translate="label" module="xfe_carrier">
+                    <label>Logo</label>
+                    <block>xfe_carrier/adminhtml_carrier_edit_tab_logo</block>
+                    <sort_order>20</sort_order>
+                    <show_new>0</show_new>
+                </logo>
+                <account translate="label" module="xfe_carrier">
+                    <label>账号管理</label>
+                    <block>xfe_carrier/adminhtml_carrier_edit_tab_account</block>
+                    <sort_order>30</sort_order>
+                    <show_new>0</show_new>
+                </account>
+                <rules translate="label" module="xfe_carrier">
+                    <label>规则管理</label>
+                    <block>xfe_carrier/adminhtml_carrier_edit_tab_rules</block>
+                    <sort_order>40</sort_order>
+                    <show_new>0</show_new>
+                </rules>
+            </modules>
+        </carrier>
+    </carrier_modules>
+    <carrier_module_validation>
+        <min_modules>1</min_modules>
+    </carrier_module_validation>
+</config>

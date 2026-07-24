@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <XFE_PdfHide>
+            <version>1.0.0</version>
+        </XFE_PdfHide>
+    </modules>
+    <global>
+        <helpers>
+            <xfe_pdfhide>
+                <class>XFE_PdfHide_Helper</class>
+            </xfe_pdfhide>
+        </helpers>
+    </global>
+</config>

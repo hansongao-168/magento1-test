@@ -1,0 +1,1195 @@
+/*bootstrap responsive mobile js*/
+var JSExt = {
+    isEmpty:function(v){
+        var emp = v===undefined || v===null || v===false || v==="";
+        if(!emp && typeof(v)==="object"){
+            var t = Object.prototype.toString.call(v);
+            if(t=="[object Array]"){
+                emp = v.length==0;
+            }else if(t=="[object Object]"){
+                emp = Object.keys(t).length==0;
+            }
+        }
+        return emp;
+    },
+    toString:function(v){
+        if(JSExt.isEmpty(v))return "";
+        if(v===true)return "1";
+        return v.toString();
+    },
+    toInt:function(v){
+        if(JSExt.isEmpty(v))return 0;
+        if(v===true)return 1;
+        v = parseInt(v);
+        return isNaN(v) ? 0 : v;
+    },
+    toFloat:function(v){
+        if(JSExt.isEmpty(v))return 0;
+        if(v===true)return 1;
+        v = parseFloat(v);
+        return isNaN(v) ? 0 : v;
+    },
+    toBool:function(v){
+        if(v===true || v===false)return v;
+        if(JSExt.isEmpty(v) || v==='0')return false;
+        if(typeof v === 'string'){
+            v = v.toLowerCase(v);
+            if(v==='true' || v==='yes')return true;
+            if(v==='false' || v==='no' || v==='null' || v==='undefined')return false;
+        }
+        return !!v;
+    },
+    round:function(num,precision,toString){
+        if(isNaN(num))return 0;
+        if(!precision || isNaN(precision = parseInt(precision)))precision = 0;
+        var p = 1;
+        for(var i = 0; i < precision; i++)p *= 10;
+        var $num = p == 1 ? Math.round(num) : Math.round(num * p) / p;
+        if(toString && precision>0){
+            $num += 1 / p / 10;
+            $num = $num.toString();
+            $num = $num.substr(0,$num.indexOf(".") + precision + 1);
+        }
+        return $num;
+    },
+    getElementValue:function(elm,o){
+        if(!elm)return null;
+        if(elm.tagName){
+            if(!o)return $F(elm);
+            if(elm.type=="radio")return elm.checked ? elm : "";
+            if(elm.type=="checkbox")return elm.checked ? [elm] : [];
+            return elm;
+        }
+        var len = elm.length;
+        if(!len)return null;
+        var isRadio = elm[0].type=="radio",v = [];
+        for(var i = 0;i<len;i++){
+            if(elm[i].checked){
+                if(isRadio)return o ? elm[i] : elm[i].value;
+                v.push(o ? elm[i] : elm[i].value);
+            }
+        }
+        return isRadio ? "" : v;
+    }
+};
+
+JSExt.Event = {
+    bind: function(oTarget, sEventType, fnHandler) {
+        if(oTarget.addEventListener){
+            oTarget.addEventListener(sEventType, fnHandler, false);
+        }else if(oTarget.attachEvent){
+            oTarget.attachEvent("on" + sEventType, fnHandler);
+        }else{
+            oTarget["on" + sEventType] = fnHandler;
+        }
+    },
+    unbind: function(oTarget, sEventType, fnHandler) {
+        if(oTarget.removeEventListener){
+            oTarget.removeEventListener(sEventType, fnHandler, false);
+        }else if(oTarget.detachEvent){
+            oTarget.detachEvent("on" + sEventType, fnHandler);
+        }else{
+            oTarget["on" + sEventType] = null;
+        }
+    },
+    getEvent: function() {
+        if(window.event){
+            return window.event;
+        }else{
+            return JSExt.Event.getEvent.caller.arguments[0];
+        }
+    },
+    getSrcElement: function(evt) {
+        return evt.srcElement ? evt.srcElement : evt.target;
+    },
+    fire: function(element, eventName) {
+        if (element) {
+            if (document.all && navigator.userAgent.toLowerCase().match(/msie ([\d.]+)/)[1] < 9) {
+                element.fireEvent('on' + eventName);
+            } else {
+                var evt = document.createEvent('HTMLEvents');
+                evt.initEvent(eventName, true, true);
+                element.dispatchEvent(evt);
+            }
+        }
+    }
+};
+JSExt.Event.Customize = {
+    eventListener:{},
+    addEventListener:function(name,fun){
+        if(typeof(name)=='string' && typeof(fun)=='function'){
+            if(typeof JSExt.Event.Customize.eventListener[name] != 'object')JSExt.Event.Customize.eventListener[name] = [];
+            JSExt.Event.Customize.eventListener[name].push(fun);
+        }
+        return JSExt.Event;
+    },
+    triggerEvent:function(name){
+        if(typeof JSExt.Event.Customize.eventListener[name] == 'object'){
+            var argc = arguments.length,params = [];
+            for(var j = 1;j<argc;j++)params.push(arguments[j]);
+            params.push(JSExt.Event);
+            for(var i = 0,len = JSExt.Event.Customize.eventListener[name].length;i<len;i++){
+                JSExt.Event.Customize.eventListener[name][i].apply(JSExt.Event.Customize, params);
+            }
+        }
+        return JSExt.Event;
+    },
+    removeEventListener:function(name,fun){
+        if(typeof JSExt.Event.Customize.eventListener[name] == 'object'){
+            var eventListener = [],removeCount = 0,len = JSExt.Event.Customize.eventListener[name].length,i;
+            for(i = 0;i<len;i++){
+                if(JSExt.Event.Customize.eventListener[name][i]==fun){
+                    removeCount++;
+                }else{
+                    eventListener.push(JSExt.Event.Customize.eventListener[name][i]);
+                }
+            }
+            if(removeCount>0)JSExt.Event.Customize.eventListener[name] = eventListener;
+        }
+        return JSExt.Event;
+    }
+};
+JSExt.documentBody = {
+    disable:function(clickCallback,element){
+        var a = document.getElementById('disable-page-mask-div');
+        var _set = function(a,b){
+            var offset = jQuery(b).offset(),w = jQuery(b).width(),h = jQuery(b).height();
+            return jQuery(a).css({top:offset.top+'px',left:offset.left+'px',width:w+'px',height:h+'px'});
+        };
+        if(!a){
+            a = document.createElement('div');
+            a.setAttribute('id','disable-page-mask-div');
+            a.style.zIndex = 9;
+            a.style.backgroundColor = 'rgba(234,234,234,0.5)';
+            document.body.appendChild(a);
+        }else{
+            a.style.display = 'block';
+        }
+        if(element){
+            a.style.position = 'absolute';
+            _set(a,element);
+        }else{
+            jQuery(a).css({position:'fixed',top:'0px',left:'0px',width:'100%',height:'100%'});
+        }
+        if(typeof clickCallback=='function'){
+            a.onclick = function(){clickCallback(this);};
+        }else{
+            a.onclick = clickCallback ? JSExt.documentBody.enable : function(){};
+        }
+        JSExt.Event.Customize.triggerEvent("document_body_disable_after",a);
+        return a;
+    },
+    enable:function(){
+        var a = document.getElementById('disable-page-mask-div');
+        if(a && a.style.display!='none')a.style.display = 'none';
+        JSExt.Event.Customize.triggerEvent("document_body_enable_after",a);
+        return a;
+    },
+    isDisabled:function(){
+        var a = document.getElementById('disable-page-mask-div');
+        return a && a.style.display!='none';
+    },
+    center:function(element){
+        if(typeof element === 'string')element = jQuery(element);
+        var elementCount = element.length;
+        if(!elementCount)return JSExt.documentBody;
+
+        var _setPosition = function(){
+            var _size = {'width':element.get(0).clientWidth,'height':element.get(0).clientHeight},_st = element.css("position")=="fixed" ? 0 : document.documentElement.scrollTop;
+            var _position = {'left':document.documentElement.clientWidth/2-_size.width/2,'top':document.documentElement.clientHeight/2-_size.height/2+_st};
+            element.css({'left':(_position.left<0 ? 0 : _position.left)+'px','top':(_position.top<0 ? 0 : _position.top)+'px'});
+        };
+        var _setMultiplePosition = function(){
+            var eh = [],h = 0,bw = document.documentElement.clientWidth,bh = document.documentElement.clientHeight,left,i,j,_size,_position,top;
+            var _st = element.css("position")=="fixed" ? 0 : document.documentElement.scrollTop;
+            for(i = 0;i<elementCount;i++){
+                if(h>0)h += 10;
+                h += eh[i] = element[i].clientHeight;
+            }
+            top = bh/2-h/2+_st;
+            for(i = 0,j = 0;i<elementCount;i++){
+                _size = {'width':element[i].clientWidth,'height':eh[i]};
+                _position = {'left':bw/2-_size.width/2,'top':top+j};
+                if(_position.left<0)_position.left = 0;
+                if(_position.top<0)_position.top = 0;
+                jQuery(element[i]).css({'left':_position.left+'px','top':_position.top+'px'});
+                j += _size.height+10;
+            }
+        };
+        if(element.attr('has_add_event_listener_set_position')!=='yes'){
+            jQuery(window).resize(elementCount>1 ? _setMultiplePosition : _setPosition);
+            element.attr('has_add_event_listener_set_position','yes');
+        }
+        elementCount>1 ? _setMultiplePosition() : _setPosition();
+        return JSExt.documentBody;
+    }
+};
+JSExt.resizeImage = function(img,w,h){
+    if(w<=0 || h<=0)return false;
+    var imgObj = new Image(),_w,_h;
+    imgObj.src = img.src;
+    if(imgObj.height<=h && imgObj.width<=w){
+        img.width = imgObj.width;
+        img.height = imgObj.height;
+        return false;
+    }
+    _w = Math.floor(imgObj.width*h/imgObj.height);
+    _h = Math.floor(imgObj.height*w/imgObj.width);
+    if(_w<=w && _h<=h){
+        img.width = _w;
+        img.height = _h;
+    }else if(_w>w){
+        img.height = _h;
+        img.width = Math.floor(imgObj.width*_h/imgObj.height);
+    }else if(_h>h){
+        img.width = _w;
+        img.height = Math.floor(imgObj.height*_w/imgObj.width);
+    }
+    return true;
+};
+JSExt.scrollIntoViewIfNeeded = function (element, options) {
+    if (typeof element.scrollIntoViewIfNeeded === 'function') {
+        element.scrollIntoViewIfNeeded(options);
+        return;
+    }
+
+    var rect = element.getBoundingClientRect();
+    var isInView = rect.top >= 0 && rect.left >= 0 && rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) && rect.right <= (window.innerWidth || document.documentElement.clientWidth);
+    if (!isInView) {
+        element.scrollIntoView(options);
+    }
+};
+JSExt.loadJs = function(url){
+    return new Promise((resolve, reject) => {
+        if(!JSExt.loadJsCache)JSExt.loadJsCache = new Map();
+        if(JSExt.loadJsCache.has(url)){
+            resolve(new Event('load', {bubbles:false, cancelable:true}));
+        }else{
+            var script = document.createElement('script');
+            script.addEventListener('load', (e) => {
+                JSExt.loadJsCache.set(url, true);
+                resolve(e);
+            });
+            script.addEventListener('error', (e) => reject(e));
+            script.setAttribute('type', 'text/javascript');
+            script.setAttribute('src', url);
+
+            document.head ? document.head.appendChild(script) : document.body.appendChild(script);
+        }
+    });
+};
+function time(){
+    return Math.round(millitime()/1000);
+}
+function millitime(){
+    var d = new Date(); return d.getTime();
+}
+function showMagentoHtmlMessages(){
+    var messages = jQuery('ul.messages');
+    if(!!messages.length){
+        for(var i = 0; i < messages.length; i++) {
+            var msgItem = jQuery(messages[i]);
+            if(!msgItem.hasClass('custom-messages')) {
+                var msgOutter = msgItem.find('li').eq(0);
+                var msgContent = msgItem.find('ul').eq(0);
+                var msgClass = msgOutter.attr('class'), msgTitle = null;
+                var msgTypeArr = [
+                    {
+                        'type': 'success-msg',
+                        'title': null
+                    },
+                    {
+                        'type': 'error-msg',
+                        'title': 'ERREUR'
+                    },
+                    {
+                        'type': 'notice-msg',
+                        'title': 'ATTENTION'
+                    }
+                ]
+                for(var index = 0; index < msgTypeArr.length; index++) {
+                    var item = msgTypeArr[index];
+                    if(item.type.indexOf(msgClass) >=0) {
+                        msgTitle = item.title;
+                        break;
+                    }
+                }
+                var msgIconHtml = `<ul class="msg-icon-container">
+                                        <li><i class="msg-icon"></i></li>
+                                    </ul>`;
+                var msgCloseBtnHtml = `<li class="message-close-container">
+                                        <button type="button" class="message-close ${msgClass}-btn">OK</button>
+                                       </li>`;
+                var closeMsg = function() {
+                    msgItem.remove();
+                    JSExt.documentBody.enable();
+                };
+                msgTitle ? msgContent.prepend(`<li class="msg-title">${msgTitle}</li>`) : '';
+                msgContent.before(msgIconHtml).addClass('msg-content-container');
+                jQuery(messages[i]).addClass('custom-messages show');
+                if (!jQuery('.message-close-container').hasClass('zy-button')) jQuery(messages[i]).append(msgCloseBtnHtml);
+                msgItem.find(".message-close").bind("click", closeMsg);
+                JSExt.documentBody.disable(closeMsg);
+                JSExt.documentBody.center(msgItem);
+            }
+        }
+    }
+    return messages;
+}
+jQuery(document).ready(function () {
+    for(var i=0;i<jQuery(".new-catalog-nav #nav").children().length;i++){
+        if(jQuery(".new-catalog-nav #nav").children().eq(i).children().length>=2){
+            jQuery(".new-catalog-nav #nav").children().eq(i).addClass('plus');
+        }
+    }
+    document.body.addEventListener('touchstart',function(){});
+    jQuery('.page').on('click', '.navbar-toggle.plus', function(event){
+        if (document.body.clientWidth <= 768) {
+            event.stopPropagation();
+            jQuery(this).toggleClass("active");
+            jQuery(this).find(".sub-menu").eq(0).slideToggle("fast");
+        }
+    });
+    jQuery('#select-language').chosen({disable_search_threshold: 10, allow_single_deselect: true});
+    jQuery('.drop-box').hover(
+        function () {
+            jQuery(this).addClass("hover");
+        },
+        function () {
+            jQuery(this).removeClass("hover");
+    });
+    jQuery('.float-bar-img').click(function(){
+        if(jQuery(this).hasClass("showQrCode")){
+            jQuery(this).removeClass("showQrCode");
+        }else{
+            jQuery(this).css('display','block').addClass('showQrCode');
+        }
+    });
+    jQuery('.weixin-show').hover(function(){
+        jQuery(this).toggleClass('over');
+    });
+
+    showMagentoHtmlMessages();
+
+    /*页头微信APP二维码*/
+    (function($){
+        $('.appLink').hover(
+            function(){
+                $(this).addClass("over");
+                $(this).find(".sub-link").addClass("shown-sub");
+            },
+            function(){
+                $(this).removeClass("over");
+                $(this).find(".sub-link").removeClass("shown-sub");
+            }
+        );
+    })(jQuery);
+
+    /*网页手机版APP下载链接*/
+    (function($,ua){
+        try{
+            var appdownloadUrl = "";
+            if (/iP(od|hone)/i.test(ua)) {
+                appdownloadUrl="http://www.37-express.com/app.php?download=ios";
+                $('.appmobile a').attr("href",appdownloadUrl);
+                // $('.info-takeaway a').attr("href",appdownloadUrl);
+                $('.takeaway').attr("data-href",appdownloadUrl);
+            }
+            if (/Android/i.test(ua)) {
+                if (jQuery(document).width()<=768) {
+                    appdownloadUrl="http://www.37-express.com/app.php?download=android&force";
+                    $('.appmobile a').attr("href",appdownloadUrl);
+                    // $('.info-takeaway a').attr("href",appdownloadUrl);
+                    $('.takeaway').attr("data-href",appdownloadUrl);
+                }
+            }
+        }catch (e) {
+
+        }
+    })(jQuery,window.navigator.userAgent);
+
+    /*导航*/
+    jQuery('.li-sub-route').hover(
+        function(){
+            var ulElement = jQuery(this).find('.subRoute');
+            var ulHeight = ulElement.height();
+            var elementLeft = jQuery(this).parent().width();
+
+            jQuery(this).addClass('over');
+            ulElement.css("left",elementLeft+"px");   
+            if(ulElement.find('.subRoute').length > 0){
+                if(ulElement.offset().left + ulElement.width()*2 > document.body.offsetWidth){
+                    ulElement.css("left",-elementLeft+"px");
+                }
+            }else{
+                if(ulElement.parents(".subRoute").length > 0){
+                    if(ulElement.parents(".subRoute").position().left < 0){
+                        ulElement.css("left",-elementLeft+"px");       
+                    }
+                }
+                else{
+                    if(ulElement[0]&&ulElement.offset().left + ulElement.width() > document.body.offsetWidth){
+                        ulElement.css("left",-elementLeft+"px");
+                    }
+                }
+            }
+        },
+        function(){
+            var ulElement = jQuery(this).find('.subRoute');
+            jQuery(this).removeClass('over');
+            ulElement.css("left","-10000px");
+    });
+
+
+    (function menuCss(){
+        var url = location.href;
+        if (url.indexOf("?") != -1){
+            var str = url.split("?");
+            url = str[0] || url;
+            if(str[1].substring(0,8) == 'category'){
+                url = location.href;
+            }
+        }
+        if(url){
+            if (jQuery('.navbar-toggle')) {
+                var navbarCurrent = true;
+                jQuery('.navbar-toggle .sub-menu a').each(function(i,o){
+                    if(navbarCurrent && o.href && o.href == url){
+                        jQuery(this).addClass("current");
+                        jQuery(this).parents(".li-sub-route").children('.routeTitle').addClass('current');
+                        jQuery(this).parents(".navbar-toggle").find("a").eq(0).addClass('current');
+                        navbarCurrent = false;
+                    }
+                });
+                jQuery('.navbar-toggle>a').each(function(i,o){
+                    if (o.href && o.href == url) {
+                        jQuery(this).addClass("current");
+                    }
+                });
+            }
+        }
+    }());
+
+    /*首页广告轮播*/
+    if(jQuery(".dregular").length){
+        jQuery(".dregular").slick({infinite: true,slidesToShow: 7,slidesToScroll: 1,autoplay: true,autoplaySpeed: 2000,responsive: [
+            {breakpoint: 1200,settings: {slidesToShow: 5,slidesToScroll: 5}},
+            {breakpoint: 1024,settings: {slidesToShow: 4,slidesToScroll: 4}},
+            {breakpoint: 600, settings: {slidesToShow: 2,slidesToScroll: 2}},
+            {breakpoint: 480, settings: {slidesToShow: 2,slidesToScroll: 2}}
+        ]});
+    }
+    if(jQuery(".promo-slider").length){
+        jQuery(".promo-slider").slick({infinite: true,slidesToShow:8,slidesToScroll: 1,autoplay: true,autoplaySpeed: 2000,responsive: [
+            {breakpoint: 1921,settings: {slidesToShow: 6,slidesToScroll: 1}},
+            {breakpoint: 1201,settings: {slidesToShow: 4,slidesToScroll: 1}},
+            {breakpoint: 992,settings: {slidesToShow: 3,slidesToScroll: 1}},
+            {breakpoint: 769, settings: {slidesToShow: 2,slidesToScroll: 2}}
+        ]});
+    }
+    jQuery(".showQrCode_img img").click(function(){
+        if ($(this).id =="img_mobile-public") {
+            if(!jQuery("body .showQrCodeBigPic #bigPic_mobile-public").length > 0){
+                var qrCodeSrc = $(this).src;
+                jQuery("body").append("<div class='showQrCodeBigPic'><img src='"+qrCodeSrc+"' id='bigPic_mobile-public'/></div>"); 
+            }else{
+                jQuery("#bigPic_mobile-public").parent().fadeIn();
+            }    
+        }else if($(this).id=="img_mobile-service"){
+            if(!jQuery("body .showQrCodeBigPic #bigPic_mobile-service").length > 0){
+                var qrCodeSrc = $(this).src;
+                jQuery("body").append("<div class='showQrCodeBigPic'><img src='"+qrCodeSrc+"' id='bigPic_mobile-service'/></div>");
+            }else{
+                jQuery("#bigPic_mobile-service").parent().fadeIn();
+            }
+        }
+    });
+    jQuery("body").on('click','.showQrCodeBigPic',function(){
+        jQuery(".showQrCodeBigPic").fadeOut();
+    });
+    
+    /*懒加载*/
+    jQuery(".lazyload").lazyload({
+      threshold : 200
+    });
+});
+
+
+/*固定滚动条*/
+// function stopBodyScroll(isFixed) {
+//     var bodyEl = document.body;
+//     var top = 0;
+//     if (isFixed) {
+//         top = window.scrollY;
+//         bodyEl.style.position = 'fixed';
+//         bodyEl.style.top = -top + 'px';
+//     } else {
+//         bodyEl.style.position = '';
+//         bodyEl.style.top = '';
+//         window.scrollTo(0, top) // 回到原先的top
+//     }
+// }
+
+
+function changeQty(elm,operateType){
+    var inp;
+    var _add = function(inp){
+        if(!inp.disabled){
+            var v = inp.value.replace(/^\s+|\s+$/g,""),max = inp.getAttribute("max-number"),step = JSExt.toFloat(inp.getAttribute("step-number")) || 1;
+            if(max!==null && isNaN(max = parseInt(max)))max = null;
+            if(v===""){v = step;}
+            else{v = isNaN(v = parseInt(v)) ? step : v+step;}
+            if(max!==null && v>max)v = max;
+            if(inp.value!=v){
+                inp.value = v;
+                JSExt.Event.fire(inp,'change');
+                JSExt.Event.fire(inp,'keyup');
+            }
+        }
+        return inp;
+    };
+    var _sub = function(inp){
+        if(!inp.disabled){
+            var v = inp.value.replace(/^\s+|\s+$/g,""),min = inp.getAttribute("min-number"),step = JSExt.toFloat(inp.getAttribute("step-number")) || 1;
+            if(min!==null && isNaN(min = parseInt(min)))min = null;
+            if(min===null && inp.className && inp.className.indexOf('livraisonQty')>-1)min = 0;
+            if(v!==""){
+                if(isNaN(v = parseInt(v))){
+                    v = min===null ? "" : min;
+                }else{
+                    v -= step;
+                    if(min!==null && v<min)v = min;
+                    else if(min===null && v<=0)v = "";
+                }
+            }else{
+                v = min===null ? "" : min;
+            }
+            if(v!=inp.value){
+                inp.value = v;
+                JSExt.Event.fire(inp,'change');
+                JSExt.Event.fire(inp,'keyup');
+            }
+        }
+        return inp;
+    };
+    switch(operateType){
+        case "sub":
+            if(inp = $(elm).next('input[type="text"]'))_sub(inp);
+            break;
+        case "add":
+            if(inp = $(elm).previous('input[type="text"]'))_add(inp);
+            break;
+    }
+}
+
+// remove logistic address save flag
+if (location && typeof location.href == 'string' && location.href.indexOf('create/success') > 0) {
+    setTimeout(function() {
+        try {
+            var cookies = document.cookie.split('; ');
+            for (var i = 0, _len = cookies.length; i < _len; i++) {
+                if (cookies[i].indexOf('save_in_address_book-') >= 0) {
+                    Mage.Cookies.set(cookies[i].split('=')[0], null, new Date(0));
+                }
+            }
+        } catch (e) {}
+    }, 0);
+}
+
+//zip code format
+Validation.addAllThese(
+    [   
+        ['validate-four-num', 'Please enter the 4 digit zip code', function(v) {
+            return Validation.get('IsEmpty').test(v) ||  /^[a-zA-Z0-9]{4}$/.test(v);
+        }],
+        ['validate-five-num', 'Please enter the 5 digit zip code', function(v) {
+            return Validation.get('IsEmpty').test(v) ||  /^[a-zA-Z0-9]{5}$/.test(v);
+        }],
+        ['validate-six-num-cn', 'Please enter the 6 digit zip code', function(v) {
+            return Validation.get('IsEmpty').test(v) ||  /^\d{6}$/.test(v);
+        }],
+        ['validate-six-num', 'Please enter the 6 digit zip code', function(v) {
+            return Validation.get('IsEmpty').test(v) ||  /^\d{6}$/.test(v);
+        }],
+        ['validate-seven-num', 'Please enter the 7 digit zip code', function(v) {
+            return Validation.get('IsEmpty').test(v) ||  /^[a-zA-Z0-9]{7}$/.test(v);
+        }],
+        ['validate-postcode-gb', 'Please fill in the correct UK zip code', function(v) {
+            return Validation.get('IsEmpty').test(v) ||  /^(([Gg][Ii][Rr] 0[Aa]{2})|((([A-Za-z][0-9]{1,2})|(([A-Za-z][A-Ha-hJ-Yj-y][0-9]{1,2})|(([A-Za-z][0-9][A-Za-z])|([A-Za-z][A-Ha-hJ-Yj-y][0-9]?[A-Za-z]))))\s?[0-9][A-Za-z]{2}))$/.test(v);
+        }],
+        ['validate-postcode-nl', 'Please fill in the correct Dutch postal code', function(v) {
+            return Validation.get('IsEmpty').test(v) ||  /^[1-9][0-9]{3} ?(?!sa|sd|ss)[a-z]{2}$/i.test(v);
+        }],
+        ['validate-seven-jp', 'Please enter a zip code in this field in the format 000-0000 without spaces or other characters', function(v) {
+            return Validation.get('IsEmpty').test(v) || /^\d{3}-\d{4}$/.test(v);
+        }]
+        
+    ]
+);
+
+//define postcode validate method
+function postCodeValidate(type,selectedValue){
+    var $ = jQuery;
+    var placeholderTxt = "";
+    var validateCountryArray = ['FR','BE','PT','NL','CH','IT','CN','GB','NB','SF','EN','WL','DK','JP'];
+
+    if($("#fromaddress-country select").length > 0){
+        type = "billing";
+    }else if($("#toaddressee-country select").length > 0){
+        type = "shipping";
+    }
+    var cSelectedVal  = $("select[id='country'] option:selected").val();
+    var cAselectedVal = $("select[id='"+type+"\\:country_id'] option:selected").val();
+    var postCodeEle = type ? $("input[id='"+type+"\\:postcode']") : $("input[name='postcode']");
+    var styleCode = false;
+
+    selectedValue = selectedValue ? selectedValue  : type ? cAselectedVal : cSelectedVal;
+    postCodeEle.attr("placeholder",Translator.translate("Please fill in the correct zip code"));
+    postCodeEle.removeClass("validate-seven-num validate-six-num validate-six-num-cn validate-five-num validate-four-num validate-postcode-gb validate-postcode-nl validation-failed validate-alphanum-with-spaces");
+
+    postCodeEle.removeClass("validate-seven-jp");
+    if (postCodeEle.attr("data-orig-classname") == "validate-alphanum") {
+        postCodeEle.addClass("validate-alphanum")
+        postCodeEle.removeAttr("data-orig-classname");
+    }
+
+    if($.inArray(selectedValue,validateCountryArray) >= 0){
+        if($.inArray(selectedValue,['PT']) >= 0){
+            styleCode = "validate-seven-num";
+            placeholderTxt = Translator.translate("Please enter the 7 digit zip code");
+        }else if($.inArray(selectedValue,['CN']) >= 0){
+            styleCode = "validate-six-num-cn";
+            placeholderTxt = Translator.translate("Please enter the 6 digit zip code");
+        }else if($.inArray(selectedValue,['FR','IT']) >= 0){
+            styleCode = "validate-five-num";
+            placeholderTxt = Translator.translate("Please enter the 5 digit zip code");
+        }else if($.inArray(selectedValue,['BE','CH','DK']) >= 0){
+            styleCode = "validate-four-num";
+            placeholderTxt = Translator.translate("Please enter the 4 digit zip code");
+        }else if($.inArray(selectedValue,['GB','NB','SF','EN','WL']) >= 0){
+            styleCode = "validate-postcode-"+selectedValue.toLowerCase();
+            placeholderTxt = Translator.translate("Please fill in the correct UK zip code");
+        }else if($.inArray(selectedValue,['NL']) >= 0){
+            styleCode = "validate-postcode-"+selectedValue.toLowerCase();
+            placeholderTxt = Translator.translate("Please fill in the correct Dutch postal code");
+        }else if($.inArray(selectedValue,['JP']) >= 0){
+            styleCode = "validate-seven-jp";
+            placeholderTxt = Translator.translate("Please enter a zip code in this field in the format 000-0000 without spaces or other characters");
+            if (postCodeEle.hasClass("validate-alphanum")) {
+                postCodeEle.attr("data-orig-classname", "validate-alphanum");
+            }
+            postCodeEle.removeClass("validate-alphanum");
+        }
+
+        postCodeEle.attr("placeholder",placeholderTxt);
+        if(styleCode)postCodeEle.addClass(styleCode);
+
+        if($.inArray(selectedValue,['GB','NB','SF','EN','WL','NL']) >= 0){
+            postCodeEle.addClass("validate-alphanum-with-spaces");
+        }
+    }
+}
+function switchLoginMode(form,isSMS){
+    if(typeof isSMS==='undefined')isSMS = document.location.hash=='#login-by-sms';
+    if(!form)form = $('login-form');
+    else if(typeof form==='string')form = $(form);
+    var bf = form.select('li.base-login-field'),sf = form.select('li.sms-login-field'),m = document.getElementById('login-mode');
+    if(!sf.length)return false;
+    if(!m){
+        m = document.createElement('input');
+        $(m).writeAttribute({"name":"login_mode","id":"login-mode","type":"hidden"});
+        form.appendChild(m);
+    }
+    if(isSMS){
+        bf.invoke('addClassName','no-display');
+        sf.invoke('removeClassName','no-display');
+        form.select('li.base-login-field input.required-entry').invoke('removeClassName','required-entry');
+        form.select('li.sms-login-field input.input-text').invoke('addClassName','required-entry');
+        form.select('a[href="#login-by-sms"]').invoke('addClassName','no-display');
+        form.select('a[href="#login-by-account"]').invoke('removeClassName','no-display');
+        m.value = 'sms';
+    }else{
+        bf.invoke('removeClassName','no-display');
+        sf.invoke('addClassName','no-display');
+        form.select('li.base-login-field input.input-text').invoke('addClassName','required-entry');
+        form.select('li.sms-login-field input.required-entry').invoke('removeClassName','required-entry');
+        form.select('a[href="#login-by-sms"]').invoke('removeClassName','no-display');
+        form.select('a[href="#login-by-account"]').invoke('addClassName','no-display');
+        m.value = 'base';
+    }
+    return m.value;
+}
+jQuery(document).ready(function (){
+    //zip code format when selecting a country
+    if( jQuery("#fromaddress-country select").length > 0 || jQuery("#toaddressee-country select").length > 0 || jQuery("#account-edit-country select").length > 0){
+        postCodeValidate();
+    }
+  
+    jQuery("select[id='shipping\\:country_id'],select[id='billing\\:country_id']").change(function(){
+        var $ = jQuery;
+        var parmType = $(this).attr("id").split(":")[0];
+        var parmSelectedVal = $(this).children('option:selected').val();
+        setTimeout(function() { postCodeValidate(parmType,parmSelectedVal) }, 0);
+    });
+
+    jQuery("#account-edit-country select").change(function(){
+        postCodeValidate();
+    });
+    if (document.body.clientWidth<768) {
+        jQuery(".navbar-toggle.cms-discounts.plus").removeClass("plus");
+        /*jQuery(".sub-menu.discounts-sub").remove();*/
+    }
+    jQuery("input.validate-number").on('input propertychange',function(){
+        jQuery(this).val(jQuery(this).val().replace(/,|，|。/g,"."));
+    });
+
+    /*topmenu.phtml hover or click begin*/
+    //nav hover
+    jQuery('body:not(.nav-left-li-container) .home-left-banner .nav-li').hover(function(){
+        jQuery(this).toggleClass( "hover" );
+        jQuery('.home-left-banner .category-nav-content-wrapper').toggleClass("hover");
+    })
+
+    //arrow click
+    jQuery('.nav-left-li-container .nav-right-arrow-container').click("click", function() {
+        jQuery('.home-left-banner .nav-li').removeClass('hover');
+        jQuery(this).closest('.nav-li').addClass("hover");
+        jQuery('.home-left-banner .category-nav-content-wrapper').addClass("hover");
+    });
+
+    //sub nav hover
+    jQuery(".nav-express li").click(function(){
+        jQuery(".nav-express li").removeClass("hover");
+        jQuery(this).addClass( "hover" );
+    })
+
+    jQuery(".category-nav-content-wrapper.mobile-no-display .nav-ul > .nav-li").hover(function(){
+        jQuery(this).addClass("hover");
+    }, function() {
+        jQuery(this).removeClass("hover");
+        jQuery(".category-nav-content-wrapper.mobile-no-display .nav-li.hover").removeClass("hover");
+    })
+    //hide menu when click any target but not deal with arrow click
+    jQuery(document).on('click', function(event) {
+        if (!jQuery(event.target).closest('.nav-left-li-container .nav-right-arrow-container').length) {
+            jQuery('.home-left-banner .nav-li').removeClass('hover');
+            jQuery('.home-left-banner .category-nav-content-wrapper').removeClass("hover");
+        }
+    });
+    /*topmenu.phtml hover or click end*/
+});
+
+function formatBaseCurrencyPrice(price, baseCurrencConfig, translateJson, includeContainer) {
+    translateJson = (typeof translateJson!=='undefined')? translateJson:null;
+    includeContainer = (typeof translateJson!=='undefined')? translateJson:true;
+    var formatPrice = formatCurrency(price, baseCurrencConfig);
+    if (includeContainer) {
+        var symbol = baseCurrencConfig['pattern'].replace('%s', '');
+        formatPrice = "<span class='regular-price'>" + formatPrice.replace(symbol, '<span ' + 'class="txt-style-euro">' + symbol + '</span>') + "</span>";
+        if (translateJson) {
+            Translator.add(translateJson);
+            formatPrice = Translator.translate('Above %s').replace('%s', formatPrice);
+        }
+    }
+    return formatPrice;
+}
+
+function stopPropagation(e) {
+    e = e || window.event || arguments.callee.caller.arguments[0];
+    if(e.stopPropagation) { //W3C阻止冒泡方法
+        e.stopPropagation();
+    } else {
+        e.cancelBubble = true; //IE阻止冒泡方法
+    }
+}
+
+//search keywords
+function filterContent(filter,container,keyTag,keyContainer,resultTag,noChildTag){
+    var filterDom =jQuery(filter);
+    var containerDom =jQuery(container);
+
+    keyContainer = (typeof keyContainer !== 'undefined') ?  keyContainer : containerDom.find(jQuery(keyTag)).parent().prop("tagName");
+    resultTag = (typeof resultTag !== 'undefined') ? resultTag : "b";
+    noChildTag = (typeof noChildTag !== 'undefined') ? noChildTag : "p";
+    if(filterDom && containerDom){
+        filterDom.bind("input propertychange",function(){
+            var value = jQuery(this).val().trim();
+            containerDom.find(jQuery(keyTag)).parents(keyContainer).attr("filterFlag","false");
+            containerDom.find(jQuery(keyTag)).each(function(i,o){
+                if(jQuery(o).children().length<=0){
+                    jQuery(o).html("<"+noChildTag+">"+jQuery(o).text()+"</"+noChildTag+">");
+                }
+                jQuery(o).children().each(function(j,obj){
+                    var contentText = jQuery(obj).text();
+                    if(contentText.toUpperCase().indexOf(value.toUpperCase())>=0 && value!=''){
+                        contentText = contentText.replace(new RegExp('('+value+')',"gi"),"<"+resultTag+">"+"$1"+"</"+resultTag+">");
+                        jQuery(obj).parents(keyContainer).attr("filterFlag","true");
+                    }
+                    jQuery(obj).html(contentText);
+                });
+                if(value =='' || jQuery(o).parents(keyContainer).attr("filterFlag") == "true"){
+                    jQuery(o).parents(keyContainer).show();
+                }else{
+                    jQuery(o).parents(keyContainer).hide();
+                }
+            });
+        });
+    }
+}
+
+/**
+ * 弹出提示
+ * 提示样式可选“success-msg/error-msg” msgclass
+ * 消息内容 msg
+ * 描述 label
+ */
+function showMessages(msgclass, msg, label) {
+    var messages = jQuery('<ul class="messages custom-messages">'),
+        msgHtml = "", msgTitle;
+    var closeMsg = function() {
+        messages.remove();
+        JSExt.documentBody.enable();
+    };
+    switch (msgclass) {
+        case 'success-msg':
+            msgTitle = null;
+            break;
+        case 'error-msg':
+            msgTitle = 'ERREUR';
+            break;
+        case 'notice-msg':
+            msgTitle = 'ATTENTION';
+            break;
+        default:
+            msgTitle = null;
+    }
+    msgHtml +=    `<li class="${msgclass}">
+                        <ul class="msg-icon-container">
+                            <li><i class="msg-icon"></i></li>
+                        </ul>
+                        <ul class="msg-content-container">`;
+    msgHtml += `${ msgTitle ? `<li class="msg-title">${msgTitle}</li>` : '' }`;
+    msgHtml +=      `${ msg ? `<li><span>${msg}</span></li>` : '' }`;
+    msgHtml +=    `${ label ? `<li><label class="label">${label}</label></li>` : '' }`;
+    msgHtml +=          `</ul>
+                    </li>
+                    <li class="message-close-container">
+                        <button type="button" class="message-close ${msgclass}-btn" id="message-close">OK</button>
+                    </li>`;
+    messages.html(msgHtml);
+    jQuery("body").append(messages);
+    jQuery(".message-close").bind("click", closeMsg);
+    messages.addClass("show");
+    JSExt.documentBody.disable(closeMsg);
+    JSExt.documentBody.center(messages);
+}
+/*input上传文件字样翻译替换*/
+function translateInput(a,tex,btex){
+    if(a.length){
+        var b = jQuery('<div class="translate-input-box"><span>'+tex+'</span><strong>'+btex+'</strong></div>');
+        b.on('click',function(){a.trigger('click');});
+        a.change(function(){
+            btex =  a.val().substring(a.val().lastIndexOf('\\')+1);
+            b.find('strong').html(btex);
+        });
+        a.before(b);
+        if(!a.hasClass("no-display"))a.hide();
+        return b;
+    }
+}
+/*弹窗*/
+function newShowPop(tx,solt,soltClass){
+    let html = "<div class='newpop-box "+ soltClass +"'>"
+             + "<div class='newpop-inner'><p>" + tx + "</p>" 
+             + solt 
+             + "<icon class='newpop-close'>"
+             + "</div>"
+             + "</div>";
+    let pop = jQuery(html);
+    jQuery("body").append(pop);
+    jQuery('.newpop-inner').on('click',function(event){event.stopPropagation();})
+    jQuery('.newpop-close,.newpop-box').on('click',function(event){
+        jQuery('.newpop-box').remove();
+    })
+}
+/* header begin */
+
+jQuery(document).ready(function () {
+
+    var $ = jQuery, homePageUrl = jQuery('#home-page-url').attr('href');
+
+    $(".header-icon").on("click", function () {
+        $(".header-icon-all .active").removeClass("active");
+        $(".menu-block").removeClass("active");
+    });
+
+    $("#nowWebsite").on("click", function () {
+        $(".header-icon").removeClass("active");
+        if ($("#selectWebsite").hasClass("active")) {
+            $("#header-mask").trigger("click");
+            $("#selectWebsite").removeClass("active");
+        } else {
+            $("#header-mask").trigger("click");
+            $("#header-mask").css("display", "block");
+            $("#selectWebsite").addClass("active");
+        }
+    });
+
+    $("#icon-feedback").on("click", function () {
+        var iconActive = $(this).hasClass("active");
+        $(".header-icon").removeClass("active");
+        $("#selectWebsite").removeClass("active");
+        if (iconActive) {
+            $("#header-mask").css("display", "none");
+        } else {
+            $(this).addClass("active");
+            $("#header-feedback").addClass("active");
+            $("#header-mask").css("display", "block");
+        }
+    });
+
+    $("#icon-language").on("click", function () {
+        var iconActive = $(this).hasClass("active");
+        $(".header-icon").removeClass("active");
+        $("#selectWebsite").removeClass("active");
+        if (iconActive) {
+            $("#header-mask").css("display", "none");
+        } else {
+            $(this).addClass("active");
+            $("#header-language").addClass("active");
+            $("#header-mask").css("display", "block");
+        }
+    });
+
+    $("#icon-menu").on("click", function () {
+        var iconActive = $(this).hasClass("active");
+        $(".header-icon").removeClass("active");
+        $("#selectWebsite").removeClass("active");
+        $(".header").toggleClass('p_index');
+        if (iconActive) {
+            $("#header-mask").css("display", "none");
+        } else {
+            $(this).addClass("active");
+            $(".menu-block").addClass("active");
+            $("#header-mask").css({"display":"block","top":"unset"})
+        }
+    });
+
+    $("#header-mask").on("click", function () {
+        $("#header-mask").css("display", "none");
+        $(".header-icon").removeClass("active");
+        $(".header-icon-all .active").removeClass("active");
+        $(".menu-block").removeClass("active");
+        $("#selectWebsite").removeClass("active");
+    });
+
+    $(".top_customerL").on("click", function () {
+        $(this).toggleClass("active");
+        $("#customer-login-window").toggle();
+    });
+
+    //Close suspension
+    jQuery("body").on("click", ".right-bottom-static .right-bottom-close", function (e) {
+        jQuery(".right-bottom-static").hide();
+        Mage.Cookies.set('close_invite_suspension', true)
+    });
+
+    //Show invitation box
+    jQuery("body").on("click", ".right-bottom-static .right-bottom-content", function (e) {
+        if (jQuery(".right-bottom-content").attr('data-customer')) {
+            let invitation = jQuery(".center-static");
+            let invitation_size = {'width': invitation.width(), 'height': invitation.height()};
+            let invitation_position = {
+                'left': document.documentElement.clientWidth / 2 - invitation_size.width / 2,
+                'top': document.documentElement.clientHeight / 2 - invitation_size.height / 2
+            };
+            invitation.css({
+                'left': (invitation_position.left < 0 ? 0 : invitation_position.left) + 'px',
+                'top': (invitation_position.top < 0 ? 0 : invitation_position.top) + 'px'
+            });
+            jQuery(".invitation-mask").css("display", "block");
+            invitation.css("display", "block");
+        } else {
+            window.location.href = homePageUrl + 'customer/account/login';
+        }
+    });
+
+    //Hide invitation box
+    jQuery("body").on("click", ".invitation-mask", function (e) {
+        jQuery(".center-static").css("display", "none");
+        jQuery(".invitation-mask").css("display", "none");
+    });
+
+    jQuery(document).scroll(function () {
+        if (jQuery(document).scrollTop() > 500) {
+            jQuery("#side-controls-top").addClass("active");
+        } else {
+            jQuery("#side-controls-top").removeClass("active");
+        }
+    });
+
+    $("#customer-window-close").on("click", function () {
+        showWindowPasswordLogin();
+        $(".top_customerL").removeClass("active");
+        $("#customer-login-window").css("display", "none");
+    });
+
+    /* nav search focus and blur */
+    jQuery('.nav-express input[type="search"]').on('focus', function(event){
+        event.stopPropagation();
+        jQuery(this).closest('.nav-express').parent().addClass('hover')
+    })
+    jQuery('.nav-express input[type="search"]').on('blur', function(event){
+        event.stopPropagation();
+        jQuery(this).closest('.nav-express').parent().removeClass('hover')
+    })
+    jQuery('.category-nav-content-wrapper.mobile-no-display .nav-ul > .nav-li').not('.search').hover(function() {
+        var $searchEle = jQuery('.category-nav-content-wrapper.mobile-no-display .nav-ul > .nav-li.search');
+        if(!!$searchEle.length) {
+            $searchEle.hasClass('hover') ? $searchEle.removeClass('hover') : '';
+        }
+    })
+})
+
+/**
+ * selectOnName 参数主要是为了解决在 modal 中点击复制时，动态创建的元素被 modal 挡住了无法选中
+ *
+ * @param {string} name input 元素的 id
+ * @param selectOnName 是否直接在 name 元素中全选，否则创建一个元素用于全选
+ */
+function copyLinkData(name, selectOnName = false) {
+    if ($(name)) {
+        let input;
+        if (!selectOnName) {
+            input = document.createElement("input");
+            input.id = 'copyd_id_text';
+            input.type = 'text';
+            input.value = $(name).value;
+            document.body.appendChild(input);
+        } else {
+            input = document.getElementById(name);
+        }
+        try {
+            if (navigator.userAgent.match(/(iPhone|iPod|iPad);?/i)) {
+                input.setSelectionRange(0, input.value.length);
+                document.execCommand('Copy');
+            } else {
+                $(input).select();
+                document.execCommand("copy");
+            }
+            showMessages("success-msg", Translator.translate('链接已复制到剪贴板'));
+        } catch (err) {
+            showMessages("success-msg", Translator.translate('复制到剪贴板失败'));
+        }
+        if (!selectOnName) {
+            document.body.removeChild(input);
+        }
+    }
+}
+
+/* header end */
+
+function getTrakDateTime(datetime) {
+    var html = document.getElementsByTagName('html')[0], now = new Date(datetime),
+        handleDate = function(d){if (d.toString().length == 1) {d = "0" + d;}return d;},
+        w = html && html.getAttribute('lang') == 'zh' && ["周日", "周一", "周二", "周三", "周四", "周五", "周六"] || ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        r = {"Datetime" : datetime, "FullYear": now.getFullYear() + '-' + handleDate(now.getMonth() + 1) + '-' + handleDate(now.getDate()), "Week": now.getDay() && w[now.getDay()] || "", "Time": handleDate(now.getHours()) + ':' + handleDate(now.getMinutes())  + ':' + handleDate(now.getSeconds())};
+    return r;
+}
+
+function favorite(favUrl, notLoginUrl, elem, cartData=false){
+    window.event.stopPropagation()
+    var options = ''
+    if(cartData) options = cartData.getSelectedOptions(jQuery(elem).attr('data-entity-id'));
+    jQuery.ajax({
+        type : "post",
+        url : favUrl,
+        dataType : "json",
+        data : {
+            id : jQuery(elem).attr('data-id'),
+            entity_id : jQuery(elem).attr('data-entity-id'),
+            event : jQuery(elem).attr('data-event'),
+            selected_options : options
+        },
+        success : function (res) {
+            if (res.success) {
+                showMessages('success-msg', res.message);
+                var span = jQuery(elem).children('span');
+                if (1 === res.code) {
+                    jQuery(elem).addClass('active');
+                    jQuery(elem).attr('title',jQuery(elem).attr('data-t'));
+                    jQuery(elem).attr('data-event','cancel');
+                    if (res.id) {
+                        jQuery(elem).attr('data-id',res.id);
+                    }
+                    if (span.length) {
+                        span.html('<i></i>'+jQuery(elem).attr('data-t'));
+                    }
+                } else if (2 === res.code) {
+                    jQuery(elem).removeClass('active');
+                    jQuery(elem).attr('title',jQuery(elem).attr('data-f'));
+                    jQuery(elem).attr('data-event','add');
+                    jQuery(elem).attr('data-id','');
+                    if (span.length) {
+                        span.html('<i></i>'+jQuery(elem).attr('data-f'));
+                    }
+                }
+                if (jQuery(elem).attr('data-reload')) {
+                    setTimeout(function () {
+                        window.location.reload();
+                    }, 1000);
+                }
+            } else {
+                showMessages('notice-msg', res.message);
+                if (3 === res.code) {
+                    setTimeout(function () {
+                        window.location.href = notLoginUrl;
+                    }, 1000);
+                }
+            }
+        }
+    });
+}
+
+/**
+ * 搜索页面中关注按钮的所有a标签，将所有主体ID通过异常检查，
+ * 返回当前用户已经收藏了的所有主体ID，然后将对应a标签设置为已关注状态
+ */
+function setFavoriteFlag(favUrl) {
+    var arr = [];
+    jQuery('a.favorite').each(function () {
+        var id = jQuery(this).attr('data-entity-id');
+        arr.push(id);
+    });
+    if (arr.length <= 0) {
+        return;
+    }
+    jQuery.ajax({
+        type : "post",
+        url : favUrl,
+        dataType : "json",
+        data : {
+            ids : arr
+        },
+        success : function (res) {
+            if (res.success && res.ids.length > 0) {
+                jQuery('a.favorite').each(function () {
+                    var _this = jQuery(this);
+                    if (res.ids.indexOf(_this.attr('data-entity-id')) >= 0) {
+                        _this.addClass('active');
+                        _this.attr('title',_this.attr('data-t'));
+                        _this.attr('data-event','cancel');
+                        var span = _this.children('span');
+                        if (span.length) {
+                            span.html('<i></i>'+_this.attr('data-t'));
+                        }
+                    }
+                });
+            }
+        }
+    });
+}
+
+function checkPhoneCode(e) {
+    if (e.value) e.value = e.value.replace(/[^\d+]/g, '');
+}

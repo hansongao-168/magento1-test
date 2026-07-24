@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <XFE_InvoiceUpload>
+            <active>true</active>
+            <codePool>community</codePool>
+            <depends>
+                <Mage_Core/>
+                <Mage_Sales/>
+                <Mage_Customer/>
+            </depends>
+        </XFE_InvoiceUpload>
+    </modules>
+</config>

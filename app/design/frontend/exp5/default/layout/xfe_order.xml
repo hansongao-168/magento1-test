@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<layout version="0.1.0">
+    <xfe_order_order_index translate="label">
+        <label>Customer My Account Order History (Dynamic)</label>
+        <update handle="customer_account"/>
+        <reference name="my.account.wrapper">
+            <block type="xfe_orderfrontend/order_history" name="xfe.order.history">
+                <block type="core/template" name="douane_popup" as="douane_popup" template="xfe_order/order/douane_popup.phtml"/>
+            </block>
+        </reference>
+        <reference name="head">
+            <action method="addItem">
+                <type>js</type>
+                <name>https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js</name>
+            </action>
+        </reference>
+    </xfe_order_order_index>
+</layout>

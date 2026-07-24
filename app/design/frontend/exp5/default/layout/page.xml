@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<layout version="0.1.0">
+    <default>
+        <reference name="head">
+            <block type="core/text" name="xfe.bootstrap5.css">
+                <action method="setText">
+                    <text><![CDATA[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" crossorigin="anonymous">]]></text>
+                </action>
+            </block>
+        </reference>
+    </default>
+</layout>

@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<layout>
+    <!-- Carrier offer page (承运商列表页) -->
+    <xcarrierslabel_carrier_offre>
+        <reference name="head">
+            <action method="addCss">
+                <stylesheet>css/xcarriers_label/styles.css</stylesheet>
+            </action>
+        </reference>
+        <reference name="content">
+            <block type="xcarrierslabel/carrier_offre" name="xcarriers_label_offre" />
+        </reference>
+    </xcarrierslabel_carrier_offre>
+
+    <!-- Order tracking partner info -->
+    <sales_order_view>
+        <reference name="head">
+            <action method="addCss">
+                <stylesheet>css/xcarriers_label/styles.css</stylesheet>
+            </action>
+            <action method="addItem">
+                <type>skin_js</type>
+                <name>xcarriers_label/js/tracking.js</name>
+            </action>
+        </reference>
+        <reference name="order_items">
+            <block type="xcarrierslabel/order_tracking" name="xcarriers_label_tracking" after="-" />
+        </reference>
+    </sales_order_view>
+
+    <!-- Also load on order view for customer account -->
+    <sales_order_invoice>
+        <reference name="head">
+            <action method="addCss">
+                <stylesheet>css/xcarriers_label/styles.css</stylesheet>
+            </action>
+            <action method="addItem">
+                <type>skin_js</type>
+                <name>xcarriers_label/js/tracking.js</name>
+            </action>
+        </reference>
+        <reference name="order_items">
+            <block type="xcarrierslabel/order_tracking" name="xcarriers_label_tracking" after="-" />
+        </reference>
+    </sales_order_invoice>
+</layout>

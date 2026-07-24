@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<config>
+    <acl>
+        <resources>
+            <admin>
+                <children>
+                    <system>
+                        <children>
+                            <xfe_carrier translate="title" module="xfe_carrier">
+                                <title>承运商管理</title>
+                            </xfe_carrier>
+                        </children>
+                    </system>
+                </children>
+            </admin>
+        </resources>
+    </acl>
+</config>

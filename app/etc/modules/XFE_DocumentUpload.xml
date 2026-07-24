@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <XFE_DocumentUpload>
+            <active>true</active>
+            <codePool>community</codePool>
+            <depends>
+                <Mage_Sales />
+                <Mage_Adminhtml />
+            </depends>
+        </XFE_DocumentUpload>
+    </modules>
+</config>

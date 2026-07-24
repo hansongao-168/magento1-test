@@ -1,0 +1,145 @@
+/**
+ * XFE LogisticsCarriersLabel Styles
+ *
+ * @package    XFE_LogisticsCarriersLabel
+ */
+
+/* ========== Carrier Offer Page ========== */
+.partner-shipping-offre .page-title h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.carrier-list {
+    margin-bottom: 30px;
+}
+
+.carrier-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+.carrier-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+    margin: 0 0 12px 0;
+}
+
+/* Partner labels */
+.partner-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.partner-label {
+    display: inline-block;
+    background-color: #EAF6FB;
+    color: #7792FE;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 4px;
+    line-height: 1.5;
+}
+
+.partner-label-sm {
+    display: inline-block;
+    background-color: #EAF6FB;
+    color: #7792FE;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+
+/* Country table */
+.country-list h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 12px;
+}
+
+.country-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.country-table th {
+    background: #f9fafb;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.country-table td {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #333;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.country-table tr:hover td {
+    background: #f9fafb;
+}
+
+/* ========== Partner Tracking Info ========== */
+.partner-tracking-row {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #333;
+}
+
+.partner-tracking-row .label {
+    font-weight: 600;
+}
+
+.partner-tracking-row .partner-name {
+    color: #7792FE;
+    font-weight: 600;
+}
+
+.partner-tracking-row .tracking-number {
+    color: #333;
+}
+
+.partner-tracking-row .tracking-actions {
+    display: inline-flex;
+    gap: 6px;
+    margin-left: 6px;
+}
+
+.partner-tracking-row .tracking-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    color: #7792FE;
+    text-decoration: none;
+    font-size: 12px;
+}
+
+.partner-tracking-row .tracking-icon:hover {
+    color: #5a6fd6;
+}
+
+.partner-tracking-row .copy-success {
+    color: #4caf50;
+    font-size: 11px;
+    margin-left: 4px;
+}

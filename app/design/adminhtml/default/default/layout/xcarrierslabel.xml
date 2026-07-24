@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<layout>
+    <!-- Rule grid/list page -->
+    <adminhtml_xcarrierslabel_rule_index>
+        <reference name="content">
+            <block type="xcarrierslabel/adminhtml_rule" name="xcarriers_label_rule_grid" />
+        </reference>
+    </adminhtml_xcarrierslabel_rule_index>
+
+    <!-- Rule edit page -->
+    <adminhtml_xcarrierslabel_rule_edit>
+        <reference name="head">
+            <action method="addJs">
+                <file>mage/adminhtml/loader.js</file>
+            </action>
+            <action method="addItem">
+                <type>skin_js</type>
+                <name>xcarriers_label/js/condition-builder.js</name>
+            </action>
+        </reference>
+        <reference name="content">
+            <block type="xcarrierslabel/adminhtml_rule_edit" name="xcarriers_label_rule_edit" />
+        </reference>
+    </adminhtml_xcarrierslabel_rule_edit>
+</layout>

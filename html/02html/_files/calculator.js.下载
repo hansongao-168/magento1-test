@@ -1,0 +1,187 @@
+jQuery.widget("custom.calculatorSwitchBox", {
+    _showStatusDivElm: null,
+    _showStatusButtonElm: null,
+
+    _create: function () {
+        this._showStatusDivElm = this.options.showStatusDiv || this.element.find('div[data-role-status]');
+        this._showStatusButtonElm = this.options.showStatusButton || this.element.find('div[data-code="status-button"]');
+        this._setShowStatusButton();
+    },
+
+    isOpen: function () {
+        return this._isOpen
+    },
+
+    _setShowStatusDiv(status) {
+        if (this._showStatusDivElm && this._showStatusDivElm.length > 0) {
+            this.showStatusDiv(status);
+        }
+    },
+
+    showStatusDiv: function (status) {
+        jQuery(this.element).find('div[data-role-status]').addClass("d-none").removeClass("d-flex");
+        jQuery(this.element).find("div[data-role-status='" + status + "']").addClass("d-flex").removeClass("d-none");
+    },
+
+    _setShowStatusButton() {
+        var self = this;
+
+        if (this._showStatusButtonElm && this._showStatusButtonElm.length > 0) {
+            jQuery(this._showStatusButtonElm).on("click", function () {
+                self.showStatusDiv("waiting");
+            });
+        }
+    },
+});
+
+jQuery.widget("custom.calculatorBox", {
+    _form: null,
+    _dialog: null,
+    _dialogContent: null,
+    _select: null,
+    _addBox: null,
+    _submit: null,
+    _switchBoxElm: null,
+    _url: null,
+
+    _create: function () {
+        if (!this.options.form) {
+            return false;
+        }
+
+        var self = this;
+
+        this._form = this.options.form;
+        this._dialog = this.options.dialog || this.element.find('div[data-code="dialog"]');
+        this._dialogContent = this.options.dialogContent || this.element.find('div[data-code="dialog-content"]');
+        this._select = this.options.select || this.element.find('select[data-code="select"]');
+        this._addBox = this.options.addBox || this.element.find('button[data-code="add-box"]');
+        this._submit = this.options.submit || this.element.find('button[data-code="submit"]');
+        this._switchBoxElm = this.options.switchBox || null;
+        this._url = this.options.url || null;
+
+        if (this._dialog && this._dialog.length > 0) {
+            this._dialog.dialog({
+                title: false,
+                autoOpen: false,
+                titlebar: false,
+                modal: true,
+                show: {
+                    // effect: "blind",
+                    duration: 500
+                },
+                hide: {
+                    // effect: "explode",
+                    duration: 500
+                },
+                width: "90%",
+                maxHeight: "900px",
+                maxWidth: "768px",
+                open: function(event, ui) {
+                    jQuery(".ui-dialog-titlebar-close").hide();
+                }
+            });
+        }
+
+        if (this._select) {
+            this._select.chosen({
+                no_results_text: Translator.translate("No matching results"),
+                search_contains: true
+            });
+
+            jQuery(this._select)
+                .on('chosen:showing_dropdown', function () {
+                    jQuery('.chosen-results').hide();
+                });
+            jQuery(this._select.parent())
+                .on("input propertychange", "input", function () {/*弥补Chosen插件用keyup监听不到safari输入法联想单词的缺陷*/
+                    jQuery(this).trigger('keyup');
+
+                    var $this = jQuery(this);
+
+                    var v = $this.val().replace(/(à|â)/g,"a")
+                        .replace(/(è|é|ê|ë)/g,"e")
+                        .replace(/(î|ï)/g,"i")
+                        .replace(/(ô|ö)/g,"o")
+                        .replace(/(ù|û|ü)/g,"u")
+                        .replace(/(ç)/g,"c")
+                        .replace(/(œ)/g,"ce")
+                        .replace(/(æ)/g,"ae")
+                        .replace(/(À|Â)/g,"A")
+                        .replace(/(È|É|Ê|Ë)/g,"E")
+                        .replace(/(Î|Ï)/g,"I")
+                        .replace(/(Ô|Ö)/g,"O")
+                        .replace(/(Ù|Û)/g,"U")
+                        .replace(/(Ç)/g,"C")
+                        .replace(/(Œ)/g,"CE")
+                        .replace(/(Æ)/g,"AE");
+                    $this.val(v);
+
+                    if ($this.val().trim().length <= 0) {
+                        jQuery('.chosen-results').hide();
+                    } else {
+                        jQuery('.chosen-results').show();
+                    }
+                })
+            ;
+        }
+
+        if (this._addBox) {
+            jQuery(this._addBox).on("click", function () {
+                self._ajax();
+            });
+        }
+
+        if (this._submit) {
+            jQuery(this._submit).on("click", function () {
+                self._ajax(true);
+            });
+        }
+
+        if (this._switchBoxElm) {
+            jQuery(this._switchBoxElm).calculatorSwitchBox();
+        }
+    },
+
+    _ajax: function (switchOn) {
+        if (this._form.validator.validate()) {
+            if (!jQuery('#shipping-calculator-model').hasClass('show')) {
+                jQuery('#shipping-calculator-model').modal('show');
+            }
+
+            var self = this,
+                dialog = this._dialog && this._dialog.length > 0 ? this._dialog : null,
+                content = this._dialogContent,
+                id = $(this._form).form.id
+                p = Form.serialize(id, true),
+                url = this._url || document.getElementById(id).action;
+
+            if (switchOn) p.switch_on = 1;
+
+            content.html("");
+
+            jQuery.ajax({
+                method: "post",
+                url: url,
+                data: p,
+                dataType: "json",
+                async: false,
+                success: function (response) {
+                    if (response.update_section && response.update_section.html) {
+                        content.html(response.update_section.html);
+                        if (self._switchBoxElm) {
+                            if (self._switchBoxElm.calculatorSwitchBox("isOpen")) {
+                                self._switchBoxElm.calculatorSwitchBox("destroy");
+                                self._switchBoxElm.calculatorSwitchBox();
+                            }
+                            self._switchBoxElm.calculatorSwitchBox("showStatusDiv", "in-progress");
+                        }
+                    } else {
+                        window.alert(response.message);
+                    }
+                }
+            });
+        }
+        return false;
+    }
+});

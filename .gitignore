@@ -1,0 +1,71 @@
+﻿# =============================================================
+# Magento 1 — sensitive & runtime files (do NOT commit)
+# =============================================================
+
+# Database / local config with credentials
+/app/etc/local.xml
+/app/etc/local.xml.additional
+*.local.xml
+!/app/etc/local.xml.template
+!/app/etc/local.xml.additional.template
+
+# Runtime / cache / logs / sessions / locks
+/var/cache/
+/var/log/
+/var/session/
+/var/report/
+/var/locks/
+/var/import/
+/var/export/
+/var/tmp/
+/var/backups/
+/var/db.log
+/var/resource_config.json
+/php_err.txt
+
+# Uploaded media (keep directory + .htaccess)
+/media/*
+!/media/.htaccess
+!/media/.gitkeep
+
+# Magento downloader state
+/downloader/*.cfg
+/downloader/*.log
+/downloader/cache.cfg
+/downloader/connect.cfg
+/downloader/pearlib*
+
+# Node / JS tooling
+/node_modules/
+/package-lock.json
+
+# IDE / editor
+/.idea/
+/.vscode/
+/.project
+/.buildpath
+/.settings/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =============================================================
+# Root-level test / debug artifacts
+# =============================================================
+/test_*.php
+/test_*.html
+/_*.php
+/_*.js
+/_*.html
+/now.yml
+/findings.md
+/progress.md
+/task_plan.md
+/Douane Popup - Standalone.html
+/QQ*.jpg
+/Douane Popup - output/

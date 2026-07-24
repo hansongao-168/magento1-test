@@ -1,0 +1,74 @@
+<?php
+/**
+ * Connected Social Accounts Template
+ *
+ * @var XFE_OAuth2_Block_Social_Buttons $this
+ */
+$customerId = Mage::getSingleton('customer/session')->getCustomerId();
+$connectedAccounts = Mage::getModel('xfeoauth2/social_account')->getCollection()
+    ->addCustomerFilter($customerId);
+$providers = $this->getProviders();
+?>
+<div class="page-title">
+    <h1><?php echo $this->__('Connected Accounts') ?></h1>
+</div>
+
+<div class="xfeoauth2-social-accounts">
+    <?php if ($connectedAccounts->count() > 0): ?>
+    <h2><?php echo $this->__('Your connected social accounts:') ?></h2>
+    <ul class="xfeoauth2-connected-accounts">
+        <?php foreach ($connectedAccounts as $account): ?>
+        <li class="xfeoauth2-account-item">
+            <span class="xfeoauth2-account-provider">
+                <?php echo $this->escapeHtml(ucfirst($account->getProvider())) ?>
+            </span>
+            <span class="xfeoauth2-account-name">
+                <?php echo $this->escapeHtml($account->getName() ?: $account->getEmail()) ?>
+            </span>
+            <span class="xfeoauth2-account-actions">
+                <a href="<?php echo $this->getUrl('oauth2/login/disconnect', array('provider' => $account->getProvider())) ?>"
+                   class="btn-remove"
+                   onclick="return confirm('<?php echo $this->__('Are you sure you want to disconnect this account?') ?>')">
+                    <?php echo $this->__('Disconnect') ?>
+                </a>
+            </span>
+        </li>
+        <?php endforeach; ?>
+    </ul>
+    <?php else: ?>
+    <p><?php echo $this->__('You have not connected any social accounts yet.') ?></p>
+    <?php endif; ?>
+
+    <div class="xfeoauth2-connect-accounts">
+        <h2><?php echo $this->__('Connect a new account:') ?></h2>
+        <?php if (!empty($providers)): ?>
+        <ul class="xfeoauth2-connect-list">
+            <?php foreach ($providers as $code => $provider):
+                $alreadyConnected = false;
+                foreach ($connectedAccounts as $acc) {
+                    if ($acc->getProvider() == $code) {
+                        $alreadyConnected = true;
+                        break;
+                    }
+                }
+                if ($alreadyConnected) continue;
+            ?>
+            <li>
+                <a href="<?php echo $this->escapeUrl($provider['url']) ?>"
+                   class="xfeoauth2-btn xfeoauth2-btn-<?php echo $code ?>">
+                    <span class="xfeoauth2-btn-label">
+                        <?php echo $this->__('Connect %s', $provider['label']) ?>
+                    </span>
+                </a>
+            </li>
+            <?php endforeach; ?>
+        </ul>
+        <?php endif; ?>
+    </div>
+
+    <div class="buttons-set">
+        <a href="<?php echo $this->getUrl('customer/account') ?>" class="button">
+            <span><span><?php echo $this->__('Back to My Account') ?></span></span>
+        </a>
+    </div>
+</div>

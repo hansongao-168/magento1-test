@@ -1,0 +1,240 @@
+articlesInput = Class.create();
+articlesInput.prototype = {
+    initialize: function (inputElm, targetElm, articles)
+    {
+        this.inputElm = $(inputElm);
+        this.inputDivId = inputElm + ':div';
+        this.inputDivElm = null;
+        this.targetElm = $(targetElm);
+        this.div = null;
+        this.ul = null;
+        this._tid = 0;
+        this._onSelected = [];
+        this.articles = [];
+
+        this.createDiv();
+
+        let self = this;
+
+        this.articles = articles || [];
+
+        let _onInput = function () {
+            self.showList();
+            $(self.inputDivElm).select('button').each(function (e) {
+                let label = e.getAttribute('data-label');
+                if (label == "Close") {
+                    $(e).observe('click', function () {
+                        $(self.getUl()).hide();
+                    });
+                }
+            });
+        };
+
+        this.inputElm.observe('input', function () {
+            this.value = '';
+        });
+
+        this.inputElm.observe('click', _onInput);
+        this.inputElm.writeAttribute('autocomplete', 'new-password');
+
+        this.onSelected(function (data, elm) {
+            let name = elm.getAttribute('data-name') || '', hscode = elm.getAttribute('data-hscode') || '';
+            self.inputElm.value = name;
+            self.targetElm.value = hscode;
+
+            window.setTimeout(function () {
+                $(self.inputDivElm).addClassName("d-none");
+            }, 20);
+        });
+        jQuery(self.inputElm.parentNode).on("click", function () {
+            jQuery('.parcel-package-articles').find('div[id*="articles-"]').addClass("d-none");
+            jQuery(self.inputDivElm).removeClass("d-none");
+        });
+    },
+
+    showList: function()
+    {
+        if (this.articles.length > 0) {
+            this.getUl().useData = this.articles;
+            this.getUl().innerHTML = this._createList(this.articles);
+            $(this.getUl()).show();
+            this._setOffset();
+            this._addEvent();
+        } else if (this.ul) {
+            this.ul.innerHTML = "";
+            $(this.ul).hide();
+        }
+        return this;
+    },
+
+    createDiv: function () {
+        let self = this;
+        if (document.getElementById(self.inputDivId)) {
+            var inputElementDiv = document.getElementById(self.inputDivId);
+        } else {
+            var inputElementDiv = document.createElement("div");
+            $(inputElementDiv).id = self.inputDivId;
+            self.inputElm.after($(inputElementDiv));
+        }
+        $(self.inputDivId).className = "d-none";
+        self.inputDivElm = $(inputElementDiv);
+    },
+
+    _createList: function ()
+    {
+        let i = 0, len = this.articles.length, html = '';
+
+        // html += '<div class="modal-header lh-32 m-1 p-2 border-0">';
+        // html += '<h1 class="w-100 modal-title fs-5"></h1><button type="button" data-label="Close" class="btn-close shadow-none"></button>';
+        // html += '</div>';
+
+        for (; i < len; i++) {
+            let label = this.articles[i]['label'] || '',
+                items = this.articles[i]['items'] || [],
+                iLen = items.length,
+                is_input = this.articles[i]['is_input'] || false;
+            html += '<li class="item d-flex align-items-center justify-content-between rounded-4" data-index="' + i + '" data-label="'
+                + label + '">';
+            html += '<div class="label"><strong>' + label + '</strong></div>';
+            // html += '<i data-i="' + i + '" class="bi e-plus-circle-icon"></i>';
+            html += '</li>';
+
+            if (is_input) {
+                html += '<div class="py-1"><ul data-ul-index="' + i + '" class="list d-none">';
+                html += '<li class="input d-flex flex-column align-items-center rounded-4 p-2">';
+                html += '<div class="w-100 d-flex flex-column"><div class="label">' + Translator.translate("物品描述(英文)")
+                    + '<em class="required">*</em></div><input data-key="name" class="'
+                    + (this.articles[i]['class'] || 'p-2 rounded-2 border border-1') + '" value=""/></div>';
+                html += '<div class="w-100 d-flex flex-column"><div class="label">' + Translator.translate("HSCode")
+                    + '</div><div class="d-flex justify-content-between gap-2">';
+                html += '<input data-key="hs_code" class="'
+                    + (this.articles[i]['class'] || 'py-2 rounded-2 border border-1') + '" value=""/>';
+                html += '<button data-button class="btn btn-info-1 py-2 px-4 fw-bold" type="button">'
+                    + (this.articles[i]['button'] || '') + '</button></div></div>';
+                html += '</li>';
+                html += '</ul></div>';
+            } else if (iLen) {
+                html += '<div class="py-1 ps-4"><ul data-ul-index="' + i + '" class="border-start border-2 list d-none">';
+                let j = 0, _item, _label, _name, _hscode;
+                for (; j < iLen; j++) {
+                    _item = items[j] || {};
+                    _label = _item.label || '';
+                    _name = _item.name || '';
+                    _hscode = _item.hs_code || '';
+                    html += '<li class="content rounded-4 mx-1" data-li-index="' + j + '" data-name="' + _name + '"';
+                    html += ' data-hscode="' + _hscode + '"><div class="d-flex justify-content-between">';
+                    html += '<div class="d-flex flex-column"><div class="d-flex fs-6 fw-bold">' + _label + '</div>';
+                    html += '<div class="btn-secondary-2">' + _name + '</div></div>';
+                    html += '<div class="d-flex align-items-center"><div class="rounded-5 p-2 text-white mx-2 bg-secondary-2">'
+                        + _hscode + '</div></div>';
+                    html += '</div></li>';
+                }
+                html += '</ul></div>';
+            }
+        }
+
+        html += '<div class="mb-3"></div>';
+
+        return html;
+    },
+
+    _setOffset: function () {
+        let a = this.inputElm.positionedOffset(), b = this.inputElm.getDimensions();
+        $(this.getUl()).setStyle({
+            "top": (b.height + a.top) + "px",
+            "left": b.left + "px"
+        });
+        return this;
+    },
+
+    _addEvent: function () {
+        let self = this;
+
+        jQuery(this.getUl()).find("li.item").each(function (i, li) {
+            jQuery(li).on("click", function () {
+                if (!jQuery(this).attr("data-label")) {
+                    return false;
+                }
+                let i = jQuery(this).attr("data-index");
+                jQuery(self.getUl()).find("li.item").removeClass('active');
+                jQuery(this).addClass('active');
+                self._triggerHidden(i);
+            });
+        });
+
+        jQuery('.articles-list').find('li[data-li-index]').each(function(i, li) {
+            jQuery(li).on("click", function () {
+                self._triggerEvent(i, li);
+            });
+        });
+
+        jQuery('.articles-list').find('button[data-button]').each(function (i, but) {
+            jQuery(but).on("click", function () {
+                let nameInp = jQuery(this).parent().parent().parent().find('input[data-key="name"]') || false,
+                    hscodeInp = jQuery(this).parent().parent().parent().find('input[data-key="hs_code"]') || false;
+
+                if (nameInp && nameInp[0]) {
+                    let v = nameInp[0].value || '';
+
+                    // if (!v || !/^[\w\-_\/]+$/.test(v)) {
+                    //     showMessages("error-msg", Translator.translate("只允许填英文字母数字"));
+                    //     return false;
+                    // }
+
+                    self.inputElm.value = v;
+                    self.targetElm.value = hscodeInp && hscodeInp[0] ? hscodeInp[0].value : '';
+                    window.setTimeout(function () {
+                        $(self.inputDivElm).addClassName("d-none");
+                    }, 20);
+                }
+            });
+        });
+
+        return this;
+    },
+
+    _triggerHidden: function (i) {
+        this._triggerClass(
+            'ul[data-ul-index!="' + i + '"]', 'ul[data-ul-index="' + i + '"]', 'd-none'
+        );
+    },
+
+    _triggerClass: function (n1, n2, c1, c2) {
+        let elm = jQuery('.articles-list');
+        elm.find(n1).addClass(c1);
+        if (c2) elm.find(n1).removeClass(c2);
+        elm.find(n2).each(function () {
+            if (jQuery(this).hasClass(c1)) {
+                jQuery(this).removeClass(c1);
+                if (c2) jQuery(this).addClass(c2);
+            } else {
+                jQuery(this).addClass(c1);
+                if (c2) jQuery(this).removeClass(c2);
+            }
+        });
+    },
+
+    _triggerEvent: function (data, elm) {
+        for (let i = 0, len = this._onSelected.length; i < len; i++) {
+            this._onSelected[i](data, elm);
+        }
+        return this;
+    },
+
+    onSelected: function (fun) {
+        if (typeof fun === "function") {
+            this._onSelected.push(fun);
+        }
+        return this;
+    },
+
+    getUl: function () {
+        if (!this.ul) {
+            this.ul = document.createElement("ul");
+            $(this.ul).addClassName('articles-list rounded-4');
+            this.inputDivElm.append(this.getUl());
+        }
+        return this.ul;
+    },
+
+};

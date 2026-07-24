@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<layout>
+    <!-- Client Grid -->
+    <adminhtml_xfeoauth2_client_index>
+        <reference name="content">
+            <block type="xfeoauth2/adminhtml_client" name="xfeoauth2_client" />
+        </reference>
+    </adminhtml_xfeoauth2_client_index>
+
+    <adminhtml_xfeoauth2_client_grid>
+        <block type="xfeoauth2/adminhtml_client_grid" name="root" output="toHtml" />
+    </adminhtml_xfeoauth2_client_grid>
+
+    <adminhtml_xfeoauth2_client_edit>
+        <reference name="content">
+            <block type="xfeoauth2/adminhtml_client_edit" name="xfeoauth2_client_edit" />
+        </reference>
+    </adminhtml_xfeoauth2_client_edit>
+
+    <!-- Token Grid -->
+    <adminhtml_xfeoauth2_token_index>
+        <reference name="content">
+            <block type="xfeoauth2/adminhtml_token" name="xfeoauth2_token" />
+        </reference>
+    </adminhtml_xfeoauth2_token_index>
+
+    <adminhtml_xfeoauth2_token_grid>
+        <block type="xfeoauth2/adminhtml_token_grid" name="root" output="toHtml" />
+    </adminhtml_xfeoauth2_token_grid>
+</layout>

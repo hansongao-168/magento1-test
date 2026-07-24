@@ -1,0 +1,169 @@
+/**
+ * XFE_OAuth2 Social Login Styles
+ */
+
+/* Social login section */
+.xfeoauth2-social-login {
+    margin: 20px 0;
+    padding: 15px 0;
+    border-top: 1px solid #e0e0e0;
+    text-align: center;
+}
+
+.xfeoauth2-social-login-title {
+    margin-bottom: 12px;
+    color: #888;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.xfeoauth2-social-login-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Button base styles */
+.xfeoauth2-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none !important;
+    cursor: pointer;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    background: #fff;
+    color: #333;
+}
+
+.xfeoauth2-btn:hover {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.xfeoauth2-btn-icon {
+    display: inline-flex;
+    align-items: center;
+}
+
+.xfeoauth2-btn-icon img {
+    display: block;
+}
+
+/* Google button */
+.xfeoauth2-btn-google {
+    border-color: #d0d0d0;
+}
+
+.xfeoauth2-btn-google:hover {
+    background: #f5f5f5;
+}
+
+/* WeChat button */
+.xfeoauth2-btn-wechat {
+    border-color: #07c160;
+    color: #07c160;
+}
+
+.xfeoauth2-btn-wechat:hover {
+    background: #f0fff4;
+}
+
+/* Authorize page */
+.oauth2-authorize-box {
+    max-width: 500px;
+    margin: 20px auto;
+}
+
+.oauth2-authorize-box .box {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.oauth2-authorize-box .box-title {
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.oauth2-authorize-box .box-title h2 {
+    font-size: 16px;
+    color: #333;
+}
+
+.oauth2-scopes {
+    list-style: disc;
+    padding-left: 20px;
+    color: #555;
+    line-height: 1.8;
+}
+
+.oauth2-authorize-box .buttons-set {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-cancel {
+    background: #f5f5f5;
+    border: 1px solid #ccc;
+    color: #666;
+}
+
+.btn-primary {
+    background: #1979c3;
+    border: 1px solid #1979c3;
+    color: #fff;
+}
+
+/* Connected accounts page */
+.xfeoauth2-social-accounts {
+    max-width: 600px;
+}
+
+.xfeoauth2-connected-accounts {
+    list-style: none;
+    padding: 0;
+    margin: 15px 0;
+}
+
+.xfeoauth2-account-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    background: #fafafa;
+}
+
+.xfeoauth2-account-provider {
+    font-weight: 600;
+    min-width: 80px;
+}
+
+.xfeoauth2-account-name {
+    flex: 1;
+    color: #555;
+}
+
+.xfeoauth2-account-actions a {
+    color: #e02b27;
+    font-size: 12px;
+}
+
+.xfeoauth2-connect-list {
+    list-style: none;
+    padding: 0;
+}
+
+.xfeoauth2-connect-list li {
+    margin-bottom: 10px;
+}

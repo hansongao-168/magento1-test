@@ -1,0 +1,232 @@
+/*
+* login switch
+* login modal
+* fetch qrCode
+*/
+var interval = null;
+var loginToken = null;
+var expires = null;
+
+var LoginWidget = {
+    homePageUrl: document.getElementById("home-page-url")?.getAttribute("href"),
+    resetActionBtn: function(parentElm, type) {
+        let target = parentElm.querySelector('[data-effect="'+type+'"]');
+        if(!target) return;
+        this._hide(target.getElementsByTagName("button"));
+        target.querySelector('[data-type="default"]')?.classList.remove("hidden");
+    },
+    onQrcodeAction: function(element, type) {
+        let parentElm = element.closest("#modal-body-login");
+        LoginWidget.resetActionBtn(parentElm, 'sms-action');
+        LoginWidget.toggleActionBtn(element, type);
+        LoginWidget.toggleForm(element, type);
+
+        switch (type) {
+            case 'qrcode':
+                //fetch qrcode
+                this._fetchQrCode(false, parentElm);
+                break;
+            case 'default':
+                //clear qrcode
+                this._clearQrcode(parentElm);
+                break;
+        }
+    },
+    onSmsAction: function(element, type) {
+        let parentElm = element.closest("#modal-body-login");
+        LoginWidget.resetActionBtn(parentElm, 'qrcode-action');
+        LoginWidget.toggleActionBtn(element, type);
+        LoginWidget.toggleForm(element, type);
+    },
+    toggleActionBtn: function(element, type) {
+        element.classList.toggle("hidden");
+        let target = element.parentElement.querySelector('[data-type="'+ type +'"]');
+        target && target.classList.contains("hidden") ? target.classList.remove("hidden") : '';
+        
+    },
+    toggleForm: function(element, type) {
+        let targets = element.closest("#modal-body-login").querySelectorAll('[data-effect="switch-login"]');
+        if(!!targets.length) {
+            for(let target of targets) {
+                if(target.hasAttribute('data-type') && target.getAttribute('data-type')) {
+                    var isCurrent = target.getAttribute('data-type') === type ? true : false;
+                    
+                    if(isCurrent) {
+                        
+                        target.classList.contains("hidden") ? target.classList.remove("hidden") : '';
+                    } else {
+                        
+                        target.classList.contains("hidden") ? '' : target.classList.add("hidden");
+                    }
+                }
+                
+            }
+        }
+    },
+    _addMask: function(parentElm) {
+        parentElm.querySelector('#qrcode-img-wrapper').classList.add("mask-wrapper");
+    },
+    _removeMask: function(parentElm) {
+        parentElm.querySelector('#qrcode-img-wrapper').classList.remove("mask-wrapper");
+    },
+    _show: function(targets) {
+        for(let target of targets) {
+            target.classList.remove("hidden");
+        }
+    },
+    _hide: function(targets) {
+        for(let target of targets) {
+            target.classList.add("hidden");
+        }
+    },
+    _resetHidden(parentElm) {
+        //remove mask
+        this._removeMask(parentElm);
+
+        //reset hidden
+        let targetsArr = ['[data-effect="qrcode-fail"]', '[data-effect="qrcode-success"]'];
+        for(let targets of targetsArr) {
+            this._hide(parentElm.querySelectorAll(targets));
+        }
+        this._show(parentElm.querySelectorAll('[data-effect="qrcode-normal"]'));
+    },
+    _clearQrcode: function(parentElm) {
+        if(interval) {
+            clearInterval(interval);
+            interval = null;
+        }
+
+        //reset hidden
+        this._resetHidden(parentElm);
+      
+        let params = new Date().valueOf() + '=' + Math.floor(Math.random() * (9999));
+        if (loginToken !== null && expires !== null) {
+            params += '&refresh=1';
+            params += '&login_token=' + loginToken;
+            params += '&expires=' + expires;
+        }
+        jQuery.ajax({
+            url: this.homePageUrl + 'xcustomer/account/delLoginQrcode' + '?' + params,
+            complete: function (e) {
+                loginToken = null;
+                expires = null;
+            },
+        });
+    },
+    _fetchQrCode: function(refresh, parentElm) {
+        let _this = this;
+        let url = parentElm.querySelector('[name="qrcodeUrl"]')?.value;
+        let loginUrl = parentElm.querySelector('[name="qrcodeLoginUrl"]')?.value;
+        let scannedStatus = parentElm.querySelector('[name="scannedStatus"]')?.value;
+        let loginStatus = parentElm.querySelector('[name="loginStatus"]')?.value;
+        if(interval) {
+            clearInterval(interval);
+            interval = null;
+        }
+        let params = new Date().valueOf() + '=' + Math.floor(Math.random() * (9999));
+        if (refresh === true && loginToken !== null && expires !== null) {
+            params += '&refresh=1';
+            params += '&login_token=' + loginToken;
+            params += '&expires=' + expires;
+        }
+
+        //reset hidden
+        this._resetHidden(parentElm);
+
+        jQuery.ajax({
+            url: url + '?' + params,
+            success: function (data) {
+                let result;
+                try {
+                    result = JSON.parse(data);
+                } catch (e) {
+                    showMessages('error-msg', Translator.translate('服务器异常'));
+                    return;
+                }
+                if (result.success === false) {
+                    showMessages('error-msg', result.message);
+                    return;
+                }
+
+                loginToken = result.token;
+                expires = result.expires;
+
+                parentElm.querySelector('#qrcode-img').setAttribute('src', result.url);
+
+                interval = setInterval(function () {
+                    _this._removeMask(parentElm);
+
+                    if (expires > new Date().valueOf()) {
+                        if(interval) {
+                            clearInterval(interval);
+                            interval = null;
+                        }
+                        
+                        _this._show(parentElm.querySelectorAll('[data-effect="qrcode-fail"]'));
+                        _this._addMask(parentElm);
+
+
+                    } else {
+                        if (loginToken === null || expires === null) return;
+                        let params = new Date().valueOf() + '=' + Math.floor(Math.random() * (9999));
+                        params += '&login_token=' + loginToken;
+                        params += '&expires=' + expires;
+                        jQuery.ajax({
+                            url:loginUrl + '?' + params,
+                            success: function (data) {
+                                if (interval === null) return;
+                                let result;
+                                try {
+                                    result = JSON.parse(data);
+                                } catch (e) {
+                                    console.log(e);
+                                    return;
+                                }
+
+                                if (result.success === false){//已失效
+                                    if(interval) {
+                                        clearInterval(interval);
+                                        interval = null;
+                                    }
+
+                                    _this._show(parentElm.querySelectorAll('[data-effect="qrcode-fail"]'));
+                                    _this._addMask(parentElm);
+
+                                } else if (result.status === scannedStatus) {//已扫描
+                                    _this._show(parentElm.querySelectorAll('[data-effect="qrcode-success"]'));
+                                    _this._hide(parentElm.querySelectorAll('[data-effect="qrcode-normal"]'))
+                                    _this._addMask(parentElm);
+                                   
+                                } else if (result.status === loginStatus) {//登录成功
+                                    if(interval) {
+                                        clearInterval(interval);
+                                        interval = null;
+                                    }
+                                    window.location.href = result.redirect;
+                                    return;
+                                }
+                            }
+                        });
+                    }
+                }, 2000);
+            },
+            error: function (e) {
+                showMessages('error-msg', Translator.translate('服务器异常'));
+            }
+        });
+    },
+    showModal: function(e, type) {
+        var target = jQuery(e).closest('.modal');
+        if(!target) return;
+        var id = target.attr('id');
+        if(jQuery(`${'#'+id}`)) {
+
+            jQuery(`${'#'+id}`).modal('hide');
+            setTimeout(()=>{
+                if(jQuery(`${'#'+type+'Modal'}`)) {
+                    jQuery(`${'#'+type+'Modal'}`).modal('show');
+                }
+            },200);
+        }
+    }
+}

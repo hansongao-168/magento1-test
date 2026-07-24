@@ -1,0 +1,150 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <XFE_OAuth2>
+            <version>1.0.0</version>
+        </XFE_OAuth2>
+    </modules>
+    <global>
+        <models>
+            <xfeoauth2>
+                <class>XFE_OAuth2_Model</class>
+                <resourceModel>xfeoauth2_resource</resourceModel>
+            </xfeoauth2>
+            <xfeoauth2_resource>
+                <class>XFE_OAuth2_Model_Resource</class>
+                <entities>
+                    <client>
+                        <table>xfe_oauth2_client</table>
+                    </client>
+                    <access_token>
+                        <table>xfe_oauth2_access_token</table>
+                    </access_token>
+                    <refresh_token>
+                        <table>xfe_oauth2_refresh_token</table>
+                    </refresh_token>
+                    <authorization_code>
+                        <table>xfe_oauth2_authorization_code</table>
+                    </authorization_code>
+                    <social_account>
+                        <table>xfe_oauth2_social_account</table>
+                    </social_account>
+                </entities>
+            </xfeoauth2_resource>
+        </models>
+        <blocks>
+            <xfeoauth2>
+                <class>XFE_OAuth2_Block</class>
+            </xfeoauth2>
+        </blocks>
+        <helpers>
+            <xfeoauth2>
+                <class>XFE_OAuth2_Helper</class>
+            </xfeoauth2>
+        </helpers>
+        <resources>
+            <xfeoauth2_setup>
+                <setup>
+                    <module>XFE_OAuth2</module>
+                </setup>
+                <connection>
+                    <use>core_setup</use>
+                </connection>
+            </xfeoauth2_setup>
+        </resources>
+    </global>
+    <frontend>
+        <routers>
+            <xfeoauth2>
+                <use>standard</use>
+                <args>
+                    <module>XFE_OAuth2</module>
+                    <frontName>oauth2</frontName>
+                </args>
+            </xfeoauth2>
+            <api>
+                <use>standard</use>
+                <args>
+                    <module>XFE_OAuth2</module>
+                    <frontName>api</frontName>
+                </args>
+            </api>
+        </routers>
+        <layout>
+            <updates>
+                <xfeoauth2>
+                    <file>xfeoauth2.xml</file>
+                </xfeoauth2>
+            </updates>
+        </layout>
+        <translate>
+            <modules>
+                <XFE_OAuth2>
+                    <files>
+                        <default>XFE_OAuth2.csv</default>
+                    </files>
+                </XFE_OAuth2>
+            </modules>
+        </translate>
+    </frontend>
+    <admin>
+        <routers>
+            <adminhtml>
+                <args>
+                    <modules>
+                        <XFE_OAuth2 before="Mage_Adminhtml">XFE_OAuth2_Adminhtml</XFE_OAuth2>
+                    </modules>
+                </args>
+            </adminhtml>
+        </routers>
+    </admin>
+    <adminhtml>
+        <menu>
+            <xfe translate="title">
+                <title>XFE</title>
+                <sort_order>150</sort_order>
+                <children>
+                    <xfeoauth2_clients translate="title">
+                        <title>OAuth 2.0 Clients</title>
+                        <sort_order>10</sort_order>
+                        <action>adminhtml/xfeoauth2_client/index</action>
+                    </xfeoauth2_clients>
+                    <xfeoauth2_tokens translate="title">
+                        <title>Access Tokens</title>
+                        <sort_order>20</sort_order>
+                        <action>adminhtml/xfeoauth2_token/index</action>
+                    </xfeoauth2_tokens>
+                </children>
+            </xfe>
+        </menu>
+        <acl>
+            <resources>
+                <admin>
+                    <children>
+                        <xfe translate="title">
+                            <title>XFE</title>
+                            <children>
+                                <xfeoauth2_clients translate="title">
+                                    <title>OAuth 2.0 Clients</title>
+                                </xfeoauth2_clients>
+                                <xfeoauth2_tokens translate="title">
+                                    <title>Access Tokens</title>
+                                </xfeoauth2_tokens>
+                                <xfeoauth2_configuration translate="title">
+                                    <title>OAuth2 Configuration</title>
+                                </xfeoauth2_configuration>
+                            </children>
+                        </xfe>
+                    </children>
+                </admin>
+            </resources>
+        </acl>
+        <layout>
+            <updates>
+                <xfeoauth2>
+                    <file>xfeoauth2_admin.xml</file>
+                </xfeoauth2>
+            </updates>
+        </layout>
+    </adminhtml>
+</config>

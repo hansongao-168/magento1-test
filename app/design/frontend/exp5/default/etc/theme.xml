@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<theme>
+    <package>exp5</package>
+    <title>exp5 Frontend</title>
+    <parent>base/default</parent>
+</theme>

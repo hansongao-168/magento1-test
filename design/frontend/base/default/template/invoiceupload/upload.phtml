@@ -1,0 +1,37 @@
+<?php /** @var XFE_InvoiceUpload_Block_Frontend_Customer_Invoice_Upload $this */ ?>
+<?php $helper = Mage::helper('xfe_invoiceupload'); ?>
+
+<section class="xfe-invoice-upload" id="xfe-invoice-upload-<?php echo $this->getOrderId(); ?>">
+    <h2><?php echo $helper->__('Invoices'); ?></h2>
+
+    <?php if ($this->getInvoices()->getSize()): ?>
+        <ul class="xfe-invoice-list">
+            <?php foreach ($this->getInvoices() as $invoice): ?>
+                <?php echo $this->renderRow($invoice); ?>
+            <?php endforeach; ?>
+        </ul>
+    <?php else: ?>
+        <p class="xfe-invoice-empty"><?php echo $helper->__('No invoices uploaded yet.'); ?></p>
+    <?php endif; ?>
+
+    <form method="post"
+          action="<?php echo htmlspecialchars($this->getFormActionUrl(), ENT_QUOTES); ?>"
+          enctype="multipart/form-data"
+          class="xfe-invoice-form">
+        <input type="hidden" name="form_key" value="<?php echo htmlspecialchars(Mage::getSingleton('core/session')->getFormKey(), ENT_QUOTES); ?>" />
+        <label class="xfe-invoice-label">
+            <span><?php echo $helper->__('Upload an invoice'); ?></span>
+            <input type="file" name="invoice" accept="<?php
+                echo htmlspecialchars('.' . implode(',.', $helper->getAllowedExtensions()), ENT_QUOTES);
+            ?>" required />
+        </label>
+        <p class="xfe-invoice-hint">
+            <?php echo $helper->__(
+                'Allowed: %1$s. Max size: %2$s.',
+                implode(', ', $helper->getAllowedExtensions()),
+                $helper->formatBytes($helper->getMaxBytes())
+            ); ?>
+        </p>
+        <button type="submit" class="button"><?php echo $helper->__('Upload'); ?></button>
+    </form>
+</section>

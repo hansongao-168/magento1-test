@@ -1,0 +1,380 @@
+<?php
+/**
+ * XFE Order Frontend - Dynamic Order History
+ *
+ * @var $this XFE_OrderFrontend_Block_Order_History
+ */
+$listUrl = $this->getListUrl();
+$statusOptions = $this->getStatusOptions();
+?>
+<div class="xfe-order-history" id="xfe-order-container">
+    <div class="page-title">
+        <h1><?php echo $this->__('My Orders') ?></h1>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 统计卡片                                                 -->
+    <!-- ============================================================ -->
+    <div id="xfe-stats" style="display: none;">
+        <div class="row" id="xfe-stats-row"></div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 搜索/筛选栏                                               -->
+    <!-- ============================================================ -->
+    <div class="box-account" style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+        <div class="row">
+            <div class="col-3" style="float: left; width: 25%; padding: 5px;">
+                <label style="font-size: 11px; font-weight: bold; color: #666; text-transform: uppercase;">
+                    <?php echo $this->__('Order #') ?>
+                </label>
+                <input type="text" id="xfe-search" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"
+                       placeholder="<?php echo $this->__('Search by order number...') ?>">
+            </div>
+            <div class="col-2" style="float: left; width: 20%; padding: 5px;">
+                <label style="font-size: 11px; font-weight: bold; color: #666; text-transform: uppercase;">
+                    <?php echo $this->__('Status') ?>
+                </label>
+                <select id="xfe-status" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value=""><?php echo $this->__('All Statuses') ?></option>
+                    <?php foreach ($statusOptions as $val => $label): ?>
+                    <option value="<?php echo $this->escapeHtml($val) ?>">
+                        <?php echo $this->escapeHtml($label) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-2" style="float: left; width: 15%; padding: 5px;">
+                <label style="font-size: 11px; font-weight: bold; color: #666; text-transform: uppercase;">
+                    <?php echo $this->__('From') ?>
+                </label>
+                <input type="date" id="xfe-date-from" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div class="col-2" style="float: left; width: 15%; padding: 5px;">
+                <label style="font-size: 11px; font-weight: bold; color: #666; text-transform: uppercase;">
+                    <?php echo $this->__('To') ?>
+                </label>
+                <input type="date" id="xfe-date-to" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div class="col-1" style="float: left; width: 10%; padding: 5px; padding-top: 20px;">
+                <button class="button" id="xfe-search-btn" style="padding: 5px 15px;">
+                    <span><?php echo $this->__('Search') ?></span>
+                </button>
+            </div>
+            <div style="clear: both;"></div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 统计信息行                                               -->
+    <!-- ============================================================ -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div>
+            <span id="xfe-total-info" style="color: #666; font-size: 12px;"></span>
+            <span id="xfe-error" style="color: #e74c3c; font-size: 12px;"></span>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 订单表格                                                 -->
+    <!-- ============================================================ -->
+    <div class="box-account">
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="xfe-orders-table">
+                <thead>
+                    <tr>
+                        <th><?php echo $this->__('Order #') ?></th>
+                        <th><?php echo $this->__('Date') ?></th>
+                        <th><?php echo $this->__('Ship To') ?></th>
+                        <th class="a-right"><?php echo $this->__('Order Total') ?></th>
+                        <th><?php echo $this->__('Status') ?></th>
+                        <th><?php echo $this->__('Action') ?></th>
+                    </tr>
+                </thead>
+                <tbody id="xfe-orders-body">
+                    <tr id="xfe-loading-row">
+                        <td colspan="6" class="a-center">
+                            <div style="padding: 20px;">
+                                <img src="<?php echo $this->getSkinUrl('images/opc-ajax-loader.gif') ?>" alt="Loading">
+                                <div style="color: #666; font-size: 12px; margin-top: 10px;">
+                                    <?php echo $this->__('Loading...') ?>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 分页                                                     -->
+    <!-- ============================================================ -->
+    <div id="xfe-pagination" style="display: none; margin-top: 20px; text-align: center;">
+        <div class="pager">
+            <div class="pages">
+                <strong style="margin-right: 10px;"><?php echo $this->__('Page:') ?></strong>
+                <ol id="xfe-pagination-list"></ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- jQuery 实现动态订单加载                                   -->
+<!-- ============================================================ -->
+<script>
+(function($) {
+    if (typeof jQuery === 'undefined') {
+        document.getElementById('xfe-error').textContent = '<?php echo $this->__('jQuery is required but not loaded.') ?>';
+        return;
+    }
+
+    var xfe = {
+        page: 1,
+        lastPage: 1,
+        perPage: 10,
+        total: 0,
+        listUrl: '<?php echo $listUrl ?>',
+
+        // 加载订单
+        loadOrders: function() {
+            var self = this;
+            $('#xfe-loading-row').show();
+            $('#xfe-error').text('');
+            $('#xfe-total-info').text('');
+
+            var params = {
+                page: self.page,
+                limit: self.perPage,
+                search: $('#xfe-search').val(),
+                status: $('#xfe-status').val(),
+                date_from: $('#xfe-date-from').val(),
+                date_to: $('#xfe-date-to').val()
+            };
+
+            $.getJSON(self.listUrl, params, function(json) {
+                if (json.success) {
+                    self.renderOrders(json.data);
+                } else {
+                    $('#xfe-error').text(json.message || '<?php echo $this->__('Load failed') ?>');
+                    $('#xfe-loading-row').hide();
+                }
+            }).fail(function() {
+                $('#xfe-error').text('<?php echo $this->__('Network error') ?>');
+                $('#xfe-loading-row').hide();
+            });
+        },
+
+        // 渲染订单列表
+        renderOrders: function(data) {
+            var self = this;
+            self.page = data.pagination.current_page;
+            self.lastPage = data.pagination.last_page;
+            self.perPage = data.pagination.per_page;
+            self.total = data.pagination.total;
+
+            // 统计卡片
+            if (data.stats) {
+                self.renderStats(data.stats);
+            }
+
+            // 表格体
+            var $tbody = $('#xfe-orders-body');
+            $tbody.empty();
+
+            if (data.orders.length === 0) {
+                $tbody.append('<tr><td colspan="6" class="a-center" style="padding: 20px; color: #666;">' +
+                    '<?php echo $this->__('You have placed no orders.') ?>' +
+                    '</td></tr>');
+            } else {
+                var viewUrl = '<?php echo $this->getUrl('sales/order/view') ?>order_id/';
+                var reorderUrl = '<?php echo $this->getUrl('sales/order/reorder') ?>order_id/';
+                var statusStyles = {
+                    pending: 'background-color: #f0ad4e; color: #000;',
+                    processing: 'background-color: #5bc0de; color: #000;',
+                    complete: 'background-color: #5cb85c; color: #fff;',
+                    closed: 'background-color: #999; color: #fff;',
+                    canceled: 'background-color: #d9534f; color: #fff;',
+                    holded: 'background-color: #333; color: #fff;'
+                };
+
+                $.each(data.orders, function(i, order) {
+                    var badgeStyle = statusStyles[order.status] || 'background-color: #999; color: #fff;';
+                    var reorderHtml = order.can_reorder
+                        ? '<a href="' + reorderUrl + order.entity_id + '" class="link-reorder" style="margin-left: 10px;"><?php echo $this->__('Reorder') ?></a>'
+                        : '';
+
+                    $tbody.append(
+                        '<tr>' +
+                            '<td><a href="' + viewUrl + order.entity_id + '">' + self.escapeHtml(order.increment_id) + '</a></td>' +
+                            '<td>' + self.formatDate(order.created_at) + '</td>' +
+                            '<td>' + self.escapeHtml(order.shipping_name || '-') + '</td>' +
+                            '<td class="a-right">' + self.escapeHtml(order.currency + ' ' + order.grand_total) + '</td>' +
+                            '<td><span style="padding: 3px 10px; border-radius: 12px; font-size: 11px;' + badgeStyle + '">' + self.escapeHtml(order.status_label) + '</span></td>' +
+                            '<td class="a-center">' +
+                                '<a href="' + viewUrl + order.entity_id + '" class="link-reorder"><?php echo $this->__('View Order') ?></a>' +
+                                reorderHtml +
+                            '</td>' +
+                        '</tr>'
+                    );
+                });
+            }
+
+            // 分页
+            if (self.lastPage > 1) {
+                self.renderPagination();
+                $('#xfe-pagination').show();
+            } else {
+                $('#xfe-pagination').hide();
+            }
+
+            // 统计信息
+            $('#xfe-total-info').text('<?php echo $this->__('Total') ?>: ' + self.total + ' <?php echo $this->__('orders') ?>');
+            $('#xfe-loading-row').hide();
+        },
+
+        // 渲染统计卡片
+        renderStats: function(stats) {
+            var labels = {
+                today: '<?php echo $this->__('Today') ?>',
+                week: '<?php echo $this->__('This Week') ?>',
+                month: '<?php echo $this->__('This Month') ?>',
+                year: '<?php echo $this->__('This Year') ?>'
+            };
+            var gradients = {
+                today: '#667eea,#764ba2',
+                week: '#f093fb,#f5576c',
+                month: '#4facfe,#00f2fe',
+                year: '#43e97b,#38f9d7'
+            };
+
+            var $row = $('#xfe-stats-row');
+            $row.empty();
+
+            $.each(stats, function(key, val) {
+                var label = labels[key] || key;
+                var gradient = gradients[key] || '#667eea,#764ba2';
+                $row.append(
+                    '<div class="col-6 col-md-3" style="float: left; width: 25%; padding: 8px;">' +
+                        '<div style="background: linear-gradient(135deg, ' + gradient + '); color: white; padding: 15px; border-radius: 12px; text-align: center;">' +
+                            '<div class="small text-uppercase" style="opacity: 0.75;">' + label + '</div>' +
+                            '<div style="font-size: 1.75rem; font-weight: bold;">' + val + '</div>' +
+                        '</div>' +
+                    '</div>'
+                );
+            });
+
+            $('#xfe-stats').show();
+        },
+
+        // 渲染分页
+        renderPagination: function() {
+            var self = this;
+            var $list = $('#xfe-pagination-list');
+            $list.empty();
+
+            var delta = 2;
+            var left = Math.max(2, self.page - delta);
+            var right = Math.min(self.lastPage - 1, self.page + delta);
+
+            // 上一页
+            if (self.page > 1) {
+                $list.append('<li><a href="#" onclick="xfe.loadPage(' + (self.page - 1) + '); return false;"><?php echo $this->__('Previous') ?></a></li>');
+            }
+
+            // 第一页
+            $list.append('<li' + (self.page === 1 ? ' class="current"' : '') + '><a href="#" onclick="xfe.loadPage(1); return false;">1</a></li>');
+
+            // 省略号
+            if (left > 2) {
+                $list.append('<li class="current"><a>...</a></li>');
+            }
+
+            // 中间页
+            for (var i = left; i <= right; i++) {
+                $list.append('<li' + (i === self.page ? ' class="current"' : '') + '><a href="#" onclick="xfe.loadPage(' + i + '); return false;">' + i + '</a></li>');
+            }
+
+            // 省略号
+            if (right < self.lastPage - 1) {
+                $list.append('<li class="current"><a>...</a></li>');
+            }
+
+            // 最后一页
+            if (self.lastPage > 1) {
+                $list.append('<li' + (self.page === self.lastPage ? ' class="current"' : '') + '><a href="#" onclick="xfe.loadPage(' + self.lastPage + '); return false;">' + self.lastPage + '</a></li>');
+            }
+
+            // 下一页
+            if (self.page < self.lastPage) {
+                $list.append('<li><a href="#" onclick="xfe.loadPage(' + (self.page + 1) + '); return false;"><?php echo $this->__('Next') ?></a></li>');
+            }
+        },
+
+        // 加载指定页
+        loadPage: function(p) {
+            if (p < 1 || p > this.lastPage) return;
+            this.page = p;
+            this.loadOrders();
+            window.scrollTo(0, document.getElementById('xfe-order-container').offsetTop);
+        },
+
+        // 搜索
+        searchOrders: function() {
+            this.page = 1;
+            this.loadOrders();
+        },
+
+        // HTML 转义
+        escapeHtml: function(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        },
+
+        // 格式化日期
+        formatDate: function(dateStr) {
+            if (!dateStr) return '-';
+            try {
+                var d = new Date(dateStr.replace(' ', 'T'));
+                var m = String(d.getMonth() + 1).padStart(2, '0');
+                var day = String(d.getDate()).padStart(2, '0');
+                return m + '/' + day;
+            } catch(e) {
+                return dateStr || '-';
+            }
+        }
+    };
+
+    // 页面加载完成后初始化
+    $(document).ready(function() {
+        // 绑定搜索按钮点击
+        $('#xfe-search-btn').on('click', function() {
+            xfe.searchOrders();
+        });
+
+        // 绑定搜索输入框回车
+        $('#xfe-search').on('keyup', function(e) {
+            if (e.keyCode === 13) {
+                xfe.searchOrders();
+            }
+        });
+
+        // 绑定状态下拉框变化
+        $('#xfe-status').on('change', function() {
+            xfe.searchOrders();
+        });
+
+        // 初始加载
+        xfe.loadOrders();
+    });
+
+    // 暴露 xfe 对象到全局，供分页链接调用
+    window.xfe = xfe;
+})(jQuery);
+</script>
