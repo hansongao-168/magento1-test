@@ -30,7 +30,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Logo_Grid extends Mage_Adminh
         $helper = Mage::helper('xfe_carrier');
 
         $this->addColumn('preview', array(
-            'header'   => $helper->__('预览'),
+            'header'   => $helper->__('Preview'),
             'renderer' => 'xfe_carrier/adminhtml_carrier_edit_tab_logo_grid_renderer_preview',
             'width'    => '120px',
             'filter'   => false,
@@ -38,24 +38,33 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Logo_Grid extends Mage_Adminh
         ));
 
         $this->addColumn('label', array(
-            'header' => $helper->__('名称'),
+            'header' => $helper->__('Name'),
             'index'  => 'label',
         ));
 
         $this->addColumn('logo_type', array(
-            'header'  => $helper->__('类型'),
+            'header'  => $helper->__('Type'),
             'index'   => 'logo_type',
             'type'    => 'options',
             'options' => array(
-                'main'   => $helper->__('主Logo'),
-                'mobile' => $helper->__('移动端Logo'),
-                'alt'    => $helper->__('备用Logo'),
+                'main'   => $helper->__('Main Logo'),
+                'mobile' => $helper->__('Mobile Logo'),
+                'alt'    => $helper->__('Alternate Logo'),
             ),
             'width' => '120px',
         ));
 
+        $this->addColumn('is_default', array(
+            'header'   => $helper->__('Default'),
+            'index'    => 'rule_id',
+            'width'    => '80px',
+            'renderer' => 'xfe_carrier/adminhtml_carrier_edit_tab_logo_grid_renderer_default',
+            'filter'   => false,
+            'sortable' => false,
+        ));
+
         $this->addColumn('dimensions', array(
-            'header'   => $helper->__('尺寸'),
+            'header'   => $helper->__('Dimensions'),
             'renderer' => 'xfe_carrier/adminhtml_carrier_edit_tab_logo_grid_renderer_dimensions',
             'width'    => '120px',
             'filter'   => false,
@@ -63,13 +72,18 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Logo_Grid extends Mage_Adminh
         ));
 
         $this->addColumn('action', array(
-            'header'    => $helper->__('操作'),
-            'width'     => '80px',
+            'header'    => $helper->__('Action'),
+            'width'     => '140px',
             'type'      => 'action',
             'getter'    => 'getId',
             'actions'   => array(
                 array(
-                    'caption' => $helper->__('删除'),
+                    'caption' => $helper->__('Edit'),
+                    'url'     => array('base' => '*/carrier/editLogo', 'params' => array()),
+                    'field'   => 'logo_id',
+                ),
+                array(
+                    'caption' => $helper->__('Delete'),
                     'onclick' => 'deleteLogo({{id}}); return false;',
                 ),
             ),
@@ -82,7 +96,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Logo_Grid extends Mage_Adminh
 
     public function getEmptyText()
     {
-        return Mage::helper('xfe_carrier')->__('暂无Logo，请点击上方按钮添加。');
+        return Mage::helper('xfe_carrier')->__('No logos yet. Click the button above to add one.');
     }
 
     public function getRowUrl($row)
@@ -104,7 +118,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Logo_Grid extends Mage_Adminh
         $html = '<div id="logo-list-wrapper">';
         $html .= '<div class="content-header" style="padding:0 0 10px 0;border:none;">';
         $html .= '<button type="button" class="scalable add" onclick="setLocation(\'' . $addUrl . '\')">';
-        $html .= '<span><span><span>' . $helper->__('+ 添加Logo') . '</span></span></span>';
+        $html .= '<span><span><span>' . $helper->__('+ Add Logo') . '</span></span></span>';
         $html .= '</button>';
         $html .= '</div>';
         $html .= parent::_toHtml();

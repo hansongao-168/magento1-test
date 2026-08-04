@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * XFE Carrier - Carrier Edit Container Template
  *
@@ -12,6 +12,24 @@
     <?php echo $this->getHeaderHtml() ?>
     <p class="form-buttons"><?php echo $this->getButtonsHtml('header') ?></p>
 </div>
+<?php
+// Per-store translations (name / note) live in xfe_carrier_translation.
+// Editing them works exactly like CMS Page / Block: pick a store view in
+// the switcher, the form reloads with that scope, and the save writes
+// the current scope's name / note into xfe_carrier_translation.
+if ($this->getRequest()->getParam('id')):
+    $currentStore = (int)$this->getRequest()->getParam(
+        'store',
+        Mage_Core_Model_App::ADMIN_STORE_ID
+    );
+    echo $this->getLayout()->createBlock('adminhtml/store_switcher')
+        ->setSwitchUrl($this->getUrl('*/*/*', array('store' => null, '_current' => true)))
+        ->setTemplate('store/switcher/enhanced.phtml')
+        ->setStoreIds(Mage::getModel('core/store')->getCollection()->getAllIds())
+        ->setCurrentStoreId($currentStore)
+        ->toHtml();
+endif;
+?>
 <form action="<?php echo $this->getFormActionUrl() ?>" method="post" id="edit_form" enctype="multipart/form-data">
     <?php echo $this->getBlockHtml('formkey') ?>
     <div style="display:none"></div>

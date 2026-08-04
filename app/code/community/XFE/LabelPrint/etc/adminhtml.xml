@@ -1,0 +1,18 @@
+﻿<?xml version="1.0"?>
+<config>
+    <acl>
+        <resources>
+            <admin>
+                <children>
+                    <system>
+                        <children>
+                            <xfe_labelprint translate="title" module="xfe_labelprint">
+                                <title>Label Print</title>
+                            </xfe_labelprint>
+                        </children>
+                    </system>
+                </children>
+            </admin>
+        </resources>
+    </acl>
+</config>

@@ -11,22 +11,20 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Logo_Edit extends Mage_Adminhtml_Block
 
         parent::__construct();
 
-        $this->_updateButton('save', 'label', Mage::helper('xfe_carrier')->__('上传 Logo'));
+        $this->_updateButton('save', 'label', Mage::helper('xfe_carrier')->__('Save Logo'));
         $this->_updateButton('back', 'onclick', 'setLocation(\'' . $this->getBackUrl() . '\')');
     }
 
-    /**
-     * @return string
-     */
     public function getHeaderText()
     {
+        $logo = Mage::registry('xfe_carrier_logo_data');
+        if ($logo && $logo->getId()) {
+            return Mage::helper('xfe_carrier')->__('Edit Logo');
+        }
         $carrier = Mage::registry('xfe_carrier_data');
-        return Mage::helper('xfe_carrier')->__('为 "%s" 添加 Logo', $carrier ? $carrier->getName() : '');
+        return Mage::helper('xfe_carrier')->__('Add Logo for "%s"', $carrier ? $carrier->getName() : '');
     }
 
-    /**
-     * @return string
-     */
     public function getBackUrl()
     {
         $carrier = Mage::registry('xfe_carrier_data');
@@ -36,12 +34,17 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Logo_Edit extends Mage_Adminhtml_Block
         return $this->getUrl('*/carrier/');
     }
 
-    /**
-     * @return string
-     */
     public function getSaveUrl()
     {
+        $logo    = Mage::registry('xfe_carrier_logo_data');
         $carrier = Mage::registry('xfe_carrier_data');
-        return $this->getUrl('*/*/saveLogo', array('id' => $carrier ? $carrier->getId() : 0));
+        $params  = array();
+        if ($logo && $logo->getId()) {
+            $params['logo_id'] = $logo->getId();
+        }
+        if ($carrier && $carrier->getId()) {
+            $params['carrier_id'] = $carrier->getId();
+        }
+        return $this->getUrl('*/*/saveLogo', $params);
     }
 }

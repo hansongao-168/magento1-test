@@ -1,11 +1,28 @@
 <?php
 
-class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Rules_Grid extends Mage_Adminhtml_Block_Widget_Grid
+/**
+ * Carrier Edit Tab Account Rules Grid
+ *
+ * Variant of XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Rules_Grid
+ * filtered by the currently-edited account_id (taken from the
+ * xfe_carrier_account_data registry).
+ *
+ * Renders a standard admin grid widget with the carrier-level columns
+ * so the Account Edit page shows rules in the same look-and-feel as
+ * the carrier-level Rules tab.
+ *
+ * The grid block's _toHtml() prepends the [+ 娣诲姞瑙勫垯] button. The
+ * button sits ABOVE the grid in a simple `<p>` toolbar (not a
+ * `<div class="content-header">` - that class is for page-level
+ * headers and would add unwanted borders/padding inside a fieldset).
+ */
+class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Rules_Grid
+    extends Mage_Adminhtml_Block_Widget_Grid
 {
     public function __construct()
     {
         parent::__construct();
-        $this->setId('carrier_rule_grid');
+        $this->setId('carrier_account_rule_grid');
         $this->setDefaultSort('priority');
         $this->setDefaultDir('DESC');
         $this->setUseAjax(false);
@@ -13,16 +30,18 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Rules_Grid extends Mage_Admin
     }
 
     /**
-     * Prepare collection: load rules for current carrier
+     * Build collection: rules whose account_id matches the registry
+     * account. Falls back to an empty collection when there is no
+     * account loaded yet (newly created account).
      *
      * @return $this
      */
     protected function _prepareCollection()
     {
-        $model = Mage::registry('xfe_carrier_data');
-        if ($model && $model->getId()) {
+        $account = Mage::registry('xfe_carrier_account_data');
+        if ($account && $account->getId()) {
             $collection = Mage::getModel('xfe_carrier/carrier_rule')->getCollection()
-                ->addFieldToFilter('carrier_id', $model->getId())
+                ->addFieldToFilter('account_id', (int)$account->getId())
                 ->setOrder('priority', 'DESC')
                 ->setOrder('updated_at', 'DESC')
                 ->setOrder('sort_order', 'ASC');
@@ -34,7 +53,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Rules_Grid extends Mage_Admin
     }
 
     /**
-     * Prepare grid columns
+     * Grid columns - same shape as the carrier-level Rules tab.
      *
      * @return $this
      */
@@ -43,10 +62,10 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Rules_Grid extends Mage_Admin
         $helper = Mage::helper('xfe_carrier');
 
         $this->addColumn('module_code', array(
-            'header' => $helper->__('鎵€灞炴ā鍧?),
-            'index'  => 'module_code',
-            'width'  => '100px',
-            'type'   => 'options',
+            'header'  => $helper->__('鎵€灞炴ā鍧?),
+            'index'   => 'module_code',
+            'width'   => '100px',
+            'type'    => 'options',
             'options' => $helper->getCarrierModuleSelectOptions(),
         ));
 
@@ -61,11 +80,11 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Rules_Grid extends Mage_Admin
         ));
 
         $this->addColumn('status', array(
-            'header'  => $helper->__('鐘舵€?),
-            'index'   => 'status',
-            'type'    => 'options',
-            'width'   => '80px',
-            'options' => Mage::getSingleton('xfe_carrier/source_status')->toArray(),
+            'header'   => $helper->__('鐘舵€?),
+            'index'    => 'status',
+            'type'     => 'options',
+            'width'    => '80px',
+            'options'  => Mage::getSingleton('xfe_carrier/source_status')->toArray(),
             'renderer' => 'xfe_carrier/adminhtml_carrier_edit_tab_rules_grid_renderer_status',
         ));
 
@@ -84,44 +103,59 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Rules_Grid extends Mage_Admin
         ));
 
         $this->addColumn('action', array(
-            'header'    => $helper->__('鎿嶄綔'),
-            'width'     => '140px',
-            'type'      => 'action',
-            'getter'    => 'getId',
-            'actions'   => array(
+            'header'  => $helper->__('鎿嶄綔'),
+            'width'   => '140px',
+            'type'    => 'action',
+            'getter'  => 'getId',
+            'actions' => array(
                 array(
                     'caption' => $helper->__('缂栬緫'),
-                    'url'     => array('base'=> '*/carrier/editRule', 'params'=> array('carrier_id'=> $this->_getCarrierId())),
+                    'url'     => array(
+                        'base'   => '*/carrier/editRule',
+                        'params' => array(
+                            'carrier_id' => $this->_getCarrierId(),
+                            'account_id' => $this->_getAccountId(),
+                        ),
+                    ),
                     'field'   => 'rule_id',
                 ),
                 array(
                     'caption' => $helper->__('鍒犻櫎'),
-                    'url'     => array('base'=> '*/carrier/deleteRule', 'params'=> array()),
+                    'url'     => array('base' => '*/carrier/deleteRule', 'params' => array()),
                     'field'   => 'rule_id',
                     'confirm' => $helper->__('纭畾瑕佸垹闄よ瑙勫垯鍚楋紵'),
                 ),
             ),
-            'filter'    => false,
-            'sortable'  => false,
+            'filter'   => false,
+            'sortable' => false,
         ));
 
         return parent::_prepareColumns();
     }
 
     /**
-     * Get current carrier ID from registry
+     * Carrier id from the registry account.
      *
      * @return int
      */
     protected function _getCarrierId()
     {
-        $model = Mage::registry('xfe_carrier_data');
-        return $model && $model->getId() ? (int)$model->getId() : 0;
+        $account = Mage::registry('xfe_carrier_account_data');
+        return $account && $account->getId() ? (int)$account->getCarrierId() : 0;
     }
 
     /**
-     * Get empty text when no records found
+     * Account id from the registry account.
      *
+     * @return int
+     */
+    protected function _getAccountId()
+    {
+        $account = Mage::registry('xfe_carrier_account_data');
+        return $account && $account->getId() ? (int)$account->getId() : 0;
+    }
+
+    /**
      * @return string
      */
     public function getEmptyText()
@@ -130,7 +164,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Rules_Grid extends Mage_Admin
     }
 
     /**
-     * No row URL for grid
+     * Row URL disabled: action column handles navigation.
      *
      * @param Varien_Object $row
      * @return false
@@ -141,7 +175,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Rules_Grid extends Mage_Admin
     }
 
     /**
-     * No mass actions for rule grid inside edit tab
+     * No mass actions on the account-level rules grid.
      *
      * @return $this
      */
@@ -153,15 +187,20 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Rules_Grid extends Mage_Admin
     /**
      * Prepend the [+ 娣诲姞瑙勫垯] button above the grid.
      *
+     * Wrapped in a plain `<p>` toolbar (no content-header class) so the
+     * button renders cleanly inside the 瑙勫垯璁剧疆 entry-edit block.
+     *
      * @return string
      */
     protected function _toHtml()
     {
-        $helper = Mage::helper('xfe_carrier');
+        $helper    = Mage::helper('xfe_carrier');
         $carrierId = $this->_getCarrierId();
-        $addUrl = $this->getUrl('*/carrier/editRule', array('carrier_id' => $carrierId));
+        $accountId = $this->_getAccountId();
+        $addUrl    = $this->getUrl('*/carrier/editRule',
+            array('carrier_id' => $carrierId, 'account_id' => $accountId));
 
-        $html = '<div id="rules-list-wrapper">';
+        $html  = '<div id="account-rules-list-wrapper">';
         $html .= '<p class="form-buttons" style="margin:0 0 8px 0;">';
         $html .= '<button type="button" class="scalable add" onclick="setLocation(\'' . $addUrl . '\')">';
         $html .= '<span><span><span>' . $helper->__('+ 娣诲姞瑙勫垯') . '</span></span></span>';

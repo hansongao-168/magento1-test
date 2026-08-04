@@ -20,6 +20,20 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Grid extends Mage_Adminhtml_Block_Widg
     protected function _prepareCollection()
     {
         $collection = Mage::getModel('xfe_carrier/carrier')->getCollection();
+
+        // Surface per-store translations (name / note) by left-joining
+        // xfe_carrier_translation for the store view selected in the
+        // admin Store Switcher. The Collection fallback rule (empty
+        // per-store row -> base row) keeps admin-scope defaults visible
+        // when no translation exists for the chosen store.
+        $store = $this->getRequest()->getParam(
+            'store',
+            (int)Mage::app()->getDefaultStoreView()->getId()
+        );
+        if ($store !== null && $store !== '') {
+            $collection->addStoreFilter((int)$store);
+        }
+
         $this->setCollection($collection);
         return parent::_prepareCollection();
     }
@@ -40,7 +54,10 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Grid extends Mage_Adminhtml_Block_Widg
 
         $this->addColumn('name', array(
             'header' => Mage::helper('xfe_carrier')->__('名称'),
-            'index'  => 'name',
+            // 'store_name' is populated by XFE_Carrier_Model_Resource_Carrier_Collection
+            // when addStoreFilter() joins xfe_carrier_translation; empty values
+            // fall back to the base column in Collection::_afterLoad().
+            'index'  => 'store_name',
         ));
 
         $this->addColumn('code', array(

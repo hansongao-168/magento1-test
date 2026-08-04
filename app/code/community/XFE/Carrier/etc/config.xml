@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <config>
     <modules>
         <XFE_Carrier>
-            <version>1.0.7</version>
+            <version>1.0.9</version>
         </XFE_Carrier>
     </modules>
     <global>
@@ -32,6 +32,9 @@
                     <rule_condition>
                         <table>xfe_carrier_rule_condition</table>
                     </rule_condition>
+                    <carrier_translation>
+                        <table>xfe_carrier_translation</table>
+                    </carrier_translation>
                 </entities>
             </xfe_carrier_resource>
         </models>
@@ -70,7 +73,7 @@
             <system>
                 <children>
                     <xfe_carrier translate="title" module="xfe_carrier">
-                        <title>閹佃儻绻嶉崯鍡欘吀閻?</title>
+                        <title>闁逛絻鍎荤换宥夊疮閸℃瑯鍚€闁?</title>
                         <sort_order>130</sort_order>
                         <action>adminhtml/carrier/index</action>
                     </xfe_carrier>
@@ -84,7 +87,7 @@
                         <system>
                             <children>
                                 <xfe_carrier translate="title" module="xfe_carrier">
-                                    <title>閹佃儻绻嶉崯鍡欘吀閻?</title>
+                                    <title>闁逛絻鍎荤换宥夊疮閸℃瑯鍚€闁?</title>
                                 </xfe_carrier>
                             </children>
                         </system>
@@ -101,6 +104,7 @@
         </layout>
     </adminhtml>
 </config>
+
 
 
 

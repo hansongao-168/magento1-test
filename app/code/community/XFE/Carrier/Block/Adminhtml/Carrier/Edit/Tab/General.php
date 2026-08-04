@@ -16,6 +16,11 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
             'legend' => $helper->__('基本信息'),
         ));
 
+        $fieldset->addField('store_id', 'hidden', array(
+            'name'  => 'store',
+            'value' => (int)$this->getRequest()->getParam('store', Mage_Core_Model_App::ADMIN_STORE_ID),
+        ));
+
         $fieldset->addField('name', 'text', array(
             'name'     => 'name',
             'label'    => $helper->__('名称'),
@@ -58,7 +63,13 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
         ));
 
         if ($model && $model->getId()) {
-            $form->setValues($model->getData());
+            // Surface per-store translations (set by Controller editAction
+            // via setStoreId()) so the General tab edits the current store\'s
+            // name / note rather than the admin-scope defaults.
+            $values = $model->getData();
+            $values['name'] = $model->getStoreName();
+            $values['note'] = $model->getStoreNote();
+            $form->setValues($values);
         }
 
         return parent::_prepareForm();

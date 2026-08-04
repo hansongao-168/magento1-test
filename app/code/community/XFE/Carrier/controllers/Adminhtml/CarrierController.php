@@ -62,8 +62,9 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
     public function editAction()
     {
         $helper = Mage::helper('xfe_carrier');
-        $id = $this->getRequest()->getParam('id');
-        $model = Mage::getModel('xfe_carrier/carrier');
+        $id     = $this->getRequest()->getParam('id');
+        $storeId = (int)$this->getRequest()->getParam('store', Mage_Core_Model_App::ADMIN_STORE_ID);
+        $model  = Mage::getModel('xfe_carrier/carrier');
 
         if ($id) {
             $model->load($id);
@@ -73,9 +74,12 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
                 );
                 return $this->_redirect('*/*/');
             }
+            // Pin to the requested store view so the General tab shows that scope's translations.
+            $model->setStoreId($storeId);
         }
 
         Mage::register('xfe_carrier_data', $model);
+        Mage::register('xfe_carrier_store', $storeId);
 
         $this->_initAction()
             ->_addBreadcrumb(
@@ -98,7 +102,7 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
         }
 
         try {
-            $model = Mage::getModel('xfe_carrier/carrier');
+            $model  = Mage::getModel('xfe_carrier/carrier');
 
             if ($id) {
                 $model->load($id);
@@ -110,8 +114,47 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
                 }
             }
 
+            // Per-store translations (name / note) live in
+            // xfe_carrier_translation. The form posts a hidden `store`
+            // param identifying the active scope; in any non-admin scope
+            // we route name / note into store_translations instead of the
+            // base row. When a caller explicitly posts the parallel
+            // store_translations payload (multi-store batch save), that
+            // wins and is merged on top.
+            $storeScope = (int)$this->getRequest()->getParam(
+                'store', Mage_Core_Model_App::ADMIN_STORE_ID
+            );
+
+            $storeTranslations = array();
+            if (isset($data['store_translations']) && is_array($data['store_translations'])) {
+                $storeTranslations = $data['store_translations'];
+                unset($data['store_translations']);
+            }
+
+            // Pull the visible name / note out of the base row when we are
+            // editing a non-admin store view, so addData() does not stomp
+            // on the admin-scope values; the resource model will write the
+            // current scope's name / note into xfe_carrier_translation.
+            if ($storeScope !== Mage_Core_Model_App::ADMIN_STORE_ID
+                && $id
+                && array_key_exists('name', $data)
+            ) {
+                $storeTranslations['name'][$storeScope] = $data['name'];
+                unset($data['name']);
+            }
+            if ($storeScope !== Mage_Core_Model_App::ADMIN_STORE_ID
+                && $id
+                && array_key_exists('note', $data)
+            ) {
+                $storeTranslations['note'][$storeScope] = $data['note'];
+                unset($data['note']);
+            }
+
             $model->addData($data);
             Mage::helper('xfe_carrier')->validateCarrierModules($model, $data);
+            if (!empty($storeTranslations)) {
+                $model->setData('store_translations', $storeTranslations);
+            }
             $model->save();
 
             $carrierId = (int)$model->getId();
@@ -133,13 +176,19 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
             );
 
             if ($this->getRequest()->getParam('back')) {
-                return $this->_redirect('*/*/edit', array('id' => $model->getId()));
+                return $this->_redirect('*/*/edit', array(
+                    'id'    => $model->getId(),
+                    'store' => (int)$this->getRequest()->getParam('store', Mage_Core_Model_App::ADMIN_STORE_ID),
+                ));
             }
         } catch (Exception $e) {
             Mage::logException($e);
             Mage::getSingleton('adminhtml/session')->addError($e->getMessage());
             if ($id) {
-                return $this->_redirect('*/*/edit', array('id' => $id));
+                return $this->_redirect('*/*/edit', array(
+                    'id'    => $id,
+                    'store' => (int)$this->getRequest()->getParam('store', Mage_Core_Model_App::ADMIN_STORE_ID),
+                ));
             }
             return $this->_redirect('*/*/new');
         }
@@ -149,7 +198,8 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
 
     public function deleteAction()
     {
-        $id = $this->getRequest()->getParam('id');
+        $id     = $this->getRequest()->getParam('id');
+        $storeId = (int)$this->getRequest()->getParam('store', Mage_Core_Model_App::ADMIN_STORE_ID);
 
         if ($id) {
             try {
@@ -252,19 +302,16 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
             }
 
             unset($data['form_key']);
-            unset($data['inline_rules_data']);  // handled separately below
 
             $account->addData($data);
             $account->save();
             $accountId = (int)$account->getId();
 
-            // ---------- Inline rule(s) materialisation --------------------
-            // 1.0.7+: the inline editor on the Account Edit page is a
-            // dynamic list. JS submits a JSON array in `inline_rules_data`
-            // describing every rule the admin wants bound to this account.
-            // We diff it against what already exists, then insert / update /
-            // delete so the carrier's rule pool stays clean.
-            $this->_materialiseInlineRules($carrierId, $accountId, $this->getRequest()->getPost('inline_rules_data'));
+            // Note: since 1.0.8 rules are managed from a dedicated
+            // edit page (see Carrier/Rule/Edit/Form.php) - the Account
+            // Edit page no longer hosts an inline rule editor. Rules
+            // created from the Account page carry account_id and are
+            // listed in the rules grid on the Account page.
 
             Mage::getSingleton('adminhtml/session')->addSuccess(
                 $helper->__('Account saved.')
@@ -317,33 +364,255 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
     }
 
     // ====================================================================
-    // Rule sub-actions
+    // Logo CRUD
     // ====================================================================
 
+    /**
+     * Render the "Add Logo" form for a carrier.
+     */
+    public function addLogoAction()
+    {
+        $carrierId = (int) $this->getRequest()->getParam('id');
+        $helper    = Mage::helper('xfe_carrier');
+
+        $carrier = Mage::getModel('xfe_carrier/carrier');
+        if ($carrierId) {
+            $carrier->load($carrierId);
+            if (!$carrier->getId()) {
+                Mage::getSingleton('adminhtml/session')->addError(
+                    $helper->__('The carrier does not exist.')
+                );
+                return $this->_redirect('*/carrier/');
+            }
+        } else {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('Missing carrier ID.')
+            );
+            return $this->_redirect('*/carrier/');
+        }
+
+        Mage::register('xfe_carrier_data', $carrier);
+
+        $this->_initAction()
+            ->_addBreadcrumb(
+                $helper->__('Add Logo'),
+                $helper->__('Add Logo')
+            )
+            ->renderLayout();
+    }
+
+    /**
+     * Render the "Edit Logo" form for an existing logo.
+     */
+    public function editLogoAction()
+    {
+        $logoId   = (int) $this->getRequest()->getParam('logo_id');
+        $helper   = Mage::helper('xfe_carrier');
+
+        if (!$logoId) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('Invalid logo ID.')
+            );
+            return $this->_redirect('*/carrier/');
+        }
+
+        $logo = Mage::getModel('xfe_carrier/carrier_logo')->load($logoId);
+        if (!$logo->getId()) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('The logo does not exist.')
+            );
+            return $this->_redirect('*/carrier/');
+        }
+
+        $carrier = Mage::getModel('xfe_carrier/carrier')->load($logo->getCarrierId());
+        if ($carrier && $carrier->getId()) {
+            Mage::register('xfe_carrier_data', $carrier);
+        }
+
+        Mage::register('xfe_carrier_logo_data', $logo);
+
+        $this->_initAction()
+            ->_addBreadcrumb(
+                $helper->__('Edit Logo'),
+                $helper->__('Edit Logo')
+            )
+            ->renderLayout();
+    }
+
+    /**
+     * Handle logo save (both new upload and edit).
+     *
+     * POST params:
+     *   carrier_id   int (required)
+     *   logo_id      int (optional - for edit mode)
+     *   logo_label   string
+     *   logo_type    string (main/mobile/alt)
+     *   logo         file (optional for edit - replace existing)
+     */
+    public function saveLogoAction()
+    {
+        $carrierId = (int) $this->getRequest()->getParam('carrier_id');
+        $logoId    = (int) $this->getRequest()->getParam('logo_id');
+        $helper    = Mage::helper('xfe_carrier');
+
+        if (!$carrierId) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('Missing carrier ID.')
+            );
+            return $this->_redirect('*/carrier/');
+        }
+
+        $carrier = Mage::getModel('xfe_carrier/carrier')->load($carrierId);
+        if (!$carrier->getId()) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('The carrier does not exist.')
+            );
+            return $this->_redirect('*/carrier/');
+        }
+
+        try {
+            $label = $this->getRequest()->getParam('logo_label');
+            $type  = $this->getRequest()->getParam('logo_type');
+
+            if ($logoId) {
+                // ===== Edit mode: update existing logo =====
+                $logo = Mage::getModel('xfe_carrier/carrier_logo')->load($logoId);
+                if (!$logo->getId() || (int)$logo->getCarrierId() !== $carrierId) {
+                    Mage::throwException($helper->__('The logo does not exist.'));
+                }
+
+                $logo->setLabel($label);
+                $logo->setLogoType($type);
+
+                $fileData = isset($_FILES['logo']) ? $_FILES['logo'] : null;
+                if ($fileData && isset($fileData['tmp_name']) && !empty($fileData['tmp_name'])) {
+                    // Replace file: delete old one, upload new
+                    XFE_Carrier_Model_Service_Registry::logo()->deleteById($carrierId, $logoId);
+                    $result = XFE_Carrier_Model_Service_Registry::logo()->upload(
+                        $carrierId, $fileData, $label, $type
+                    );
+                    if (!$result->isSuccess()) {
+                        Mage::throwException($result->getMessage());
+                    }
+                } else {
+                    $logo->save();
+                }
+
+                Mage::getSingleton('adminhtml/session')->addSuccess(
+                    $helper->__('Logo saved.')
+                );
+            } else {
+                // ===== New mode: upload new logo =====
+                $fileData = isset($_FILES['logo']) ? $_FILES['logo'] : null;
+                if (!$fileData || !isset($fileData['tmp_name']) || empty($fileData['tmp_name'])) {
+                    Mage::throwException($helper->__('Please select a file to upload.'));
+                }
+
+                $result = XFE_Carrier_Model_Service_Registry::logo()->upload(
+                    $carrierId, $fileData, $label, $type
+                );
+
+                if ($result->isSuccess()) {
+                    Mage::getSingleton('adminhtml/session')->addSuccess(
+                        $helper->__('Logo uploaded.')
+                    );
+                } else {
+                    Mage::throwException($result->getMessage());
+                }
+            }
+        } catch (Exception $e) {
+            Mage::logException($e);
+            Mage::getSingleton('adminhtml/session')->addError($e->getMessage());
+        }
+
+        return $this->_redirect('*/carrier/edit', array('id' => $carrierId));
+    }
+
+    /**
+     * AJAX: delete a single logo. Returns JSON { success, message }.
+     */
+    public function deleteLogoAction()
+    {
+        $helper    = Mage::helper('xfe_carrier');
+        $carrierId = (int) $this->getRequest()->getParam('carrier_id');
+        $logoId    = (int) $this->getRequest()->getParam('logo_id');
+
+        $this->getResponse()->setHeader('Content-Type', 'application/json');
+
+        if (!$carrierId || !$logoId) {
+            $this->getResponse()->setBody(Mage::helper('core')->jsonEncode(array(
+                'success' => false,
+                'message' => $helper->__('Invalid parameter.'),
+            )));
+            return;
+        }
+
+        try {
+            $deleted = XFE_Carrier_Model_Service_Registry::logo()->deleteById($carrierId, $logoId);
+            $this->getResponse()->setBody(Mage::helper('core')->jsonEncode(array(
+                'success' => $deleted,
+                'message' => $deleted
+                    ? $helper->__('Logo deleted.')
+                    : $helper->__('Logo could not be deleted.'),
+            )));
+        } catch (Exception $e) {
+            Mage::logException($e);
+            $this->getResponse()->setBody(Mage::helper('core')->jsonEncode(array(
+                'success' => false,
+                'message' => $e->getMessage(),
+            )));
+        }
+    }
+    // ====================================================================
+    // Rule CRUD (standalone rule edit page)
+    // ====================================================================
+
+    /**
+     * Render the Rule Edit page (General tab + Conditions tab).
+     * Supports both new and edit modes.
+     *
+     * Query params:
+     *   carrier_id   int (required)
+     *   account_id   int (optional - bind to account)
+     *   rule_id      int (optional - edit existing)
+     */
     public function editRuleAction()
     {
-        $ruleId    = (int) $this->getRequest()->getParam('rule_id');
         $carrierId = (int) $this->getRequest()->getParam('carrier_id');
+        $accountId = (int) $this->getRequest()->getParam('account_id');
+        $ruleId    = (int) $this->getRequest()->getParam('rule_id');
         $helper    = Mage::helper('xfe_carrier');
+
+        if (!$carrierId) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('Missing carrier ID.')
+            );
+            return $this->_redirect('*/carrier/');
+        }
+
+        $carrier = Mage::getModel('xfe_carrier/carrier')->load($carrierId);
+        if (!$carrier->getId()) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('The carrier does not exist.')
+            );
+            return $this->_redirect('*/carrier/');
+        }
 
         $rule = Mage::getModel('xfe_carrier/carrier_rule');
         if ($ruleId) {
             $rule->load($ruleId);
             if (!$rule->getId()) {
                 Mage::getSingleton('adminhtml/session')->addError(
-                    $helper->__('This rule does not exist.')
+                    $helper->__('The rule does not exist.')
                 );
-                return $this->_redirect('*/carrier/');
+                return $this->_redirect('*/carrier/edit', array('id' => $carrierId));
             }
-            $carrierId = $rule->getCarrierId();
         } else {
-            if (!$carrierId) {
-                Mage::getSingleton('adminhtml/session')->addError(
-                    $helper->__('Missing carrier ID.')
-                );
-                return $this->_redirect('*/carrier/');
-            }
             $rule->setCarrierId($carrierId);
+            if ($accountId) {
+                $rule->setAccountId($accountId);
+            }
+
         }
 
         Mage::register('xfe_carrier_rule_data', $rule);
@@ -356,6 +625,21 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
             ->renderLayout();
     }
 
+    /**
+     * Save a rule (new or existing), including condition groups.
+     *
+     * POST params (from the rule edit form):
+     *   carrier_id    int
+     *   account_id    int (optional)
+     *   rule_id       int (optional - edit existing)
+     *   name          string
+     *   description   string
+     *   module_code   string (logo/account)
+     *   status        int (0/1)
+     *   is_cancel_on_failure int (0/1)
+     *   sort_order    int
+     *   groups_data   string (JSON from condition builder)
+     */
     public function saveRuleAction()
     {
         $data   = $this->getRequest()->getPost();
@@ -368,55 +652,79 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
             return $this->_redirect('*/carrier/');
         }
 
-        $ruleId    = (int) $this->getRequest()->getParam('rule_id');
         $carrierId = (int) $this->getRequest()->getParam('carrier_id');
+        $ruleId    = (int) $this->getRequest()->getParam('rule_id');
+
+        if (!$carrierId) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('Missing carrier ID.')
+            );
+            return $this->_redirect('*/carrier/');
+        }
 
         try {
             $rule = Mage::getModel('xfe_carrier/carrier_rule');
             if ($ruleId) {
                 $rule->load($ruleId);
                 if (!$rule->getId()) {
-                    Mage::getSingleton('adminhtml/session')->addError(
-                        $helper->__('This rule does not exist.')
-                    );
-                    return $this->_redirect('*/carrier/');
+                    Mage::throwException($helper->__('The rule does not exist.'));
                 }
-                $carrierId = $rule->getCarrierId();
             } else {
-                if (!$carrierId) {
-                    Mage::getSingleton('adminhtml/session')->addError(
-                        $helper->__('Missing carrier ID.')
-                    );
-                    return $this->_redirect('*/carrier/');
-                }
+                $rule->setCarrierId($carrierId);
             }
 
-            unset($data['form_key']);
             $rule->addData($data);
+
+            // Set groups_data for the _afterSave condition tree handler
+            $groupsData = $this->getRequest()->getParam('groups_data');
+            if ($groupsData !== null) {
+                $rule->setGroupsData($groupsData);
+            }
+
             $rule->save();
 
             Mage::getSingleton('adminhtml/session')->addSuccess(
                 $helper->__('Rule saved.')
             );
+
+            if ($this->getRequest()->getParam('back')) {
+                return $this->_redirect('*/carrier/editRule', array(
+                    'rule_id'    => $rule->getId(),
+                    'carrier_id' => $carrierId,
+                ));
+            }
+
+            $accountId = $rule->getAccountId();
+            if ($carrierId && $accountId) {
+                return $this->_redirect('*/carrier/editAccount', array(
+                    'carrier_id' => $carrierId,
+                    'account_id' => $accountId,
+                ));
+            }
         } catch (Exception $e) {
             Mage::logException($e);
             Mage::getSingleton('adminhtml/session')->addError($e->getMessage());
         }
 
-        if ($carrierId) {
-            return $this->_redirect('*/carrier/edit', array('id' => $carrierId));
-        }
-        return $this->_redirect('*/carrier/');
+        return $this->_redirect('*/carrier/edit', array('id' => $carrierId));
     }
 
+    /**
+     * Delete a single rule (with its condition tree).
+     *
+     * Query params:
+     *   rule_id    int (required)
+     */
     public function deleteRuleAction()
     {
-        $ruleId    = (int) $this->getRequest()->getParam('rule_id');
-        $helper    = Mage::helper('xfe_carrier');
+        $ruleId   = (int) $this->getRequest()->getParam('rule_id');
+        $helper   = Mage::helper('xfe_carrier');
         $carrierId = 0;
 
         if (!$ruleId) {
-            Mage::getSingleton('adminhtml/session')->addError($helper->__('Invalid parameter.'));
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('Invalid parameter.')
+            );
             return $this->_redirect('*/carrier/');
         }
 
@@ -443,28 +751,7 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
         }
         return $this->_redirect('*/carrier/');
     }
-
-    // ====================================================================
-    // AJAX resolver
-    // ====================================================================
-
-    /**
-     * AJAX: given a shipment context, resolve the right account + logo.
-     *
-     * POST params (all optional except carrier_id):
-     *   carrier_id           int
-     *   country_code         string
-     *   city                 string
-     *   zip_code             string
-     *   package_count        int|float
-     *   package_weight       float
-     *   length, width, height, volume, order_amount, customer_group
-     *   use_fallback         '0' | '1'  (default 1)
-     *
-     * Returns JSON:
-     *   { account_id, account_rule_id, logo_id, logo_rule_id, used_fallback }
-     */
-    public function resolveAction()
+public function resolveAction()
     {
         $helper = Mage::helper('xfe_carrier');
         $request = $this->getRequest();
@@ -536,143 +823,6 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
     // ====================================================================
     // Helpers
     // ====================================================================
-
-    /**
-     * Sync the inline rule editor's payload with the carrier's rule pool.
-     *
-     * Payload is a JSON array (string from $_POST) of rows shaped like:
-     *   { rule_id:int, name:string, is_active:int, is_cancel_on_failure:int,
-     *     sort_order:int }
-     *
-     * Behaviour:
-     *   - Rows whose `name` is empty (and which have no rule_id) are
-     *     dropped on the floor: the admin opened the form, clicked "Add",
-     *     walked away.
-     *   - Rows whose `name` is empty but DO have a rule_id: the existing
-     *     rule is deleted (admin clicked the trash icon).
-     *   - Existing rules for this carrier+account that are NOT present in
-     *     the payload are deleted (deletion-by-diff).
-     *   - Anything else is inserted or updated.
-     *
-     * All errors (malformed JSON, etc.) are swallowed silently and the
-     * caller continues - rule editing is best-effort next to account save.
-     *
-     * @param int    $carrierId
-     * @param int    $accountId
-     * @param mixed  $payload
-     * @return void
-     */
-    protected function _materialiseInlineRules($carrierId, $accountId, $payload)
-    {
-        $carrierId = (int)$carrierId;
-        $accountId = (int)$accountId;
-        if (!$carrierId || !$accountId) {
-            return;
-        }
-        $rules = $this->_decodeInlineRulesPayload($payload);
-        if (!is_array($rules)) {
-            return;
-        }
-
-        $write     = Mage::getSingleton('core/resource')->getConnection('core_write');
-        $ruleTable = Mage::getSingleton('core/resource')->getTableName('xfe_carrier/carrier_rule');
-
-        $existingIds = $write->fetchCol(
-            $write->select()->from($ruleTable, 'rule_id')
-                ->where('carrier_id = ?', $carrierId)
-                ->where('account_id = ?', $accountId)
-        );
-
-        $keptIds = array();
-        foreach ($rules as $row) {
-            $name = isset($row['name']) ? trim((string)$row['name']) : '';
-            $ruleId = isset($row['rule_id']) ? (int)$row['rule_id'] : 0;
-
-            if ($name === '') {
-                // Empty name on a brand-new row: skip.
-                // Empty name on an existing row: drop the rule (trashed).
-                if ($ruleId > 0 && in_array($ruleId, $existingIds, true)) {
-                    $this->_deleteRuleCascade($ruleId);
-                }
-                continue;
-            }
-
-            $data = array(
-                'carrier_id'           => $carrierId,
-                'account_id'           => $accountId,
-                'module_code'          => 'account',
-                'name'                 => $name,
-                'status'               => isset($row['is_active'])            ? (int)$row['is_active']            : 1,
-                'is_cancel_on_failure' => isset($row['is_cancel_on_failure']) ? (int)$row['is_cancel_on_failure'] : 0,
-                'sort_order'           => isset($row['sort_order'])           ? (int)$row['sort_order']           : 0,
-                'updated_at'           => Varien_Date::now(),
-            );
-
-            if ($ruleId > 0 && in_array($ruleId, $existingIds, true)) {
-                $write->update($ruleTable, $data, array('rule_id = ?' => $ruleId));
-                $keptIds[] = $ruleId;
-            } else {
-                $data['created_at'] = Varien_Date::now();
-                $write->insert($ruleTable, $data);
-                $keptIds[] = (int)$write->lastInsertId($ruleTable);
-            }
-        }
-
-        // Diff: anything existing that's NOT in the submitted list gets
-        // removed (admin clicked the trash icon in the UI).
-        $removed = array_diff($existingIds, $keptIds);
-        foreach ($removed as $delId) {
-            $this->_deleteRuleCascade((int)$delId);
-        }
-    }
-
-    /**
-     * Decode the JSON payload submitted by the inline rule editor.
-     * Tolerates: null, empty string, JSON string, already-decoded array.
-     *
-     * @param mixed $payload
-     * @return array|null
-     */
-    protected function _decodeInlineRulesPayload($payload)
-    {
-        if (is_array($payload)) {
-            return $payload;
-        }
-        if (is_string($payload) && $payload !== '') {
-            $decoded = Mage::helper('core')->jsonDecode($payload);
-            return is_array($decoded) ? $decoded : null;
-        }
-        return null;
-    }
-
-    /**
-     * Delete a rule and every condition group / leaf condition attached
-     * to it. Mirrors what RuleService::deleteById does, but lives here so
-     * the inline-editor code path does not need to reach into the rule
-     * service.
-     *
-     * @param int $ruleId
-     * @return void
-     */
-    protected function _deleteRuleCascade($ruleId)
-    {
-        $ruleId = (int)$ruleId;
-        if (!$ruleId) {
-            return;
-        }
-        $write      = Mage::getSingleton('core/resource')->getConnection('core_write');
-        $ruleTable  = Mage::getSingleton('core/resource')->getTableName('xfe_carrier/carrier_rule');
-        $groupTable = Mage::getSingleton('core/resource')->getTableName('xfe_carrier/rule_condition_group');
-        $condTable  = Mage::getSingleton('core/resource')->getTableName('xfe_carrier/rule_condition');
-
-        $write->delete($condTable, array(
-            'group_id IN (?)' => $write->select()
-                ->from($groupTable, 'group_id')
-                ->where('rule_id = ?', $ruleId),
-        ));
-        $write->delete($groupTable, array('rule_id = ?' => $ruleId));
-        $write->delete($ruleTable,  array('rule_id = ?' => $ruleId));
-    }
 
     /**
      * Cleanup all child entities (logo / account / rule) before carrier delete.

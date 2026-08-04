@@ -267,4 +267,148 @@ class XFE_Carrier_Helper_Data extends Mage_Core_Helper_Abstract
 
         return true;
     }
+
+    /**
+     * Resolve the per-store translation of the carrier's name.
+     *
+     * Equivalent to $carrier->getStoreName() but usable when only the id
+     * is available. Falls back to the admin-scope value when the chosen
+     * store has no translation row.
+     *
+     * @param int|XFE_Carrier_Model_Carrier $carrier
+     * @param int|null $storeId Defaults to current store.
+     * @return string
+     */
+    public function getCarrierStoreName($carrier, $storeId = null)
+    {
+        $model = $this->_resolveCarrierModel($carrier);
+        if (!$model) {
+            return '';
+        }
+        if ($storeId !== null) {
+            $model->setStoreId((int)$storeId);
+        }
+        return $model->getStoreName();
+    }
+
+    /**
+     * Resolve the per-store translation of the carrier's note.
+     *
+     * @param int|XFE_Carrier_Model_Carrier $carrier
+     * @param int|null $storeId Defaults to current store.
+     * @return string
+     */
+    public function getCarrierStoreNote($carrier, $storeId = null)
+    {
+        $model = $this->_resolveCarrierModel($carrier);
+        if (!$model) {
+            return '';
+        }
+        if ($storeId !== null) {
+            $model->setStoreId((int)$storeId);
+        }
+        return $model->getStoreNote();
+    }
+
+    /**
+     * Normalize a filesystem path for cross-platform (Linux/Windows) storage.
+     *
+     * Converts all backslashes to forward slashes, collapses duplicate
+     * separators, and trims trailing slashes (except for root like "/" or "C:/").
+     * The result is safe to store verbatim in MySQL and works with file
+     * functions on both Linux and Windows.
+     *
+     * Examples:
+     *   D:\www\m1-test.com\var\log   ->  D:/www/m1-test.com/var/log
+     *   \\server\share\orders.csv    ->  //server/share/orders.csv
+     *   /var/www/m1-test.com/        ->  /var/www/m1-test.com
+     *
+     * @param string|null $path
+     * @return string
+     */
+    public function normalizePath($path)
+    {
+        if ($path === null) {
+            return '';
+        }
+        $path = (string)$path;
+        $path = trim($path);
+        $path = str_replace('\\', '/', $path);          // \ -> /
+        $path = preg_replace('#/{2,}#', '/', $path);    // collapse /// -> /, BUT see UNC note below
+
+        // Preserve UNC double-slash prefix (//server/share)
+        $isUnc = (substr($path, 0, 2) === '//');
+        $path  = preg_replace('#/{2,}#', '/', $path);
+        if ($isUnc) {
+            $path = '/' . $path;
+        }
+
+        // Trim trailing slash (but keep root "/" alone)
+        if (strlen($path) > 1 && substr($path, -1) === '/') {
+            $path = rtrim($path, '/');
+        }
+        return $path;
+    }
+
+    /**
+     * Convert a stored normalized path back into the OS-native separator.
+     *
+     * Use this when passing the path to a PHP file function or shell command.
+     * On Linux it returns the path as-is (with /); on Windows it flips to \.
+     *
+     * @param string $path
+     * @return string
+     */
+    public function toOsPath($path)
+    {
+        if (DS === '\\') {
+            return str_replace('/', '\\', $path);
+        }
+        return $path;
+    }
+
+    /**
+     * Escape a search keyword for use inside a MySQL LIKE pattern.
+     *
+     * LIKE has a TWO-LAYER escape rule: the SQL string layer AND the LIKE
+     * pattern layer both treat \ as an escape. After normalizing paths to
+     * forward slashes, backslashes are no longer a concern, but % and _
+     * are still wildcards and must be escaped. We use "|" as the LIKE escape
+     * character to avoid backslash confusion entirely.
+     *
+     * Usage:
+     *   $kw   = $helper->escapeLikeKeyword($input);
+     *   $rows = $conn->fetchAll(
+     *       "SELECT * FROM {$table} WHERE path LIKE ? ESCAPE '|'",
+     *       array('%' . $kw . '%')
+     *   );
+     *
+     * @param string $keyword Raw user input (will also be normalized).
+     * @return string
+     */
+    public function escapeLikeKeyword($keyword)
+    {
+        $keyword = $this->normalizePath($keyword);
+        // Escape LIKE metacharacters using "|" as the escape char.
+        return addcslashes($keyword, '|%_');
+    }
+
+    /**
+     * Internal: accept either a Carrier model or an id and return the
+     * loaded model (without DB round-trip when already a model).
+     *
+     * @param int|XFE_Carrier_Model_Carrier $carrier
+     * @return XFE_Carrier_Model_Carrier|null
+     */
+    protected function _resolveCarrierModel($carrier)
+    {
+        if ($carrier instanceof XFE_Carrier_Model_Carrier) {
+            return $carrier;
+        }
+        if (!$carrier) {
+            return null;
+        }
+        $model = Mage::getModel('xfe_carrier/carrier')->load((int)$carrier);
+        return $model->getId() ? $model : null;
+    }
 }

@@ -8,7 +8,9 @@
  *
  * Algorithm:
  *   1. Load every active rule of the carrier whose module_code matches the
- *      target type (`account` or `logo`), ordered by sort_order ASC.
+ *      target type (`account` or `logo`), ordered by priority DESC, then
+ *      updated_at DESC, then sort_order ASC, then rule_id ASC. The first
+ *      rule whose condition tree matches the context wins.
  *   2. For each rule:
  *      a. decode its condition tree (groups + conditions)
  *      b. ask the pure Evaluator whether the MatchContext matches
@@ -17,13 +19,15 @@
  *         but an account may carry many rules. For logos the binding is
  *         still on the logo (logo.rule_id) for now.
  *   3. If nothing matched, optionally fall back to the carrier's default
- *      target (status=1, lowest sort_order).
+ *      target. For accounts that is "most recently updated, status=1"
+ *      so the admin's last edits to the password / api_key / endpoint
+ *      are picked up on the next label print.
  *
  * Dependencies (one-way):
- *   Resolver ─▶  Evaluator              (pure)
- *   Resolver ─▶  Carrier_Rule           (read rules + condition tree)
- *   Resolver ─▶  Carrier_Account        (read bound account)
- *   Resolver ─▶  Carrier_Logo           (read bound logo)
+ *   Resolver 鈹€鈻? Evaluator              (pure)
+ *   Resolver 鈹€鈻? Carrier_Rule           (read rules + condition tree)
+ *   Resolver 鈹€鈻? Carrier_Account        (read bound account)
+ *   Resolver 鈹€鈻? Carrier_Logo           (read bound logo)
  *
  * The resolver does NOT call any other service - it goes straight to
  * the data entities it needs.
@@ -121,7 +125,7 @@ class XFE_Carrier_Model_Service_Rule_Resolver
             if (!$this->_evaluator->evaluate($tree, $context)) {
                 continue;
             }
-            // First match wins - rules are pre-sorted by sort_order ASC.
+            // First match wins - rules are pre-sorted by priority DESC, updated_at DESC, sort_order ASC.
             $targetId = $this->_findTargetId($targetType, (int)$rule->getId());
             if ($targetId) {
                 return array(
@@ -151,10 +155,18 @@ class XFE_Carrier_Model_Service_Rule_Resolver
      */
     protected function _loadActiveRules($carrierId, $targetType)
     {
+        // Ranking:
+        //   1. priority DESC    - the explicit priority knob the admin sets
+        //   2. updated_at DESC  - same priority: most recently touched rule wins
+        //   3. sort_order ASC   - legacy tie-breaker (lower wins)
+        //   4. rule_id ASC      - final stability tie-breaker so identical
+        //                         configurations are deterministic
         return Mage::getModel('xfe_carrier/carrier_rule')->getCollection()
             ->addFieldToFilter('carrier_id', (int)$carrierId)
             ->addFieldToFilter('status', 1)
             ->addFieldToFilter('module_code', $targetType)
+            ->setOrder('priority', 'DESC')
+            ->setOrder('updated_at', 'DESC')
             ->setOrder('sort_order', 'ASC')
             ->setOrder('rule_id', 'ASC');
     }
@@ -290,7 +302,7 @@ class XFE_Carrier_Model_Service_Rule_Resolver
     }
 
     /**
-     * Default target = status=1, lowest sort_order.
+     * Default target = most recently updated row, status=1.
      *
      * @param string $targetType
      * @param int $carrierId
@@ -298,16 +310,29 @@ class XFE_Carrier_Model_Service_Rule_Resolver
      */
     protected function _findDefaultTarget($targetType, $carrierId)
     {
+        // When no rule matches we want the password / api_key / endpoint etc.
+        // of the *most recently updated* row, so that an admin editing a
+        // specific account sees their changes picked up on the next label
+        // print without having to fight a stale default.
+        //
+        // Ordering:
+        //   1. updated_at DESC  - the most recently saved row wins
+        //   2. sort_order ASC   - legacy tie-breaker (lower wins)
+        //   3. account_id / logo_id ASC - deterministic final tie-breaker
         if ($targetType === self::TARGET_ACCOUNT) {
             $row = Mage::getModel('xfe_carrier/carrier_account')->getCollection()
                 ->addFieldToFilter('carrier_id', $carrierId)
                 ->addFieldToFilter('status', 1)
+                ->setOrder('updated_at', 'DESC')
                 ->setOrder('sort_order', 'ASC')
+                ->setOrder('account_id', 'ASC')
                 ->getFirstItem();
         } elseif ($targetType === self::TARGET_LOGO) {
             $row = Mage::getModel('xfe_carrier/carrier_logo')->getCollection()
                 ->addFieldToFilter('carrier_id', $carrierId)
+                ->setOrder('updated_at', 'DESC')
                 ->setOrder('sort_order', 'ASC')
+                ->setOrder('logo_id', 'ASC')
                 ->getFirstItem();
         } else {
             return null;

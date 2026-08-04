@@ -11,9 +11,13 @@ class XFE_Carrier_Model_Carrier_Logo extends Mage_Core_Model_Abstract
     {
         parent::_beforeSave();
 
+        $now = Varien_Date::now();
         if ($this->isObjectNew()) {
-            $this->setCreatedAt(Varien_Date::now());
+            $this->setCreatedAt($now);
         }
+        // Touch updated_at on every save so the resolver's most-recently-updated
+        // tie-breaker picks the last edited logo first.
+        $this->setUpdatedAt($now);
 
         return $this;
     }

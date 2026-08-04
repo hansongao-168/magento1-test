@@ -7,6 +7,14 @@
  *   - map xfe_carrier row <-> business object
  *   - keep basic fields sane (timestamps, before/after save)
  *   - fire domain events that the rest of the system can react to
+ *   - expose per-store translations via getStoreName() / getStoreNote()
+ *
+ * Per-store translations live in xfe_carrier_translation (see
+ * XFE_Carrier_Model_Resource_Carrier). The base `name` / `note` columns
+ * store the admin-scope (default-locale) values; getStoreName() resolves
+ * the per-store value for the current store, falling back to the base
+ * column when no translation row exists - the same fallback rule that
+ * Magento's EAV engine applies to empty store-scope attribute values.
  *
  * The model is intentionally child-agnostic. Logo / account / rule management
  * lives in dedicated services:
@@ -106,5 +114,69 @@ class XFE_Carrier_Model_Carrier extends Mage_Core_Model_Abstract
         $this->setUpdatedAt($now);
 
         return $this;
+    }
+
+    /**
+     * Get the per-store translation of the carrier's name.
+     *
+     * Reads `store_name` if previously loaded by setStoreId() or the
+     * collection's addStoreFilter(); otherwise resolves against the
+     * current store. Falls back to the admin-scope `name` column.
+     *
+     * @return string
+     */
+    public function getStoreName()
+    {
+        if (!$this->hasData('store_name')) {
+            $storeId = (int)Mage::app()->getStore()->getId();
+            $this->_getResource()->loadStoreTranslations($this, $storeId);
+        }
+        return (string)$this->getData('store_name');
+    }
+
+    /**
+     * Get the per-store translation of the carrier's note.
+     * Falls back to the admin-scope `note` column.
+     *
+     * @return string
+     */
+    public function getStoreNote()
+    {
+        if (!$this->hasData('store_note')) {
+            $storeId = (int)Mage::app()->getStore()->getId();
+            $this->_getResource()->loadStoreTranslations($this, $storeId);
+        }
+        return (string)$this->getData('store_note');
+    }
+
+    /**
+     * Pin the carrier to a store view so subsequent getStoreName() /
+     * getStoreNote() reads use that scope. Mirrors Mage_Core_Model_Abstract
+     * patterns used by EAV entities.
+     *
+     * @param int|Mage_Core_Model_Store $store
+     * @return XFE_Carrier_Model_Carrier
+     */
+    public function setStoreId($store)
+    {
+        if ($store instanceof Mage_Core_Model_Store) {
+            $store = $store->getId();
+        }
+        $store = (int)$store;
+        $this->setData('store_id', $store);
+        if ($this->getId()) {
+            $this->_getResource()->loadStoreTranslations($this, $store);
+        }
+        return $this;
+    }
+
+    /**
+     * Get the store id pinned on this instance, if any.
+     *
+     * @return int|null
+     */
+    public function getStoreId()
+    {
+        return $this->hasData('store_id') ? (int)$this->getData('store_id') : null;
     }
 }
