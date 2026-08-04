@@ -69,3 +69,34 @@ desktop.ini
 /Douane Popup - Standalone.html
 /QQ*.jpg
 /Douane Popup - output/
+# One-shot push helper (delete after first run)
+/push-magento1-test.ps1
+
+# =============================================================
+# AI / editor tooling state (machine-local, not part of site)
+# =============================================================
+/.agents/
+/.claude/
+/.codebuddy/
+/.codex/
+/.zcode/
+/.playwright-cli/
+
+# Node package manifest does not belong in a Magento 1 repo
+/package.json
+/package-lock.json
+
+# =============================================================
+# Personal debug / one-off artifacts at repo root
+# =============================================================
+/bump_version.php
+/cleanup_db.php
+/hide_pdf_text.php
+/probe_db.php
+/probe2.php
+/test-condition.html
+/delivery_proof_*.pdf
+/zip/
+# Chinese-named personal PDF at repo root
+/22 06 2026 收件客户使用权限 — 开关设置.pdf
+
