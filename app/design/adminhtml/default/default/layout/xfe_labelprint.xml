@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<layout>
+    <!-- Label print grid/list page (frontName: xfe_labelprint, controller: admin_print) -->
+    <xfe_labelprint_admin_print_index>
+        <reference name="content">
+            <block type="xfe_labelprint/adminhtml_print" name="xfe_labelprint_print_grid" />
+        </reference>
+    </xfe_labelprint_admin_print_index>
+
+    <!-- Ajax grid reload -->
+    <xfe_labelprint_admin_print_grid>
+        <remove name="root"/>
+        <block type="xfe_labelprint/adminhtml_print_grid" name="xfe_labelprint_print_grid_grid" output="toHtml"/>
+    </xfe_labelprint_admin_print_grid>
+</layout>

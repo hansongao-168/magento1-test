@@ -1,28 +1,9 @@
-﻿<?php
+<?php
 
-/**
- * Default observer for xfe_labelprint_response_received.
- *
- * Carrier / print modules dispatch the event from
- * XFE_LabelPrint_Helper_Data::dispatchLabelResponse(); this observer
- * unpacks the order / carrier module / Varien_Object response
- * payload and writes a row into xfe_label_print via the helper.
- *
- * Modules that need to pre-process or suppress the record (e.g. to
- * skip a known carrier) can simply remove this observer via their own
- * config.xml or set $observer->setEventName('...') in a different
- * scope.
- */
 class XFE_LabelPrint_Model_Observer
 {
+
     /**
-     * Listen for "xfe_labelprint_response_received".
-     *
-     * Expected event data:
-     *   - order          Mage_Sales_Model_Order|null
-     *   - carrier_module string
-     *   - response       Varien_Object
-     *
      * @param Varien_Event_Observer $observer
      */
     public function onResponseReceived(Varien_Event_Observer $observer)
@@ -47,4 +28,31 @@ class XFE_LabelPrint_Model_Observer
             Mage::logException($e);
         }
     }
+
+    /**
+     * @param Varien_Event_Observer $observer
+     * @return XFE_LabelPrint_Model_Observer
+     */
+    public function onResponseReplaceFiles($observer)
+    {
+        $event = $observer->getEvent();
+        if ($event === null) {
+            return;
+        }
+
+        $order         = $event->getOrder();
+        $data = $event->getData('data');
+        $response      = $event->getResponse();
+
+        if (!$response instanceof Varien_Object) {
+            return $this;
+        }
+
+        /** @var XFE_LabelPrint_Model_Extraction_Print $model */
+        $model = Mage::getModel('xfe_labelprint/extraction_print');
+        $replaceFiles = $model->getReplaceFiles($order, $data);
+        $response->setData($replaceFiles);
+        return $this;
+    }
+
 }

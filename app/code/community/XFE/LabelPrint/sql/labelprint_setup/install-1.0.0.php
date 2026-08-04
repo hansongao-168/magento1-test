@@ -1,26 +1,5 @@
-﻿<?php
-/**
- * Install script: xfe_label_print
- *
- * One row per "label file" produced for a shipment. The label binary is
- * stored on disk under var/xfe/labelprint/ and the relative path is
- * recorded in path_file. Re-prints overwrite path_file and move the
- * previous value into old_path_file so the history is preserved without
- * growing the row count.
- *
- * additional_data is TEXT but the helper stores a JSON-encoded array
- * there so callers can attach arbitrary context (carrier code, account
- * id, response headers, etc.) without schema changes.
- *
- * order_id / tracking_number_id are required at the DB layer (NOT NULL
- * DEFAULT 0) so a row is always traceable back to an order and a
- * tracking number. 0 means "not associated" and is reserved for rows
- * that pre-date (or fall outside) the normal sales-flow link.
- *
- * Indexes:
- *   - order_id            : look up every label produced for an order
- *   - tracking_number_id  : jump from a tracking number to its label
- */
+<?php
+
 /* @var $installer Mage_Core_Model_Resource_Setup */
 $installer = $this;
 $installer->startSetup();

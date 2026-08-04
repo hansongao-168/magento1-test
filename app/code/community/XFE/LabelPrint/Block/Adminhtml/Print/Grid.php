@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 class XFE_LabelPrint_Block_Adminhtml_Print_Grid extends Mage_Adminhtml_Block_Widget_Grid
 {
@@ -89,9 +89,6 @@ class XFE_LabelPrint_Block_Adminhtml_Print_Grid extends Mage_Adminhtml_Block_Wid
         return parent::_prepareColumns();
     }
 
-    /**
-     * Mass actions: only delete is exposed so admins can prune old rows.
-     */
     protected function _prepareMassaction()
     {
         $this->setMassactionIdField('id');
@@ -107,8 +104,6 @@ class XFE_LabelPrint_Block_Adminhtml_Print_Grid extends Mage_Adminhtml_Block_Wid
     }
 
     /**
-     * Clicking a row opens the view action (read-only details).
-     *
      * @param XFE_LabelPrint_Model_Print $row
      * @return string|false
      */
@@ -118,12 +113,11 @@ class XFE_LabelPrint_Block_Adminhtml_Print_Grid extends Mage_Adminhtml_Block_Wid
     }
 
     /**
-     * Ajax grid URL.
-     *
      * @return string
      */
     public function getGridUrl()
     {
         return $this->getUrl('*/*/grid', array('_current' => true));
     }
+
 }

@@ -1,16 +1,15 @@
-﻿<?php
+<?php
 
 class XFE_LabelPrint_Block_Adminhtml_Print_Grid_Renderer_File
     extends Mage_Adminhtml_Block_Widget_Grid_Column_Renderer_Abstract
 {
+
     /**
      * @param Varien_Object $row
      * @return string
      */
     public function render(Varien_Object $row)
     {
-        // The grid re-uses this renderer for path_file and old_path_file;
-        // pick the right column value via $column.
         $column = $this->getColumn();
         $index  = $column ? $column->getIndex() : 'path_file';
 
@@ -35,4 +34,5 @@ class XFE_LabelPrint_Block_Adminhtml_Print_Grid_Renderer_File
             $this->escapeHtml($display)
         );
     }
+
 }

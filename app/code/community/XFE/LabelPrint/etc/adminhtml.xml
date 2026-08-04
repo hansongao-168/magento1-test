@@ -1,16 +1,28 @@
-﻿<?xml version="1.0"?>
+<?xml version="1.0"?>
 <config>
+    <menu>
+        <sales>
+            <children>
+                <xfe_labelprint_print translate="title" module="xfe_labelprint">
+                    <title>Label Print</title>
+                    <action>xfe_labelprint/admin_print/index</action>
+                    <sort_order>999</sort_order>
+                </xfe_labelprint_print>
+            </children>
+        </sales>
+    </menu>
     <acl>
         <resources>
             <admin>
                 <children>
-                    <system>
+                    <sales>
                         <children>
-                            <xfe_labelprint translate="title" module="xfe_labelprint">
+                            <xfe_labelprint_print translate="title" module="xfe_labelprint">
                                 <title>Label Print</title>
-                            </xfe_labelprint>
+                                <sort_order>999</sort_order>
+                            </xfe_labelprint_print>
                         </children>
-                    </system>
+                    </sales>
                 </children>
             </admin>
         </resources>

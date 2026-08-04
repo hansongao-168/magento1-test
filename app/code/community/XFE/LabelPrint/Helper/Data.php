@@ -1,56 +1,13 @@
-﻿<?php
+<?php
 
-/**
- * XFE Label Print Helper
- *
- * Public API other modules use to record that a label was produced for
- * a shipment / tracking number. Persists the label file under
- * var/xfe/labelprint/YYYY/MM/ and writes (or updates) a row in
- * xfe_label_print so admins can trace the print history and download
- * the file again from the grid.
- *
- * Files live under var/ rather than media/ because media/ is served
- * directly by the web server; var/ is not, so the stored labels can
- * only be retrieved through the admin downloadAction and cannot be
- * discovered / scraped by URL guessing. The YYYY/MM sub-directories
- * keep individual months from accumulating tens of thousands of files.
- *
- * Three public entry points are provided:
- *
- *   1. record($payload)             direct, structured call
- *   2. dispatchLabelResponse(...)   dispatches the
- *                                  "xfe_labelprint_response_received"
- *                                  event; the bundled observer turns
- *                                  the payload into a record()
- *   3. replaceLabel / replaceByMonth
- *                                  re-print semantics: the existing
- *                                  path_file is moved to old_path_file
- *                                  and the new file takes over
- *
- * Callers that prefer loose coupling (typical for cross-module
- * integration with a carrier / print module) should dispatch the
- * event. Callers that already hold all data locally can call
- * recordFromResponse() directly to skip the event round-trip.
- *
- * event payload keys (Varien_Object under "response"):
- *   - tracking_number_id (int)    preferred
- *   - label_content (string)      raw / base64 / data:URL / filesystem path
- *   - label_path / path_file      caller already placed the file
- *   - label_format / label_filename
- *   - any other scalar key        copied into additional_data
- */
 class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
 {
-    /** Sub-directory under var/ where label files are stored. */
+
     const VAR_SUBDIR = 'xfe/labelprint';
 
-    /** Name of the dispatched event. */
     const EVENT_RESPONSE_RECEIVED = 'xfe_labelprint_response_received';
 
     /**
-     * Direct, structured entry point. See class docblock for accepted
-     * keys.
-     *
      * @param array $payload
      * @return int|false
      */
@@ -84,18 +41,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Look up the most recent printed label for an order / tracking
-     * number in a given year-month partition. Useful when a carrier
-     * re-prints a label and we want to know which file on disk was
-     * the previous artifact before overwriting it.
-     *
-     * Matching rules:
-     *   - at least one of $orderId / $trackingNumberId must be non-zero
-     *   - $ym accepts "YYYY-MM" or "YYYY/MM"; defaults to the current
-     *     month when empty
-     *   - only rows whose path_file starts with xfe/labelprint/{ym}/
-     *     are considered (the partition the caller asked about)
-     *   - tie-break: most recent id first
      *
      * @param int $orderId
      * @param int $trackingNumberId
@@ -154,13 +99,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Replace the file of an existing row. The current path_file is
-     * moved to old_path_file (so admins can still download the prior
-     * artifact) and the new file is stored under
-     * var/xfe/labelprint/YYYY/MM/.
-     *
-     * The existing order_id / tracking_number_id are preserved.
-     *
      * @param XFE_LabelPrint_Model_Print $row
      * @param array $payload New file payload; supports path_file /
      *                       label_content / additional_data / printed_at.
@@ -184,8 +122,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Convenience wrapper around findLatestByMonth() + replaceLabel().
-     *
      * @param int $orderId
      * @param int $trackingNumberId
      * @param string $ym "YYYY-MM" or "YYYY/MM"; empty = current month
@@ -202,9 +138,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Dispatch the "label response received" event so other modules can
-     * observe it without a hard dependency on this helper.
-     *
      * @param mixed $order
      * @param string $carrierModule
      * @param Varien_Object $response
@@ -219,9 +152,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Same payload shape as dispatchLabelResponse(), but records the
-     * row directly. Useful when the caller already has the data and
-     * does not need the event round-trip.
      *
      * @param mixed $order
      * @param string $carrierModule
@@ -280,10 +210,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Resolve the absolute filesystem directory where label files are
-     * stored for a given (year, month). Created on demand. Defaults to
-     * the current month.
-     *
      * @param int|string|null $time Unix timestamp or strtotime-compatible string
      * @return string
      */
@@ -298,8 +224,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Relative directory name (relative to var/, no trailing slash).
-     *
      * @param int|string|null $time
      * @return string
      */
@@ -309,13 +233,7 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
         return self::VAR_SUBDIR . '/' . $this->_formatYearMonth($ts);
     }
 
-    // ------------------------------------------------------------------
-    // Internals
-    // ------------------------------------------------------------------
-
     /**
-     * Apply payload to a row and save it. Returns the saved id.
-     *
      * @param XFE_LabelPrint_Model_Print $row
      * @param array $payload
      * @param string|null $relPath Pre-resolved var-relative path.
@@ -361,9 +279,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Resolve $payload into a var-relative path string, or null when
-     * the payload has no file to store.
-     *
      * @param array $payload
      * @return string|null
      */
@@ -391,9 +306,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Look up the most recent row for a tracking number. Returns null
-     * when no row exists.
-     *
      * @param int $trackingNumberId
      * @return XFE_LabelPrint_Model_Print|null
      */
@@ -413,9 +325,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Persist raw / base64 / path-based content to disk and return the
-     * var-relative path (under YYYY/MM/). Returns false on failure.
-     *
      * @param string $content
      * @param string $format
      * @param string $filenameHint
@@ -446,13 +355,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Decode label_content into raw bytes. Accepts:
-     *   - raw binary
-     *   - base64 (with or without the data: URL prefix)
-     *   - an absolute filesystem path (returns the file's bytes)
-     *   - a path that exists under either var/ or media/ (joined with
-     *     the matching base dir)
-     *
      * @param string $content
      * @return string|false
      */
@@ -508,9 +410,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Strip any directory traversal / dangerous characters from a caller
-     * supplied filename hint. Returns a safe basename (without extension).
-     *
      * @param string $hint
      * @return string
      */
@@ -527,10 +426,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Turn a caller-supplied path into a var-relative path. Accepts
-     * absolute paths and var-relative / media-relative paths. Returns
-     * false when the file does not exist under any writable base.
-     *
      * @param string $path
      * @return string|false
      */
@@ -568,9 +463,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Coerce a "time" value into a Unix timestamp. Accepts int,
-     * numeric string, strtotime-compatible string, or null (now).
-     *
      * @param int|string|null $time
      * @return int
      */
@@ -590,8 +482,6 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Format a Unix timestamp as a YYYY/MM partition string.
-     *
      * @param int $ts
      * @return string
      */
@@ -601,13 +491,10 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Normalise a "YYYY-MM" or "YYYY/MM" string into "YYYY/MM".
-     * Returns null when the value is not a usable month.
-     *
      * @param string $ym
      * @return string|null
      */
-    protected function _normaliseYearMonth($ym)
+    protected function _normaliseYearMonth($ym = '')
     {
         $ym = trim((string)$ym);
         if ($ym === '') {
@@ -622,4 +509,46 @@ class XFE_LabelPrint_Helper_Data extends Mage_Core_Helper_Abstract
         }
         return null;
     }
+
+    public function replacePathFileName($printFile)
+    {
+        $ym = $this->_normaliseYearMonth();
+        if (!$printFile || is_null($ym)) {
+            return $printFile;
+        }
+        $search = 'var/xlogistic/print_file/';
+        return str_replace($search, 'var/xlogistic_archive/print_file/' . $ym . '/', $printFile);
+    }
+
+    public function normalizePath($path)
+    {
+        if ($path === null) {
+            return '';
+        }
+        $path = (string)$path;
+        $path = trim($path);
+        $path = str_replace('\\', '/', $path);          // \ -> /
+        $path = preg_replace('#/{2,}#', '/', $path);    // collapse /// -> /, BUT see UNC note below
+
+        // Preserve UNC double-slash prefix (//server/share)
+        $isUnc = (substr($path, 0, 2) === '//');
+        $path  = preg_replace('#/{2,}#', '/', $path);
+        if ($isUnc) {
+            $path = '/' . $path;
+        }
+
+        // Trim trailing slash (but keep root "/" alone)
+        if (strlen($path) > 1 && substr($path, -1) === '/') {
+            $path = rtrim($path, '/');
+        }
+        return $path;
+    }
+
+    public function escapeLikeKeyword($keyword)
+    {
+        $keyword = $this->normalizePath($keyword);
+        // Escape LIKE metacharacters using "|" as the escape char.
+        return addcslashes($keyword, '|%_');
+    }
+
 }

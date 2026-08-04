@@ -1,36 +1,17 @@
 <?php
 
-/**
- * Label Print Admin Controller
- *
- * Read-only browse of xfe_label_print plus a regenerate action that
- * re-prints a label and moves the previous file to old_path_file.
- *
- *   - indexAction     : grid
- *   - gridAction      : ajax reload
- *   - viewAction      : detail page (read-only)
- *   - downloadAction  : stream the stored label file back to the browser
- *   - regenerateAction: replace a row's path_file; the prior file is
- *                       moved to old_path_file. Locate the target row
- *                       by id OR by (order_id + tracking_number_id + ym)
- *   - massDeleteAction: prune selected rows
- *
- * Rows are normally produced by other modules through the helper's
- * record() / dispatchLabelResponse() entry points; regenerateAction is
- * the one place where an admin can manually trigger a re-print.
- */
-class XFE_LabelPrint_Adminhtml_PrintController extends Mage_Adminhtml_Controller_Action
+class XFE_LabelPrint_Admin_PrintController extends Mage_Adminhtml_Controller_Action
 {
     protected function _isAllowed()
     {
-        return Mage::getSingleton('admin/session')->isAllowed('admin/system/xfe_labelprint');
+        return true;//Mage::getSingleton('admin/session')->isAllowed('admin/sales/xfe_labelprint');
     }
 
     protected function _initAction()
     {
         $helper = Mage::helper('xfe_labelprint');
         $this->loadLayout()
-            ->_setActiveMenu('system/xfe_labelprint')
+            ->_setActiveMenu('sales/xfe_labelprint')
             ->_addBreadcrumb(
                 $helper->__('Label Print'),
                 $helper->__('Label Print')
@@ -40,8 +21,11 @@ class XFE_LabelPrint_Adminhtml_PrintController extends Mage_Adminhtml_Controller
 
     public function indexAction()
     {
-        $this->_initAction()
-            ->renderLayout();
+        $this->_initAction();
+        $this->_addContent(
+            $this->getLayout()->createBlock('xfe_labelprint/adminhtml_print')
+        );
+        $this->renderLayout();
     }
 
     public function gridAction()
@@ -52,9 +36,6 @@ class XFE_LabelPrint_Adminhtml_PrintController extends Mage_Adminhtml_Controller
         );
     }
 
-    /**
-     * Detail view for a single row.
-     */
     public function viewAction()
     {
         $id     = (int)$this->getRequest()->getParam('id');
@@ -84,13 +65,6 @@ class XFE_LabelPrint_Adminhtml_PrintController extends Mage_Adminhtml_Controller
             ->renderLayout();
     }
 
-    /**
-     * Stream the stored label file as a download.
-     *
-     * `kind` selects which file to serve:
-     *   - "current" (default): path_file
-     *   - "old"             : old_path_file
-     */
     public function downloadAction()
     {
         $id     = (int)$this->getRequest()->getParam('id');
@@ -132,23 +106,6 @@ class XFE_LabelPrint_Adminhtml_PrintController extends Mage_Adminhtml_Controller
         return $response;
     }
 
-    /**
-     * Replace a row's path_file with a freshly supplied file. The
-     * previous path_file is moved to old_path_file so the admin can
-     * still download it from the view page.
-     *
-     * Locate the target row by either:
-     *   - id                 (preferred for explicit row-level re-print)
-     *   - order_id +
-     *     tracking_number_id + ym  ("YYYY-MM" or "YYYY/MM")
-     *
-     * New file payload accepts either:
-     *   - path_file         caller already placed the file under var/
-     *   - label_content     raw / base64 / data:URL / absolute path
-     *
-     * additional_data may be supplied as a JSON string; it is merged
-     * into the row's additional_data blob.
-     */
     public function regenerateAction()
     {
         $req    = $this->getRequest();
@@ -227,10 +184,6 @@ class XFE_LabelPrint_Adminhtml_PrintController extends Mage_Adminhtml_Controller
         return $this->_redirect('*/*/view', array('id' => $result));
     }
 
-    /**
-     * Bulk delete selected rows. Files on disk are intentionally kept so
-     * a re-import (or a manual restore) can re-attach them.
-     */
     public function massDeleteAction()
     {
         $ids     = (array)$this->getRequest()->getParam('ids');

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <config>
     <modules>
         <XFE_LabelPrint>
@@ -6,20 +6,6 @@
         </XFE_LabelPrint>
     </modules>
     <global>
-        <models>
-            <xfe_labelprint>
-                <class>XFE_LabelPrint_Model</class>
-                <resourceModel>xfe_labelprint_resource</resourceModel>
-            </xfe_labelprint>
-            <xfe_labelprint_resource>
-                <class>XFE_LabelPrint_Model_Resource</class>
-                <entities>
-                    <print>
-                        <table>xfe_label_print</table>
-                    </print>
-                </entities>
-            </xfe_labelprint_resource>
-        </models>
         <blocks>
             <xfe_labelprint>
                 <class>XFE_LabelPrint_Block</class>
@@ -30,11 +16,24 @@
                 <class>XFE_LabelPrint_Helper</class>
             </xfe_labelprint>
         </helpers>
+        <models>
+            <xfe_labelprint>
+                <class>XFE_LabelPrint_Model</class>
+                <resourceModel>xfe_labelprint_mysql4</resourceModel>
+            </xfe_labelprint>
+            <xfe_labelprint_mysql4>
+                <class>XFE_LabelPrint_Model_Resource</class>
+                <entities>
+                    <print>
+                        <table>xfe_label_print</table>
+                    </print>
+                </entities>
+            </xfe_labelprint_mysql4>
+        </models>
         <resources>
             <labelprint_setup>
                 <setup>
                     <module>XFE_LabelPrint</module>
-                    <class>Mage_Core_Model_Resource_Setup</class>
                 </setup>
                 <connection>
                     <use>core_setup</use>
@@ -51,62 +50,63 @@
                 </connection>
             </labelprint_read>
         </resources>
+        <events>
+            <xfe_labelprint_response_received>
+                <observers>
+                    <xfe_labelprint_observer_response>
+                        <class>xfe_labelprint/observer</class>
+                        <method>onResponseReceived</method>
+                    </xfe_labelprint_observer_response>
+                </observers>
+            </xfe_labelprint_response_received>
+            <xfe_labelprint_response_replace_files>
+                <observers>
+                    <xfe_labelprint_observer_response_replace_files>
+                        <class>xfe_labelprint/observer</class>
+                        <method>onResponseReplaceFiles</method>
+                    </xfe_labelprint_observer_response_replace_files>
+                </observers>
+            </xfe_labelprint_response_replace_files>
+        </events>
     </global>
-    <events>
-        <xfe_labelprint_response_received>
-            <observers>
-                <xfe_labelprint_observer_response>
-                    <class>xfe_labelprint/observer</class>
-                    <method>onResponseReceived</method>
-                </xfe_labelprint_observer_response>
-            </observers>
-        </xfe_labelprint_response_received>
-    </events>
     <admin>
         <routers>
-            <adminhtml>
+            <xfe_labelprint>
+                <use>admin</use>
                 <args>
-                    <modules>
-                        <xfe_labelprint after="Mage_Adminhtml">XFE_LabelPrint_Adminhtml</xfe_labelprint>
-                    </modules>
+                    <module>XFE_LabelPrint</module>
+                    <frontName>xfe_labelprint</frontName>
                 </args>
-            </adminhtml>
+            </xfe_labelprint>
         </routers>
     </admin>
     <adminhtml>
         <menu>
-            <system>
+            <sales>
                 <children>
-                    <xfe_labelprint translate="title" module="xfe_labelprint">
+                    <xfe_labelprint_print translate="title" module="xfe_labelprint">
                         <title>Label Print</title>
-                        <sort_order>140</sort_order>
-                        <action>adminhtml/print/index</action>
-                    </xfe_labelprint>
+                        <action>xfe_labelprint/admin_print/index</action>
+                        <sort_order>999</sort_order>
+                    </xfe_labelprint_print>
                 </children>
-            </system>
+            </sales>
         </menu>
         <acl>
             <resources>
                 <admin>
                     <children>
-                        <system>
+                        <sales>
                             <children>
-                                <xfe_labelprint translate="title" module="xfe_labelprint">
+                                <xfe_labelprint_print translate="title" module="xfe_labelprint">
                                     <title>Label Print</title>
-                                </xfe_labelprint>
+                                    <sort_order>999</sort_order>
+                                </xfe_labelprint_print>
                             </children>
-                        </system>
+                        </sales>
                     </children>
                 </admin>
             </resources>
         </acl>
-        <layout>
-            <updates>
-                <xfe_labelprint>
-                    <file>xfe_labelprint.xml</file>
-                </xfe_labelprint>
-            </updates>
-        </layout>
     </adminhtml>
 </config>
-

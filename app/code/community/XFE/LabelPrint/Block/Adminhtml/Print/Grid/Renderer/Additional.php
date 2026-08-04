@@ -1,12 +1,10 @@
-﻿<?php
+<?php
 
 class XFE_LabelPrint_Block_Adminhtml_Print_Grid_Renderer_Additional
     extends Mage_Adminhtml_Block_Widget_Grid_Column_Renderer_Abstract
 {
+
     /**
-     * Pretty-print the JSON stored in additional_data. When the stored
-     * value is not valid JSON, fall back to the raw text.
-     *
      * @param Varien_Object $row
      * @return string
      */
@@ -27,4 +25,5 @@ class XFE_LabelPrint_Block_Adminhtml_Print_Grid_Renderer_Additional
 
         return $this->escapeHtml($raw);
     }
+
 }
