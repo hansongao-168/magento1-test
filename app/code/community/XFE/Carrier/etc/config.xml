@@ -2,7 +2,7 @@
 <config>
     <modules>
         <XFE_Carrier>
-<version>1.0.11</version>
+<version>1.0.12</version>
         </XFE_Carrier>
     </modules>
     <global>
@@ -10,6 +10,17 @@
             <xfe_carrier>
                 <class>XFE_Carrier_Model</class>
                 <resourceModel>xfe_carrier_resource</resourceModel>
+                <!--
+                    The entity alias 'carrier_ftp_account' would, after uc_words(),
+                    become 'XFE_Carrier_Model_Carrier_Ftp_Account' - which does NOT
+                    match our real class name XFE_Carrier_Model_Carrier_FtpAccount.
+                    The <rewrite> element forces Magento's factory to use the real
+                    class name. Mirror of Mage's factory mechanism in
+                    Mage_Core_Model_Config::getGroupedClassName().
+                -->
+                <rewrite>
+                    <carrier_ftp_account>XFE_Carrier_Model_Carrier_FtpAccount</carrier_ftp_account>
+                </rewrite>
             </xfe_carrier>
             <xfe_carrier_resource>
                 <class>XFE_Carrier_Model_Resource</class>
@@ -23,6 +34,9 @@
                     <carrier_account>
                         <table>xfe_carrier_account</table>
                     </carrier_account>
+                    <carrier_ftp_account>
+                        <table>xfe_carrier_ftp_account</table>
+                    </carrier_ftp_account>
                     <carrier_rule>
                         <table>xfe_carrier_rule</table>
                     </carrier_rule>
@@ -36,11 +50,39 @@
                         <table>xfe_carrier_translation</table>
                     </carrier_translation>
                 </entities>
+                <!--
+                    Same uc_words reason as the model rewrite above:
+                    alias 'carrier_ftp_account' must resolve to the real
+                    class names without an injected underscore between
+                    'Ftp' and 'Account'. The resource collection has its
+                    own entry because its suffix is appended after the
+                    alias.
+                -->
+                <rewrite>
+                    <carrier_ftp_account>XFE_Carrier_Model_Resource_Carrier_FtpAccount</carrier_ftp_account>
+                    <carrier_ftp_account_collection>XFE_Carrier_Model_Resource_Carrier_FtpAccount_Collection</carrier_ftp_account_collection>
+                </rewrite>
             </xfe_carrier_resource>
         </models>
         <blocks>
             <xfe_carrier>
                 <class>XFE_Carrier_Block</class>
+                <!--
+                    Block aliases whose names contain two underscore-separated
+                    CamelCase words (e.g. ftp_account) get an underscore
+                    injected by Mage_Core_Model_Config::getGroupedClassName()'s
+                    uc_words(), breaking the lookup. Rewrite them to the real
+                    class names. Mirrors the model/resource rewrites above.
+
+                    Only the form-block alias is actually used today -
+                    Mage_Adminhtml_Block_Widget_Form_Container::_prepareLayout()
+                    constructs it from $_blockGroup.'/'.$_controller.'_'.$_mode.'_form'.
+                    Single-segment aliases (e.g. adminhtml_carrier_edit_tab_ftpaccount
+                    / _grid / _rules_grid) work without rewrite.
+                -->
+                <rewrite>
+                    <adminhtml_carrier_ftp_account_edit_form>XFE_Carrier_Block_Adminhtml_Carrier_FtpAccount_Edit_Form</adminhtml_carrier_ftp_account_edit_form>
+                </rewrite>
             </xfe_carrier>
         </blocks>
         <helpers>

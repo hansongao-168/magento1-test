@@ -26,6 +26,9 @@ class XFE_Carrier_Model_Service_Registry
     /** @var XFE_Carrier_Model_Service_Account|null */
     protected static $_account = null;
 
+    /** @var XFE_Carrier_Model_Service_FtpAccount|null */
+    protected static $_ftpAccount = null;
+
     /** @var XFE_Carrier_Model_Service_Rule|null */
     protected static $_rule = null;
 
@@ -52,6 +55,19 @@ class XFE_Carrier_Model_Service_Registry
             self::$_account = XFE_Carrier_Model_Service_Account::instance();
         }
         return self::$_account;
+    }
+
+    /**
+     * FTP账号服务 (1.0.10+)。
+     *
+     * @return XFE_Carrier_Model_Service_FtpAccount
+     */
+    public static function ftpAccount()
+    {
+        if (self::$_ftpAccount === null) {
+            self::$_ftpAccount = XFE_Carrier_Model_Service_FtpAccount::instance();
+        }
+        return self::$_ftpAccount;
     }
 
     /**
@@ -82,7 +98,7 @@ class XFE_Carrier_Model_Service_Registry
     /**
      * Test hook: replace any service.
      *
-     * @param string $name 'logo' | 'account' | 'rule'
+     * @param string $name 'logo' | 'account' | 'ftpAccount' | 'rule'
      * @param object|null $instance
      */
     public static function set($name, $instance)

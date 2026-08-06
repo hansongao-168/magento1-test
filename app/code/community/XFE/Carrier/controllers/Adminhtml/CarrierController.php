@@ -164,6 +164,11 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
                         $carrierId, $data['accounts_data']
                     );
                 }
+                if (array_key_exists('ftp_accounts_data', $data)) {
+                    XFE_Carrier_Model_Service_Registry::ftpAccount()->saveBatch(
+                        $carrierId, $data['ftp_accounts_data']
+                    );
+                }
                 if (array_key_exists('rules_data', $data)) {
                     XFE_Carrier_Model_Service_Registry::rule()->saveBatch(
                         $carrierId, $data['rules_data']
@@ -350,6 +355,152 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
             } else {
                 Mage::getSingleton('adminhtml/session')->addError(
                     $helper->__('This account does not exist.')
+                );
+            }
+        } catch (Exception $e) {
+            Mage::logException($e);
+            Mage::getSingleton('adminhtml/session')->addError($e->getMessage());
+        }
+
+        if ($carrierId) {
+            return $this->_redirect('*/carrier/edit', array('id' => $carrierId));
+        }
+        return $this->_redirect('*/carrier/');
+    }
+
+    // ====================================================================
+    // FTP账号 sub-actions (1.0.10+)
+    // ====================================================================
+
+    /**
+     * Edit / new FTP账号. URL: carrier/editFtpAccount
+     *
+     * Query params:
+     *   ftp_account_id  int (optional - 编辑模式)
+     *   carrier_id      int (optional - 新建模式时必传)
+     */
+    public function editFtpAccountAction()
+    {
+        $ftpAccountId = (int)$this->getRequest()->getParam('ftp_account_id');
+        $carrierId    = (int)$this->getRequest()->getParam('carrier_id');
+        $helper       = Mage::helper('xfe_carrier');
+
+        $ftp = Mage::getModel('xfe_carrier/carrier_ftp_account');
+        if ($ftpAccountId) {
+            $ftp->load($ftpAccountId);
+            if (!$ftp->getId()) {
+                Mage::getSingleton('adminhtml/session')->addError(
+                    $helper->__('该 FTP账号不存在。')
+                );
+                return $this->_redirect('*/carrier/');
+            }
+            $carrierId = $ftp->getCarrierId();
+        } else {
+            if (!$carrierId) {
+                Mage::getSingleton('adminhtml/session')->addError(
+                    $helper->__('缺少承运商 ID。')
+                );
+                return $this->_redirect('*/carrier/');
+            }
+            $ftp->setCarrierId($carrierId);
+        }
+
+        Mage::register('xfe_carrier_ftp_account_data', $ftp);
+
+        $this->_initAction()
+            ->_addBreadcrumb(
+                $ftpAccountId ? $helper->__('编辑 FTP账号') : $helper->__('新增 FTP账号'),
+                $ftpAccountId ? $helper->__('编辑 FTP账号') : $helper->__('新增 FTP账号')
+            )
+            ->renderLayout();
+    }
+
+    /**
+     * 保存 FTP账号. URL: carrier/saveFtpAccount
+     */
+    public function saveFtpAccountAction()
+    {
+        $data         = $this->getRequest()->getPost();
+        $helper       = Mage::helper('xfe_carrier');
+
+        if (!$data) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('无法保存:未接收到数据。')
+            );
+            return $this->_redirect('*/carrier/');
+        }
+
+        $ftpAccountId = (int)$this->getRequest()->getParam('ftp_account_id');
+        $carrierId    = (int)$this->getRequest()->getParam('carrier_id');
+
+        try {
+            $ftp = Mage::getModel('xfe_carrier/carrier_ftp_account');
+            if ($ftpAccountId) {
+                $ftp->load($ftpAccountId);
+                if (!$ftp->getId()) {
+                    Mage::getSingleton('adminhtml/session')->addError(
+                        $helper->__('该 FTP账号不存在。')
+                    );
+                    return $this->_redirect('*/carrier/');
+                }
+                $carrierId = $ftp->getCarrierId();
+            } else {
+                if (!$carrierId) {
+                    Mage::getSingleton('adminhtml/session')->addError(
+                        $helper->__('缺少承运商 ID。')
+                    );
+                    return $this->_redirect('*/carrier/');
+                }
+            }
+
+            unset($data['form_key']);
+
+            $ftp->addData($data);
+            $ftp->save();
+
+            Mage::getSingleton('adminhtml/session')->addSuccess(
+                $helper->__('FTP账号已保存。')
+            );
+        } catch (Exception $e) {
+            Mage::logException($e);
+            Mage::getSingleton('adminhtml/session')->addError($e->getMessage());
+            if ($this->getRequest()->getParam('ftp_account_id')) {
+                return $this->_redirect('*/*/editFtpAccount', array(
+                    'ftp_account_id' => $ftpAccountId,
+                    'carrier_id'     => $carrierId,
+                ));
+            }
+            return $this->_redirect('*/*/editFtpAccount', array('carrier_id' => $carrierId));
+        }
+
+        return $this->_redirect('*/carrier/edit', array('id' => $carrierId));
+    }
+
+    /**
+     * 删除 FTP账号. URL: carrier/deleteFtpAccount
+     */
+    public function deleteFtpAccountAction()
+    {
+        $ftpAccountId = (int)$this->getRequest()->getParam('ftp_account_id');
+        $helper       = Mage::helper('xfe_carrier');
+        $carrierId    = 0;
+
+        if (!$ftpAccountId) {
+            Mage::getSingleton('adminhtml/session')->addError($helper->__('参数无效。'));
+            return $this->_redirect('*/carrier/');
+        }
+
+        try {
+            $ftp = Mage::getModel('xfe_carrier/carrier_ftp_account')->load($ftpAccountId);
+            if ($ftp->getId()) {
+                $carrierId = (int)$ftp->getCarrierId();
+                $ftp->delete();
+                Mage::getSingleton('adminhtml/session')->addSuccess(
+                    $helper->__('FTP账号已删除。')
+                );
+            } else {
+                Mage::getSingleton('adminhtml/session')->addError(
+                    $helper->__('该 FTP账号不存在。')
                 );
             }
         } catch (Exception $e) {
@@ -677,8 +828,7 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
 
             // Set groups_data for the _afterSave condition tree handler
             $groupsData = $this->getRequest()->getParam('groups_data');
-            if ($groupsData !== null && $groupsData !== '') {
-                $this->_validateGroupsData($groupsData);
+            if ($groupsData !== null) {
                 $rule->setGroupsData($groupsData);
             }
 
@@ -752,66 +902,6 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
         }
         return $this->_redirect('*/carrier/');
     }
-
-    /**
-     * Validate the JSON condition tree before persistence.
-     *
-     * Rejects unknown attribute / operator / aggregator so that hand-crafted
-     * or stale JS submissions cannot write rows the Evaluator doesn't know
-     * how to read.
-     *
-     * @param string $json
-     * @throws Mage_Core_Exception
-     */
-    protected function _validateGroupsData($json)
-    {
-        $helper = Mage::helper('xfe_carrier');
-        $allowedAttrs = $helper->getConditionAttributeOptions();
-        $allowedAttrs['__custom__'] = '__custom__';
-        $allowedOps   = $helper->getOperatorOptions();
-
-        $decoded = Mage::helper('core')->jsonDecode($json, true);
-        if (!is_array($decoded)) {
-            Mage::throwException($helper->__('Invalid condition tree JSON.'));
-        }
-        $this->_validateConditionNode($decoded, $allowedAttrs, $allowedOps, $helper);
-    }
-
-    /**
-     * @param array $node
-     * @param array $allowedAttrs
-     * @param array $allowedOps
-     * @param XFE_Carrier_Helper_Data $helper
-     * @throws Mage_Core_Exception
-     */
-    protected function _validateConditionNode($node, $allowedAttrs, $allowedOps, $helper)
-    {
-        if (!isset($node['conditions']) || !is_array($node['conditions'])) {
-            return;
-        }
-        foreach ($node['conditions'] as $child) {
-            if (!is_array($child)) {
-                Mage::throwException($helper->__('Invalid condition node.'));
-            }
-            if (isset($child['type']) && $child['type'] === 'group') {
-                if (!isset($child['aggregator']) || !in_array($child['aggregator'], array('all', 'any'), true)) {
-                    Mage::throwException($helper->__('Invalid aggregator "%s".', (string)isset($child['aggregator']) ? $child['aggregator'] : ''));
-                }
-                $this->_validateConditionNode($child, $allowedAttrs, $allowedOps, $helper);
-                continue;
-            }
-            if (!isset($child['attribute']) || !array_key_exists($child['attribute'], $allowedAttrs)) {
-                Mage::throwException($helper->__('Invalid condition attribute "%s".', isset($child['attribute']) ? (string)$child['attribute'] : ''));
-            }
-            if (!isset($child['operator']) || !array_key_exists($child['operator'], $allowedOps)) {
-                Mage::throwException($helper->__('Invalid condition operator "%s".', isset($child['operator']) ? (string)$child['operator'] : ''));
-            }
-            if (isset($child['value']) && is_string($child['value']) && strlen($child['value']) > 255) {
-                Mage::throwException($helper->__('Condition value too long.'));
-            }
-        }
-    }
-
 public function resolveAction()
     {
         $helper = Mage::helper('xfe_carrier');
@@ -886,12 +976,13 @@ public function resolveAction()
     // ====================================================================
 
     /**
-     * Cleanup all child entities (logo / account / rule) before carrier delete.
+     * Cleanup all child entities (logo / account / ftp_account / rule) before carrier delete.
      */
     protected function _purgeCarrierChildren($carrierId)
     {
         XFE_Carrier_Model_Service_Registry::logo()->deleteAllForCarrier($carrierId);
         XFE_Carrier_Model_Service_Registry::account()->deleteAllForCarrier($carrierId);
+        XFE_Carrier_Model_Service_Registry::ftpAccount()->deleteAllForCarrier($carrierId);
         XFE_Carrier_Model_Service_Registry::rule()->deleteAllForCarrier($carrierId);
     }
 

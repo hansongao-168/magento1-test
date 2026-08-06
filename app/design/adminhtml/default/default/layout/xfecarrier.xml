@@ -24,12 +24,26 @@
         </reference>
     </adminhtml_carrier_addlogo>
 
+    <!-- Edit Logo page (same form block, loaded with a registered logo row) -->
+    <adminhtml_carrier_editlogo>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_logo_edit" name="carrier_logo_edit" />
+        </reference>
+    </adminhtml_carrier_editlogo>
+
     <!-- Account edit page -->
     <adminhtml_carrier_editaccount>
         <reference name="content">
             <block type="xfe_carrier/adminhtml_carrier_account_edit" name="carrier_account_edit" />
         </reference>
     </adminhtml_carrier_editaccount>
+
+    <!-- FTP账号 edit page -->
+    <adminhtml_carrier_editftpaccount>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_ftpaccount_edit" name="carrier_ftpaccount_edit" />
+        </reference>
+    </adminhtml_carrier_editftpaccount>
 
     <!-- Rule edit page -->
     <adminhtml_carrier_editrule>
