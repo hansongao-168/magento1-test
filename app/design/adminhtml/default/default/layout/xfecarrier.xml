@@ -33,6 +33,15 @@
 
     <!-- Rule edit page -->
     <adminhtml_carrier_editrule>
+        <reference name="head">
+            <action method="addJs">
+                <file>mage/adminhtml/loader.js</file>
+            </action>
+            <action method="addItem">
+                <type>skin_js</type>
+                <name>xfe_shippingrule/js/condition-builder.js</name>
+            </action>
+        </reference>
         <reference name="content">
             <block type="xfe_carrier/adminhtml_carrier_rule_edit" name="carrier_rule_edit" />
         </reference>
