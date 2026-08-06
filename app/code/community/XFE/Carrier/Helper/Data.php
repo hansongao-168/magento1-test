@@ -58,8 +58,13 @@ class XFE_Carrier_Helper_Data extends Mage_Core_Helper_Abstract
             'height'         => Mage::helper('xfe_carrier')->__('高度'),
             'volume'         => Mage::helper('xfe_carrier')->__('体积 (长x宽x高)'),
             'order_amount'   => Mage::helper('xfe_carrier')->__('订单金额'),
-            'customer_group' => Mage::helper('xfe_carrier')->__('客户组'),
-            'custom'         => Mage::helper('xfe_carrier')->__('自定义...'),
+            'customer_group'      => Mage::helper('xfe_carrier')->__('客户组'),
+            'billing_country_code' => Mage::helper('xfe_carrier')->__('账单国家'),
+            'billing_city'         => Mage::helper('xfe_carrier')->__('账单城市'),
+            'billing_region'       => Mage::helper('xfe_carrier')->__('账单省/州'),
+            'billing_zip'          => Mage::helper('xfe_carrier')->__('账单邮编'),
+            'user_id'              => Mage::helper('xfe_carrier')->__('用户ID'),
+            'custom'               => Mage::helper('xfe_carrier')->__('自定义...'),
         );
     }
 
@@ -77,9 +82,13 @@ class XFE_Carrier_Helper_Data extends Mage_Core_Helper_Abstract
             '>='       => Mage::helper('xfe_carrier')->__('大于等于'),
             '<'        => Mage::helper('xfe_carrier')->__('小于'),
             '<='       => Mage::helper('xfe_carrier')->__('小于等于'),
-            'in'       => Mage::helper('xfe_carrier')->__('在列表中(逗号分隔)'),
-            'contains' => Mage::helper('xfe_carrier')->__('包含'),
-            'between'  => Mage::helper('xfe_carrier')->__('范围 (x~y)'),
+            'in'           => Mage::helper('xfe_carrier')->__('在列表中(逗号分隔)'),
+            'contains'     => Mage::helper('xfe_carrier')->__('包含'),
+            'between'      => Mage::helper('xfe_carrier')->__('范围 (x~y)'),
+            'not_in'       => Mage::helper('xfe_carrier')->__('不在列表中'),
+            'not_contains' => Mage::helper('xfe_carrier')->__('不包含'),
+            'is_null'      => Mage::helper('xfe_carrier')->__('为空'),
+            'is_not_null'  => Mage::helper('xfe_carrier')->__('不为空'),
         );
     }
 
@@ -109,10 +118,41 @@ class XFE_Carrier_Helper_Data extends Mage_Core_Helper_Abstract
     public function getStringOperators()
     {
         return array(
-            '=='       => Mage::helper('xfe_carrier')->__('等于'),
-            '!='       => Mage::helper('xfe_carrier')->__('不等于'),
-            'in'       => Mage::helper('xfe_carrier')->__('在列表中(逗号分隔)'),
-            'contains' => Mage::helper('xfe_carrier')->__('包含'),
+            '=='           => Mage::helper('xfe_carrier')->__('等于'),
+            '!='           => Mage::helper('xfe_carrier')->__('不等于'),
+            'in'           => Mage::helper('xfe_carrier')->__('在列表中(逗号分隔)'),
+            'not_in'       => Mage::helper('xfe_carrier')->__('不在列表中'),
+            'contains'     => Mage::helper('xfe_carrier')->__('包含'),
+            'not_contains' => Mage::helper('xfe_carrier')->__('不包含'),
+            'is_null'      => Mage::helper('xfe_carrier')->__('为空'),
+            'is_not_null'  => Mage::helper('xfe_carrier')->__('不为空'),
+        );
+    }
+
+    /**
+     * 属性 → 类型映射 (string|numeric)。前后端共享。
+     *
+     * @return array
+     */
+    public function getAttributeTypeMap()
+    {
+        return array(
+            'country_code'         => 'string',
+            'city'                 => 'string',
+            'zip_code'             => 'string',
+            'billing_country_code' => 'string',
+            'billing_city'         => 'string',
+            'billing_region'       => 'string',
+            'billing_zip'          => 'string',
+            'customer_group'       => 'string',
+            'package_count'        => 'numeric',
+            'package_weight'       => 'numeric',
+            'length'               => 'numeric',
+            'width'                => 'numeric',
+            'height'               => 'numeric',
+            'volume'               => 'numeric',
+            'order_amount'         => 'numeric',
+            'user_id'              => 'numeric',
         );
     }
 

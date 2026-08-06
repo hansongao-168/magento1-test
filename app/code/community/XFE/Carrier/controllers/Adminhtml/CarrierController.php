@@ -677,7 +677,8 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
 
             // Set groups_data for the _afterSave condition tree handler
             $groupsData = $this->getRequest()->getParam('groups_data');
-            if ($groupsData !== null) {
+            if ($groupsData !== null && $groupsData !== '') {
+                $this->_validateGroupsData($groupsData);
                 $rule->setGroupsData($groupsData);
             }
 
@@ -751,6 +752,66 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
         }
         return $this->_redirect('*/carrier/');
     }
+
+    /**
+     * Validate the JSON condition tree before persistence.
+     *
+     * Rejects unknown attribute / operator / aggregator so that hand-crafted
+     * or stale JS submissions cannot write rows the Evaluator doesn't know
+     * how to read.
+     *
+     * @param string $json
+     * @throws Mage_Core_Exception
+     */
+    protected function _validateGroupsData($json)
+    {
+        $helper = Mage::helper('xfe_carrier');
+        $allowedAttrs = $helper->getConditionAttributeOptions();
+        $allowedAttrs['__custom__'] = '__custom__';
+        $allowedOps   = $helper->getOperatorOptions();
+
+        $decoded = Mage::helper('core')->jsonDecode($json, true);
+        if (!is_array($decoded)) {
+            Mage::throwException($helper->__('Invalid condition tree JSON.'));
+        }
+        $this->_validateConditionNode($decoded, $allowedAttrs, $allowedOps, $helper);
+    }
+
+    /**
+     * @param array $node
+     * @param array $allowedAttrs
+     * @param array $allowedOps
+     * @param XFE_Carrier_Helper_Data $helper
+     * @throws Mage_Core_Exception
+     */
+    protected function _validateConditionNode($node, $allowedAttrs, $allowedOps, $helper)
+    {
+        if (!isset($node['conditions']) || !is_array($node['conditions'])) {
+            return;
+        }
+        foreach ($node['conditions'] as $child) {
+            if (!is_array($child)) {
+                Mage::throwException($helper->__('Invalid condition node.'));
+            }
+            if (isset($child['type']) && $child['type'] === 'group') {
+                if (!isset($child['aggregator']) || !in_array($child['aggregator'], array('all', 'any'), true)) {
+                    Mage::throwException($helper->__('Invalid aggregator "%s".', (string)isset($child['aggregator']) ? $child['aggregator'] : ''));
+                }
+                $this->_validateConditionNode($child, $allowedAttrs, $allowedOps, $helper);
+                continue;
+            }
+            if (!isset($child['attribute']) || !array_key_exists($child['attribute'], $allowedAttrs)) {
+                Mage::throwException($helper->__('Invalid condition attribute "%s".', isset($child['attribute']) ? (string)$child['attribute'] : ''));
+            }
+            if (!isset($child['operator']) || !array_key_exists($child['operator'], $allowedOps)) {
+                Mage::throwException($helper->__('Invalid condition operator "%s".', isset($child['operator']) ? (string)$child['operator'] : ''));
+            }
+            if (isset($child['value']) && is_string($child['value']) && strlen($child['value']) > 255) {
+                Mage::throwException($helper->__('Condition value too long.'));
+            }
+        }
+    }
+
 public function resolveAction()
     {
         $helper = Mage::helper('xfe_carrier');

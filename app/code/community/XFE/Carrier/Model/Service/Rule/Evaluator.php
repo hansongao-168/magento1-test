@@ -29,7 +29,8 @@
  *
  * Operators supported (string + numeric):
  *   ==   !=   >   >=   <   <=
- *   in   contains
+ *   in   not_in   contains   not_contains
+ *   is_null   is_not_null
  *   between  (semantics: "x~y", or numeric inclusive range)
  */
 class XFE_Carrier_Model_Service_Rule_Evaluator
@@ -132,8 +133,16 @@ class XFE_Carrier_Model_Service_Rule_Evaluator
                 return $this->_lt($actual, $expected) || $this->_eq($actual, $expected);
             case 'in':
                 return $this->_in($actual, $expected);
+            case 'not_in':
+                return !$this->_in($actual, $expected);
             case 'contains':
                 return $this->_contains($actual, $expected);
+            case 'not_contains':
+                return !$this->_contains($actual, $expected);
+            case 'is_null':
+                return $actual === null;
+            case 'is_not_null':
+                return $actual !== null;
             case 'between':
                 return $this->_between($actual, $expected);
             default:
