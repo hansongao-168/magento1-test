@@ -69,7 +69,7 @@ class XFE_OAuth2_Block_Adminhtml_Client_Edit_Form extends Mage_Adminhtml_Block_W
             'title' => $helper->__('Allowed Scopes'),
             'name'  => 'scopes',
             'value' => $model->getScopes(),
-            'note'  => $helper->__('Space separated: basic orders customers admin'),
+            'note'  => $helper->__('Space separated: basic orders customers carriers admin'),
         ));
 
         $fieldset->addField('status', 'select', array(

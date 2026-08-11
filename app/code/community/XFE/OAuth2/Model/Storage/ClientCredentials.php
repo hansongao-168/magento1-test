@@ -104,6 +104,7 @@ class XFE_OAuth2_Model_Storage_ClientCredentials implements
             'basic',
             'orders',
             'customers',
+            'carriers',
             'admin',
         );
 

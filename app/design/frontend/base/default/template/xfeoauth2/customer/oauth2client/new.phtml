@@ -1,0 +1,70 @@
+<?php
+/**
+ * New API Client form
+ *
+ * @var $this XFE_OAuth2_Block_Customer_OAuth2Client
+ */
+?>
+<div class="my-account my-oauth2-client-new">
+    <div class="page-title">
+        <h1><?php echo $this->__('New API Client') ?></h1>
+    </div>
+
+    <form action="<?php echo $this->getSaveUrl() ?>" method="post" id="form-validate">
+        <ul class="form-list">
+            <li>
+                <label for="name" class="required">
+                    <em>*</em><?php echo $this->__('Name') ?>
+                </label>
+                <div class="input-box">
+                    <input type="text" name="name" id="name"
+                           value="<?php echo $this->escapeHtml($this->getRequest()->getParam('name')) ?>"
+                           class="input-text required-entry" maxlength="255" />
+                </div>
+            </li>
+            <li>
+                <label for="description"><?php echo $this->__('Description') ?></label>
+                <div class="input-box">
+                    <textarea name="description" id="description" rows="3" cols="40"
+                              class="input-text"><?php echo $this->escapeHtml($this->getRequest()->getParam('description')) ?></textarea>
+                </div>
+            </li>
+            <li>
+                <label for="grant_types"><?php echo $this->__('Grant Types') ?></label>
+                <div class="input-box">
+                    <input type="text" name="grant_types" id="grant_types"
+                           value="<?php echo $this->escapeHtml($this->getRequest()->getParam('grant_types', 'client_credentials')) ?>"
+                           class="input-text" />
+                    <p class="note">
+                        <?php echo $this->__('Comma separated. Frontend-created clients may use: client_credentials, refresh_token.') ?>
+                    </p>
+                </div>
+            </li>
+            <li>
+                <label for="scopes"><?php echo $this->__('Scopes') ?></label>
+                <div class="input-box">
+                    <input type="text" name="scopes" id="scopes"
+                           value="<?php echo $this->escapeHtml($this->getRequest()->getParam('scopes', 'basic')) ?>"
+                           class="input-text" />
+                    <p class="note">
+                        <?php echo $this->__('Space separated. Example: basic orders customers carriers admin') ?>
+                    </p>
+                </div>
+            </li>
+        </ul>
+
+        <div class="buttons-set">
+            <p class="required"><?php echo $this->__('* Required Fields') ?></p>
+            <button type="submit" class="button" title="<?php echo $this->__('Create Client') ?>">
+                <?php echo $this->__('Create Client') ?>
+            </button>
+            <a href="<?php echo $this->getListUrl() ?>" class="button">
+                <?php echo $this->__('Cancel') ?>
+            </a>
+        </div>
+    </form>
+
+    <p style="margin-top:20px;font-size:small;color:#666;">
+        <?php echo $this->__('After creation the system will display a one-time Client Secret. Save it - it cannot be shown again.') ?>
+    </p>
+</div>

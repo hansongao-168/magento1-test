@@ -2,7 +2,7 @@
 <config>
     <modules>
         <XFE_OAuth2>
-            <version>1.0.0</version>
+            <version>1.0.1</version>
         </XFE_OAuth2>
     </modules>
     <global>
@@ -29,6 +29,9 @@
                     <social_account>
                         <table>xfe_oauth2_social_account</table>
                     </social_account>
+                    <order_channel>
+                        <table>xfe_oauth2_order_channel</table>
+                    </order_channel>
                 </entities>
             </xfeoauth2_resource>
         </models>
@@ -75,6 +78,9 @@
                 <xfeoauth2>
                     <file>xfeoauth2.xml</file>
                 </xfeoauth2>
+                <xfeoauth2_customer>
+                    <file>xfeoauth2_customer.xml</file>
+                </xfeoauth2_customer>
             </updates>
         </layout>
         <translate>

@@ -1,0 +1,94 @@
+<?php
+/**
+ * My API Clients - list page
+ *
+ * @var $this XFE_OAuth2_Block_Customer_OAuth2Client
+ * @var Mage_Core_Model_Resource_Collection_Abstract $clients
+ */
+$clients       = $this->getClients();
+$showSecretId  = $this->getShowSecretClientId();
+?>
+<div class="my-account my-oauth2-clients">
+    <div class="page-title">
+        <h1><?php echo $this->__('My API Clients') ?></h1>
+    </div>
+
+    <?php if ($showSecretId): ?>
+        <?php $secret = $this->getNewSecret($showSecretId); ?>
+        <?php if ($secret): ?>
+            <div class="oauth2-secret-box" style="border:2px solid #f0ad4e;background:#fcf8e3;padding:16px;margin-bottom:20px;">
+                <h2 style="margin-top:0;color:#8a6d3b;">
+                    <?php echo $this->__('Save your Client Secret now') ?>
+                </h2>
+                <p><?php echo $this->__('This is the only time the secret will be displayed. Store it securely.') ?></p>
+                <p>
+                    <strong><?php echo $this->__('Client ID') ?>:</strong>
+                    <code style="user-select:all"><?php echo $this->escapeHtml($showSecretId) ?></code>
+                </p>
+                <p>
+                    <strong><?php echo $this->__('Client Secret') ?>:</strong>
+                    <code style="user-select:all"><?php echo $this->escapeHtml($this->formatSecret($secret)) ?></code>
+                </p>
+                <p>
+                    <em><?php echo $this->__('After leaving this page the secret cannot be recovered.') ?></em>
+                </p>
+            </div>
+        <?php endif; ?>
+    <?php endif; ?>
+
+    <p>
+        <a href="<?php echo $this->getNewUrl() ?>" class="button">
+            <?php echo $this->__('Create New API Client') ?>
+        </a>
+    </p>
+
+    <?php if ($clients->getSize()): ?>
+        <table class="data-table" id="my-oauth2-clients-table" style="width:100%;border-collapse:collapse;">
+            <thead>
+                <tr>
+                    <th><?php echo $this->__('Name') ?></th>
+                    <th><?php echo $this->__('Client ID') ?></th>
+                    <th><?php echo $this->__('Grant Types') ?></th>
+                    <th><?php echo $this->__('Scopes') ?></th>
+                    <th><?php echo $this->__('Created') ?></th>
+                    <th><?php echo $this->__('Status') ?></th>
+                    <th><?php echo $this->__('Actions') ?></th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($clients as $client): ?>
+                <tr>
+                    <td><?php echo $this->escapeHtml($client->getName()) ?></td>
+                    <td><code><?php echo $this->escapeHtml($client->getClientId()) ?></code></td>
+                    <td><?php echo $this->escapeHtml($client->getGrantTypes()) ?></td>
+                    <td><?php echo $this->escapeHtml($client->getScopes()) ?></td>
+                    <td><?php echo $this->escapeHtml($client->getCreatedAt()) ?></td>
+                    <td>
+                        <?php if ((int)$client->getStatus() === 1): ?>
+                            <span style="color:green;"><?php echo $this->__('Active') ?></span>
+                        <?php else: ?>
+                            <span style="color:#999;"><?php echo $this->__('Disabled') ?></span>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <form action="<?php echo $this->getDeleteUrl($client->getClientId()) ?>"
+                              method="post"
+                              onsubmit="return confirm('<?php echo $this->jsQuoteEscape($this->__('Are you sure you want to delete this client? Existing tokens will stop working.')) ?>');"
+                              style="display:inline">
+                            <button type="submit" class="button">
+                                <?php echo $this->__('Delete') ?>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php else: ?>
+        <p><?php echo $this->__('You have not created any API clients yet.') ?></p>
+    <?php endif; ?>
+
+    <p style="margin-top:20px;font-size:small;color:#666;">
+        <?php echo $this->__('API clients allow external applications to access your account on your behalf via OAuth2 tokens. Use the client_credentials grant for server-to-server integrations.') ?>
+    </p>
+</div>

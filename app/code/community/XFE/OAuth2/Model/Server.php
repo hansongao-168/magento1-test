@@ -61,18 +61,18 @@ class XFE_OAuth2_Model_Server
 
             // Authorization Code grant
             $this->_server->addGrantType(
-                new OAuth2\GrantType\AuthorizationCode($this->_storages)
+                new OAuth2\GrantType\AuthorizationCode($this->_storages['authorization_code'])
             );
 
-            // Client Credentials grant
+            // Client Credentials grant - custom class also issues a refresh token
             $this->_server->addGrantType(
-                new OAuth2\GrantType\ClientCredentials($this->_storages)
+                new XFE_OAuth2_Model_Grant_ClientCredentials($this->_storages['client_credentials'])
             );
 
             // Refresh Token grant
             $this->_server->addGrantType(
                 new OAuth2\GrantType\RefreshToken(
-                    $this->_storages,
+                    $this->_storages['refresh_token'],
                     array('always_issue_new_refresh_token' => true)
                 )
             );
