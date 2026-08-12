@@ -103,9 +103,85 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Account_Edit_Form extends Mage_Adminht
             $form->setValues($account->getData());
         }
 
+        // ---------- 预设示例填充 --------------------------------------------
+        // 仅在新建模式(!$account->getId())下生效。
+        // 凭据字段(api_key/api_secret)不预填,需管理员手动补。
+        if ($account && !$account->getId()) {
+            $preset = (string) $this->getRequest()->getParam('preset');
+            if ($preset) {
+                $presetData = $this->_getAccountPreset($preset);
+                if ($presetData) {
+                    $form->setValues($presetData);
+                }
+            }
+        }
+
         $this->setForm($form);
 
         return parent::_prepareForm();
+    }
+
+    /**
+     * 预设示例数据:键对应 form 字段名,值是字段值。
+     * 注意:只填非敏感的标识字段;api_key / api_secret 必须由管理员手动填。
+     *
+     * @param string $presetKey
+     * @return array
+     */
+    protected function _getAccountPreset($presetKey)
+    {
+        $presets = array(
+            'sf_international' => array(
+                'account_code'  => 'SFINT0' . substr((string)time(), -3),
+                'account_name'  => 'SF-International',
+                'company'       => '顺丰国际',
+                'api_endpoint'  => 'https://api.sf-express.com/std/v1/',
+                'is_active'     => 1,
+                'sort_order'    => 10,
+            ),
+            'sf_economy' => array(
+                'account_code'  => 'SFECO0' . substr((string)time(), -3),
+                'account_name'  => 'SF-Economy',
+                'company'       => '顺丰国际',
+                'api_endpoint'  => 'https://api.sf-express.com/economy/v1/',
+                'is_active'     => 1,
+                'sort_order'    => 20,
+            ),
+            'fedex_ie' => array(
+                'account_code'  => 'FDXIE0' . substr((string)time(), -3),
+                'account_name'  => 'FedEx-IE',
+                'company'       => '联邦快递',
+                'api_endpoint'  => 'https://apis.fedex.com/ship/v1',
+                'is_active'     => 1,
+                'sort_order'    => 10,
+            ),
+            'fedex_ip' => array(
+                'account_code'  => 'FDXIP0' . substr((string)time(), -3),
+                'account_name'  => 'FedEx-IP',
+                'company'       => '联邦快递',
+                'api_endpoint'  => 'https://apis.fedex.com/ship/v1',
+                'is_active'     => 1,
+                'sort_order'    => 20,
+            ),
+            'chinapost_ems' => array(
+                'account_code'  => 'CPEMS0' . substr((string)time(), -3),
+                'account_name'  => 'ChinaPost-EMS',
+                'company'       => '中国邮政',
+                'api_endpoint'  => 'https://api.11183.com.cn/ems/v1/',
+                'is_active'     => 1,
+                'sort_order'    => 10,
+            ),
+            'dhl_express' => array(
+                'account_code'  => 'DHLEXP' . substr((string)time(), -3),
+                'account_name'  => 'DHL-Express',
+                'company'       => 'DHL',
+                'api_endpoint'  => 'https://api.dhl.com/mydhlapi/v1',
+                'is_active'     => 1,
+                'sort_order'    => 10,
+            ),
+        );
+
+        return isset($presets[$presetKey]) ? $presets[$presetKey] : array();
     }
 
     /**
