@@ -100,3 +100,6 @@ desktop.ini
 # Chinese-named personal PDF at repo root
 /22 06 2026 收件客户使用权限 — 开关设置.pdf
 
+
+# Windows null-device artifact
+nul
