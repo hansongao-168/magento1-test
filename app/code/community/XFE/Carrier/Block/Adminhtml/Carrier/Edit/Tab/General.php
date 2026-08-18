@@ -345,16 +345,16 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
 
         // 1) 硬编码线路公司(占位 ID,大负数避免与真实 ID 冲突)
         $hardcoded = array(
-            -1001 => '顺丰国际标快',
-            -1002 => '顺丰国际特惠',
-            -1003 => 'FedEx-IE(国际经济)',
-            -1004 => 'FedEx-IP(国际优先)',
-            -1005 => 'DHL-Express',
-            -1006 => 'UPS Worldwide Express',
-            -1007 => 'EMS 国际',
-            -1008 => 'ePacket',
-            -1009 => '顺丰国内标快',
-            -1010 => '顺丰国内特惠',
+            1001 => '顺丰国际标快',
+            1002 => '顺丰国际特惠',
+            1003 => 'FedEx-IE(国际经济)',
+            1004 => 'FedEx-IP(国际优先)',
+            1005 => 'DHL-Express',
+            1006 => 'UPS Worldwide Express',
+            1007 => 'EMS 国际',
+            1008 => 'ePacket',
+            1009 => '顺丰国内标快',
+            1010 => '顺丰国内特惠',
         );
         foreach ($hardcoded as $id => $name) {
             $list[$id] = $name;
