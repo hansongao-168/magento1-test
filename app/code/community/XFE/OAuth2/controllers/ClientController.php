@@ -110,9 +110,18 @@ class XFE_OAuth2_ClientController extends Mage_Core_Controller_Front_Action
             return;
         }
 
-        // Trim and validate inputs
+        // Trim and validate inputs. grant_types is a checkbox group on the
+        // form, so it may arrive as either an array or a string. We deliberately
+        // do NOT default it server-side here - any prior fallback would let a
+        // user submit with no selection and silently get a client created with
+        // their choice forced on them. The empty-string check below enforces
+        // the same at-least-one rule as the JS validator.
         $name      = trim((string)($data['name'] ?? ''));
-        $grantType = trim((string)($data['grant_types'] ?? 'client_credentials'));
+        $grantRaw  = $data['grant_types'] ?? '';
+        if (is_array($grantRaw)) {
+            $grantRaw = implode(',', $grantRaw);
+        }
+        $grantType = trim((string)$grantRaw);
         $scopes    = trim((string)($data['scopes'] ?? 'basic'));
 
         if ($name === '') {
@@ -121,23 +130,40 @@ class XFE_OAuth2_ClientController extends Mage_Core_Controller_Front_Action
             return;
         }
 
-        // Frontend callers should not be allowed to use authorization_code
-        // (which requires a redirect_uri and is meant for third-party apps).
-        $allowed = array('client_credentials', 'refresh_token');
-        $parts = array_filter(array_map('trim', explode(',', $grantType)));
-        $parts = array_values(array_intersect($parts, $allowed));
-        if (empty($parts)) {
-            $parts = array('client_credentials');
+        // Storefront-created clients are limited to grant types that do not
+        // need a redirect_uri - authorization_code is the one reserved for
+        // third-party apps the customer authorizes via a browser redirect.
+        // The form enforces at-least-one client-side; this is the matching
+        // server-side guard so we never persist an empty grant_types value.
+        // normalizeGrantTypes() also enforces case/whitespace tolerance and
+        // silently drops unknown identifiers.
+        $grantTypes = $helper->normalizeGrantTypes($grantType);
+        if ($grantTypes === '') {
+            $session->addError($helper->__('Please select at least one Grant Type for this client.'));
+            $this->_redirect('*/*/new');
+            return;
         }
-        $grantTypes = implode(',', $parts);
+        // Strip authorization_code for storefront-created clients - they
+        // don't carry a redirect_uri and shouldn't be able to obtain one.
+        $grantTypes = implode(',', array_values(array_filter(
+            explode(',', $grantTypes),
+            function ($g) { return $g !== 'authorization_code'; }
+        )));
+        if ($grantTypes === '') {
+            $grantTypes = 'client_credentials,refresh_token';
+        }
 
         try {
             $model = Mage::getModel('xfeoauth2/client');
             $model->setClientId($helper->generateUuid());
 
-            // One-time secret shown to the customer
+            // One-time secret shown to the customer.
+            // client_secret holds the one-way bcrypt hash (used for auth).
+            // client_secret_encrypted holds a reversible copy so the owner can
+            // view the secret later via the "Show Secret" button.
             $secret = $helper->generateToken(32);
             $model->setClientSecret($helper->hashSecret($secret));
+            $model->setClientSecretEncrypted($helper->encryptData($secret));
 
             $model->setName($name);
             $model->setDescription(trim((string)($data['description'] ?? '')));
@@ -200,5 +226,61 @@ class XFE_OAuth2_ClientController extends Mage_Core_Controller_Front_Action
         }
 
         $this->_redirect('*/*/index');
+    }
+
+    /**
+     * GET /oauth2/client/reveal?id=xxx - return the client secret for a client
+     * owned by the current customer as JSON.
+     *
+     * The plaintext secret is recovered from client_secret_encrypted (a
+     * reversible AES copy stored via core/encrypt). Clients created before
+     * version 1.0.2 do not have this column filled, in which case the secret
+     * cannot be recovered (bcrypt hash is one-way) and a 409 is returned.
+     */
+    public function revealAction()
+    {
+        $helper  = Mage::helper('xfeoauth2');
+        $session = Mage::getSingleton('customer/session');
+        $clientId = $this->getRequest()->getParam('id');
+
+        if (!$clientId) {
+            $helper->sendJsonError(400, 'bad_request', $helper->__('Missing client id.'));
+            return;
+        }
+
+        $model = Mage::getModel('xfeoauth2/client')->load($clientId);
+        if (!$model->getId()) {
+            $helper->sendJsonError(404, 'not_found', $helper->__('Client not found.'));
+            return;
+        }
+
+        if ((int)$model->getUserId() !== (int)$session->getCustomerId()) {
+            $helper->log('Customer reveal attempt for client ' . $clientId
+                . ' by non-owner customer ' . $session->getCustomerId());
+            $helper->sendJsonError(403, 'forbidden', $helper->__('You are not allowed to view this client.'));
+            return;
+        }
+
+        $encrypted = (string)$model->getClientSecretEncrypted();
+        if ($encrypted === '') {
+            $helper->sendJsonError(409, 'not_recoverable', $helper->__(
+                'This client was created before secret recovery was available. '
+                . 'The secret cannot be recovered. Please create a new client.'
+            ));
+            return;
+        }
+
+        try {
+            $secret = $helper->decryptData($encrypted);
+        } catch (Exception $e) {
+            $helper->log('Decrypt client secret error for ' . $clientId . ': ' . $e->getMessage());
+            $helper->sendJsonError(500, 'decrypt_failed', $helper->__('Could not decrypt the client secret.'));
+            return;
+        }
+
+        $helper->sendJson(200, array(
+            'client_id'     => $model->getClientId(),
+            'client_secret' => $secret,
+        ));
     }
 }

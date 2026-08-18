@@ -80,6 +80,17 @@ class XFE_OAuth2_Block_Customer_OAuth2Client extends Mage_Core_Block_Template
     }
 
     /**
+     * URL helper - reveal (view) client secret, returns JSON
+     *
+     * @param string $clientId
+     * @return string
+     */
+    public function getRevealUrl($clientId)
+    {
+        return Mage::getUrl('oauth2/client/reveal', array('id' => $clientId));
+    }
+
+    /**
      * Read the one-time secret for a client (only valid in the same request
      * after creation). Returns null after the secret has been read.
      *

@@ -2,7 +2,7 @@
 <config>
     <modules>
         <XFE_Carrier>
-<version>1.0.12</version>
+<version>1.0.13</version>
         </XFE_Carrier>
     </modules>
     <global>

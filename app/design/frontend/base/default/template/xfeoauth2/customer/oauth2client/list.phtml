@@ -71,6 +71,11 @@ $showSecretId  = $this->getShowSecretClientId();
                         <?php endif; ?>
                     </td>
                     <td>
+                        <button type="button"
+                                class="button"
+                                onclick="revealClientSecret('<?php echo $this->escapeHtml($this->getRevealUrl($client->getClientId())) ?>', this)">
+                            <?php echo $this->__('Show Secret') ?>
+                        </button>
                         <form action="<?php echo $this->getDeleteUrl($client->getClientId()) ?>"
                               method="post"
                               onsubmit="return confirm('<?php echo $this->jsQuoteEscape($this->__('Are you sure you want to delete this client? Existing tokens will stop working.')) ?>');"
@@ -92,3 +97,63 @@ $showSecretId  = $this->getShowSecretClientId();
         <?php echo $this->__('API clients allow external applications to access your account on your behalf via OAuth2 tokens. Use the client_credentials grant for server-to-server integrations.') ?>
     </p>
 </div>
+
+<div id="oauth2-reveal-box"
+     style="display:none;border:2px solid #3c763d;background:#fcf8e3;padding:16px;margin-bottom:20px;">
+    <h2 style="margin-top:0;color:#3c763d;"><?php echo $this->__('Client Secret') ?></h2>
+    <p><strong><?php echo $this->__('Client ID') ?>:</strong>
+        <code id="oauth2-reveal-client-id" style="user-select:all"></code></p>
+    <p><strong><?php echo $this->__('Client Secret') ?>:</strong>
+        <code id="oauth2-reveal-secret" style="user-select:all;word-break:break-all;"></code></p>
+    <p><em><?php echo $this->__('Keep this secret safe. Anyone with it can access your data.') ?></em></p>
+    <button type="button" class="button" onclick="document.getElementById('oauth2-reveal-box').style.display='none'">
+        <?php echo $this->__('Close') ?>
+    </button>
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+function revealClientSecret(url, btn) {
+    if (!url) {
+        return;
+    }
+    if (btn) {
+        btn.disabled = true;
+    }
+    new Ajax.Request(url, {
+        method: 'get',
+        onSuccess: function (response) {
+            if (btn) {
+                btn.disabled = false;
+            }
+            try {
+                var data = response.responseJSON;
+            } catch (e) {
+                data = null;
+            }
+            if (data && data.data && data.data.client_secret) {
+                document.getElementById('oauth2-reveal-client-id').textContent = data.data.client_id || '';
+                document.getElementById('oauth2-reveal-secret').textContent   = data.data.client_secret;
+                document.getElementById('oauth2-reveal-box').style.display     = '';
+                document.getElementById('oauth2-reveal-secret').scrollIntoView({behavior:'smooth', block:'center'});
+            } else if (data && data.message) {
+                alert(data.message);
+            } else {
+                alert('<?php echo $this->jsQuoteEscape($this->__('An error occurred while retrieving the secret.')) ?>');
+            }
+        },
+        onFailure: function (response) {
+            if (btn) {
+                btn.disabled = false;
+            }
+            try {
+                var data = response.responseJSON;
+            } catch (e) {
+                data = null;
+            }
+            alert(data && data.message ? data.message : '<?php echo $this->jsQuoteEscape($this->__('An error occurred while retrieving the secret.')) ?>');
+        }
+    });
+}
+//]]>
+</script>

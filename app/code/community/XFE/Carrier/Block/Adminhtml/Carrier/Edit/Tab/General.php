@@ -93,11 +93,23 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
         $companies = $this->_getShippingCompanyList();
         $companiesJson = json_encode(array_values($companies));
 
+        // ✕ 按钮 + 下拉 + 隐藏 input:全部放进外层容器
         $html = '<div class="shipping-company-search" style="position:relative;width:280px;">';
         $html .= '<input type="hidden" name="shipping_company_id" id="shipping_company_id" value="' . $currentId . '" />';
+
+        // 搜索框 + ✕ 按钮同行(右浮 ✕)
+        $html .= '<div style="position:relative;">';
         $html .= '<input type="text" id="shipping_company_search" class="input-text" '
-            . 'placeholder="' . $helper->__('输入关键词模糊搜索线路公司...') . '" '
-            . 'style="width:100%;" autocomplete="off" />';
+            . 'placeholder="' . $helper->__('输入名称或 ID 模糊搜索线路公司...') . '" '
+            . 'style="width:100%;padding-right:24px;" autocomplete="off" />';
+        $html .= '<span id="shipping_company_clear" '
+            . 'style="display:' . ($currentId > 0 ? 'inline' : 'none') . ';'
+            . 'position:absolute;right:6px;top:50%;transform:translateY(-50%);'
+            . 'cursor:pointer;color:#999;font-size:14px;line-height:1;'
+            . 'padding:2px 6px;border-radius:3px;" '
+            . 'title="' . $helper->__('清除选择') . '">✕</span>';
+        $html .= '</div>';
+
         $html .= '<div id="shipping_company_dropdown" style="display:none;position:absolute;top:100%;left:0;'
             . 'width:100%;max-height:220px;overflow-y:auto;border:1px solid #adadad;'
             . 'background:#fff;z-index:9999;box-shadow:0 2px 6px rgba(0,0,0,0.15);"></div>';
@@ -106,7 +118,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
         $html .= '<script type="text/javascript">
         //<![CDATA[
         (function() {
-            var searchInput, hiddenInput, dropdown;
+            var searchInput, hiddenInput, dropdown, clearBtn;
             var allCompanies = ' . $companiesJson . ';   // [{id, name}, ...]
             var currentId = ' . $currentId . ';
 
@@ -114,6 +126,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
                 searchInput = $("shipping_company_search");
                 hiddenInput = $("shipping_company_id");
                 dropdown    = $("shipping_company_dropdown");
+                clearBtn    = $("shipping_company_clear");
 
                 // 编辑模式:已经有 shipping_company_id 时,反查名字显示
                 if (currentId > 0) {
@@ -146,12 +159,29 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
                     renderList(val);
                 });
 
+                // ✕ 清除按钮:清空 hidden input 和显示
+                clearBtn.observe("click", function(evt) {
+                    evt.stop();
+                    clearSelection();
+                });
+                clearBtn.observe("mouseover", function() { this.setStyle({background: "#eee", color: "#c00"}); });
+                clearBtn.observe("mouseout",  function() { this.setStyle({background: "transparent", color: "#999"}); });
+
                 // 点击页面其他位置 → 关闭下拉
                 document.observe("click", function(evt) {
                     if (!evt.findElement(".shipping-company-search")) {
                         dropdown.hide();
                     }
                 });
+
+                // form submit 时同步:确保 hidden input 与显示一致
+                // (避免用户输入了非列表文字就保存导致数据看起来"没生效")
+                var ef = $("edit_form");
+                if (ef) {
+                    ef.observe("submit", function() {
+                        syncBeforeSubmit();
+                    });
+                }
             }
 
             function findById(id) {
@@ -164,6 +194,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
             }
 
             // 模糊匹配:支持 不区分大小写 + 包含匹配,关键词按空格切分多个 AND
+            // 纯数字查询时优先按 ID 前缀匹配(更直观)
             function match(item, keyword) {
                 if (!keyword) {
                     return true;
@@ -178,6 +209,10 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
                     if (parts[pi].length > 0) {
                         nonempty.push(parts[pi]);
                     }
+                }
+                // 纯数字查询:按 ID 前缀精确匹配
+                if (nonempty.length === 1 && /^\d+$/.test(nonempty[0])) {
+                    return id.indexOf(nonempty[0]) !== -1;
                 }
                 for (var i = 0; i < nonempty.length; i++) {
                     var p = nonempty[i];
@@ -204,7 +239,12 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
                         // IIFE 锁定 item,避免闭包陷阱导致所有 option 选中最后一项
                         (function(item) {
                             var opt = new Element("div", {"class": "sc-option"});
-                            opt.update(item.name + " <span style=\\"color:#999;font-size:11px;\\">#" + item.id + "</span>");
+                            // ID 左侧、名称右侧,符合"左侧显示 ID"的要求
+                            opt.update(
+                                "<span style=\\"color:#999;font-size:11px;margin-right:8px;\\">[#"
+                                + item.id + "]</span>"
+                                + "<span>" + item.name + "</span>"
+                            );
                             opt.setStyle({
                                 padding: "8px 10px", cursor: "pointer",
                                 borderBottom: "1px solid #f0f0f0"
@@ -225,7 +265,57 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
             function selectCompany(id, name) {
                 hiddenInput.value = id;
                 searchInput.value = name;
+                currentId = id;
+                clearBtn.show();
                 dropdown.hide();
+            }
+
+            function clearSelection() {
+                hiddenInput.value = "";
+                searchInput.value = "";
+                currentId = 0;
+                clearBtn.hide();
+                dropdown.hide();
+            }
+
+            // 提交前同步:如果当前显示的文字恰好命中一个候选项,但用户没点击下拉,
+            // 自动按命中的项设置 hidden input。如果显示文字不匹配任何项,保留原
+            // hiddenInput.value(保证幂等,不会覆盖旧数据)。
+            function syncBeforeSubmit() {
+                // Prototype.js may be unavailable (graceful degradation)
+                var raw = (searchInput.value || "");
+                var txt = (typeof raw.strip === "function") ? raw.strip() : (String(raw).replace(/^\s+|\s+$/g, ""));
+                if (txt === "") {
+                    // 文字为空 → 视为清空,DB 列接收 NULL(注意 DB 是 INT UNSIGNED NULL,
+                    // 由 Varien_Object 跳过空值不写)
+                    hiddenInput.value = "";
+                    currentId = 0;
+                    return;
+                }
+                // 尝试在 allCompanies 里精确匹配(按名字)
+                var matchItem = null;
+                for (var i = 0; i < allCompanies.length; i++) {
+                    if (allCompanies[i].name === txt) {
+                        matchItem = allCompanies[i];
+                        break;
+                    }
+                }
+                if (matchItem) {
+                    hiddenInput.value = matchItem.id;
+                    currentId = matchItem.id;
+                    return;
+                }
+                // 文字看起来是 "#[id]"(历史数据未命中):直接解析
+                var m = txt.match(/^#(\d+)$/);
+                if (m && m[1]) {
+                    var parsedId = parseInt(m[1], 10);
+                    if (!isNaN(parsedId) && findById(parsedId)) {
+                        hiddenInput.value = parsedId;
+                        currentId = parsedId;
+                        return;
+                    }
+                }
+                // 找不到 → 保留 hiddenInput.value(幂等)
             }
 
             document.observe("dom:loaded", init);

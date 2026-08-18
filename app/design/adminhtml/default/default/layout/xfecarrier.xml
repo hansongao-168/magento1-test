@@ -17,6 +17,22 @@
         </reference>
     </adminhtml_carrier_edit>
 
+    <!-- Bulk import landing page (1.0.13+). Form posts to importPost. -->
+    <adminhtml_carrier_import>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_import" name="carrier_import" template="xfe_carrier/carrier/import/container.phtml">
+                <block type="xfe_carrier/adminhtml_carrier_import_form" name="carrier_import_form" as="form" />
+            </block>
+        </reference>
+    </adminhtml_carrier_import>
+
+    <!-- Result page (renders from registry, no form_key required). -->
+    <adminhtml_carrier_importResult>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_import_result" name="carrier_import_result" />
+        </reference>
+    </adminhtml_carrier_importResult>
+
     <!-- Add Logo page (standalone Magento form) -->
     <adminhtml_carrier_addlogo>
         <reference name="content">

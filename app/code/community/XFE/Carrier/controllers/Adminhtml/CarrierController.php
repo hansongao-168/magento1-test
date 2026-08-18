@@ -54,6 +54,116 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
         );
     }
 
+    /**
+     * Bulk-import landing page. Renders the upload form + a link to the
+     * CSV template. The form posts to importPostAction().
+     */
+    public function importAction()
+    {
+        $this->_initAction()
+            ->_title($this->__('批量导入承运商'))
+            ->_addBreadcrumb(
+                Mage::helper('xfe_carrier')->__('批量导入承运商'),
+                Mage::helper('xfe_carrier')->__('批量导入承运商')
+            )
+            ->renderLayout();
+    }
+
+    /**
+     * Handle the upload: validate form_key, hand the file to the Importer
+     * service, store the Result in the registry for the result page.
+     */
+    public function importPostAction()
+    {
+        $helper = Mage::helper('xfe_carrier');
+        if (!$this->_validateFormKey()) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('Invalid form key, please reload the page.')
+            );
+            return $this->_redirect('*/*/import');
+        }
+
+        $result = XFE_Carrier_Model_Service_Registry::importer()->importUpload(
+            isset($_FILES['carrier_csv']) ? $_FILES['carrier_csv'] : array()
+        );
+
+        Mage::register('xfe_carrier_import_result', $result);
+
+        // Human-readable flash messages.
+        $session = Mage::getSingleton('adminhtml/session');
+        if ($result->created > 0) {
+            $session->addSuccess(
+                $helper->__('%d carrier(s) created.', $result->created)
+            );
+        }
+        if ($result->updated > 0) {
+            $session->addSuccess(
+                $helper->__('%d carrier(s) updated.', $result->updated)
+            );
+        }
+        if ($result->skipped > 0) {
+            $session->addWarning(
+                $helper->__('%d row(s) skipped (see below).', $result->skipped)
+            );
+        }
+        if ($result->created + $result->updated + $result->skipped === 0
+            && !$result->hasErrors()
+        ) {
+            $session->addNotice($helper->__('Uploaded CSV contained no data rows.'));
+        }
+        return $this->_redirect('*/*/importResult');
+    }
+
+    /**
+     * Result page: shows the counters + a per-row error table from the
+     * last importPostAction(). If the registry is empty, redirect back
+     * to the import page.
+     */
+    public function importResultAction()
+    {
+        /** @var XFE_Carrier_Model_Service_Importer_Result|null $result */
+        $result = Mage::registry('xfe_carrier_import_result');
+        if (!$result) {
+            return $this->_redirect('*/*/import');
+        }
+        $this->_initAction()
+            ->_title($this->__('批量导入结果'))
+            ->_addBreadcrumb(
+                Mage::helper('xfe_carrier')->__('批量导入结果'),
+                Mage::helper('xfe_carrier')->__('批量导入结果')
+            )
+            ->renderLayout();
+    }
+
+    /**
+     * Stream a starter CSV template so users know what columns are
+     * accepted. Triggered by the "下载模板" link on the import page.
+     */
+    public function downloadTemplateAction()
+    {
+        $tmpFile = tempnam(sys_get_temp_dir(), 'xfe_carrier_import_');
+        if (!XFE_Carrier_Model_Service_Registry::importer()->writeTemplate($tmpFile)) {
+            @unlink($tmpFile);
+            Mage::getSingleton('adminhtml/session')->addError(
+                Mage::helper('xfe_carrier')->__('Failed to build the CSV template.')
+            );
+            return $this->_redirect('*/*/import');
+        }
+
+        $this->getResponse()
+            ->setHttpResponseCode(200)
+            ->setHeader('Content-Type', 'text/csv; charset=utf-8', true)
+            ->setHeader(
+                'Content-Disposition',
+                'attachment; filename="carrier_import_template.csv"',
+                true
+            )
+            ->setHeader('Content-Length', (string)filesize($tmpFile), true)
+            ->setBody(file_get_contents($tmpFile));
+        @unlink($tmpFile);
+        return $this;
+    }
+
     public function newAction()
     {
         $this->_forward('edit');
@@ -148,6 +258,25 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
             ) {
                 $storeTranslations['note'][$storeScope] = $data['note'];
                 unset($data['note']);
+            }
+
+            // The tabbed edit page moves every tab body into the single
+            // edit_form via varienTabs. Grid search / pagination inputs from
+            // the account / ftp / rule tabs (class "no-changes") then collide
+            // with the real form fields and get POSTed as arrays (e.g. name
+            // appears twice). A scalar column fed an array would be coerced to
+            // the literal string "Array" by _prepareDataForTable(). JS already
+            // neutralizes those inputs; this is a belt-and-braces guard so a
+            // scalar form value can never arrive as an array.
+            $scalarFields = array('name', 'code', 'note', 'status', 'sort_order', 'shipping_company_id');
+            foreach ($scalarFields as $f) {
+                if (isset($data[$f]) && is_array($data[$f])) {
+                    // If a scalar column somehow arrives as an array (e.g. the
+                    // tabbed form posts multiple same-name inputs), keep the
+                    // last value so the model is never handed an array that
+                    // would be coerced to "Array".
+                    $data[$f] = end($data[$f]);
+                }
             }
 
             $model->addData($data);

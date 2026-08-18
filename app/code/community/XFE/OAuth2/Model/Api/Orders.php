@@ -263,7 +263,7 @@ class XFE_OAuth2_Model_Api_Orders extends XFE_OAuth2_Model_Api_Abstract
         try {
             Mage::getModel('xfeoauth2/order_channel')->recordChannel(
                 (int)$order->getId(),
-                XFE_OAuth2_Model_OrderChannel::CHANNEL_API_OAUTH2,
+                XFE_OAuth2_Model_Order_Channel::CHANNEL_API_OAUTH2,
                 (string)$this->_tokenData['client_id'],
                 (string)$this->_tokenData['client_id'],
                 (int)$this->_tokenData['user_id'],

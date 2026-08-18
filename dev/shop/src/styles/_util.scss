@@ -1,0 +1,9 @@
+// Color tokens & shared mixins. Kept as a Sass partial so other files can
+// `@use 'util' as *;` and reach the variables.
+$primary: #2563eb;
+$primary-dark: #1d4ed8;
+$danger: #ef4444;
+$text: #0f172a;
+$muted: #64748b;
+$border: #e2e8f0;
+$bg: #f8fafc;

@@ -29,14 +29,47 @@
                               class="input-text"><?php echo $this->escapeHtml($this->getRequest()->getParam('description')) ?></textarea>
                 </div>
             </li>
-            <li>
-                <label for="grant_types"><?php echo $this->__('Grant Types') ?></label>
+            <li class="wide">
+                <label class="required"><em>*</em><?php echo $this->__('Grant Types') ?></label>
                 <div class="input-box">
-                    <input type="text" name="grant_types" id="grant_types"
-                           value="<?php echo $this->escapeHtml($this->getRequest()->getParam('grant_types', 'client_credentials')) ?>"
-                           class="input-text" />
+                    <?php
+                        // Frontend-created clients are limited to grant types that
+                        // do not require a redirect_uri. authorization_code is
+                        // omitted on purpose - it is only meaningful for
+                        // third-party apps the customer authorizes via a
+                        // browser redirect.
+                        $grantOptions = array(
+                            'client_credentials' => $this->__('Server-to-server access tokens'),
+                            'refresh_token'      => $this->__('Rotate access tokens without recreating the client'),
+                        );
+                        // Repopulate from a previous (failed) submission when
+                        // present; otherwise default to all options checked so
+                        // the form starts in a valid state.
+                        $submittedParam = $this->getRequest()->getParam('grant_types');
+                        if (is_array($submittedParam)) {
+                            $selectedGrantTypes = array_map('strval', $submittedParam);
+                        } else {
+                            $selectedGrantTypes = array_keys($grantOptions);
+                        }
+                    ?>
+                    <div class="grant-types-options" id="grant-types-options">
+                        <?php foreach ($grantOptions as $value => $description): ?>
+                            <label class="checkbox-label grant-type-option"
+                                   for="grant_type_<?php echo $this->escapeHtml($value) ?>"
+                                   style="display:block;margin:0 0 6px 0;">
+                                <input type="checkbox"
+                                       name="grant_types[]"
+                                       id="grant_type_<?php echo $this->escapeHtml($value) ?>"
+                                       value="<?php echo $this->escapeHtml($value) ?>"
+                                       class="checkbox grant-type-cb"
+                                       <?php if (in_array($value, $selectedGrantTypes, true)) echo 'checked="checked"'; ?> />
+                                <strong><?php echo $this->escapeHtml($value) ?></strong>
+                                &mdash; <?php echo $this->escapeHtml($description) ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
                     <p class="note">
-                        <?php echo $this->__('Comma separated. Frontend-created clients may use: client_credentials, refresh_token.') ?>
+                        <?php echo $this->__('Select at least one grant type. Frontend-created clients may use: client_credentials, refresh_token.') ?>
                     </p>
                 </div>
             </li>
@@ -68,3 +101,32 @@
         <?php echo $this->__('After creation the system will display a one-time Client Secret. Save it - it cannot be shown again.') ?>
     </p>
 </div>
+
+<script type="text/javascript">
+//<![CDATA[
+document.observe('dom:loaded', function () {
+    var form = $('form-validate');
+    if (!form) {
+        return;
+    }
+    form.observe('submit', function (event) {
+        var boxes = form.select('input.grant-type-cb');
+        var anyChecked = false;
+        for (var i = 0; i < boxes.length; i++) {
+            if (boxes[i].checked) {
+                anyChecked = true;
+                break;
+            }
+        }
+        if (!anyChecked) {
+            Event.stop(event);
+            var first = boxes.first();
+            if (first && typeof Validation !== 'undefined') {
+                Validation.decorate(first, {validationClass: 'validation-failed'});
+            }
+            alert('<?php echo $this->jsQuoteEscape($this->__('Please select at least one Grant Type.')) ?>');
+        }
+    });
+});
+//]]>
+</script>

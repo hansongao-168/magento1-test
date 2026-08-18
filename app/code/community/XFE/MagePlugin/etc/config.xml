@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<!--
+    XFE_MagePlugin 模块配置。
+
+    本模块替换原 XFE_Customer 的「批量修改名字」功能。
+
+    实现要点：
+      - Grid 上的 "批量修改名字" massaction item + inline textarea 都由
+        XFE_MagePlugin_Block_Adminhtml_Permissions_User_Grid 子类注入
+        （覆盖 _prepareMassaction() 一个方法）。
+      - 提交走 /admin/plugin/massSave/ 到 controller。
+      - URL 路由通过 <admin><routers><adminhtml><args><modules>
+        把 XFE_MagePlugin_Adminhtml 命名空间前置到 Mage_Adminhtml 之前实现。
+      - 未改动 app/code/core/Mage/Adminhtml/ 下任何文件。
+-->
+<config>
+    <modules>
+        <XFE_MagePlugin>
+            <version>1.1.0</version>
+        </XFE_MagePlugin>
+    </modules>
+    <global>
+        <models>
+            <xfe_mageplugin>
+                <class>XFE_MagePlugin_Model</class>
+            </xfe_mageplugin>
+        </models>
+        <helpers>
+            <xfe_mageplugin>
+                <class>XFE_MagePlugin_Helper</class>
+            </xfe_mageplugin>
+        </helpers>
+        <blocks>
+            <xfe_mageplugin>
+                <class>XFE_MagePlugin_Block</class>
+            </xfe_mageplugin>
+            <xfe_mageplugin_adminhtml>
+                <class>XFE_MagePlugin_Block_Adminhtml</class>
+            </xfe_mageplugin_adminhtml>
+            <!--
+                类继承：把 adminhtml/permissions_user_grid 指向我们的子类。
+                这是 Mage 原生支持的扩展点（与 <class> 类继承同源）。
+            -->
+            <adminhtml>
+                <rewrite>
+                    <permissions_user_grid>XFE_MagePlugin_Block_Adminhtml_Permissions_User_Grid</permissions_user_grid>
+                </rewrite>
+            </adminhtml>
+        </blocks>
+    </global>
+    <admin>
+        <routers>
+            <adminhtml>
+                <args>
+                    <modules>
+                        <XFE_MagePlugin before="Mage_Adminhtml">XFE_MagePlugin_Adminhtml</XFE_MagePlugin>
+                    </modules>
+                </args>
+            </adminhtml>
+        </routers>
+    </admin>
+</config>

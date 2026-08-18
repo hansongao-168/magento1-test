@@ -35,6 +35,9 @@ class XFE_Carrier_Model_Service_Registry
     /** @var XFE_Carrier_Model_Service_Rule_Resolver|null */
     protected static $_ruleResolver = null;
 
+    /** @var XFE_Carrier_Model_Service_Importer|null */
+    protected static $_importer = null;
+
     /**
      * @return XFE_Carrier_Model_Service_Logo
      */
@@ -96,9 +99,22 @@ class XFE_Carrier_Model_Service_Registry
     }
 
     /**
+     * CSV importer for xfe_carrier_carrier (1.0.13+).
+     *
+     * @return XFE_Carrier_Model_Service_Importer
+     */
+    public static function importer()
+    {
+        if (self::$_importer === null) {
+            self::$_importer = XFE_Carrier_Model_Service_Importer::instance();
+        }
+        return self::$_importer;
+    }
+
+    /**
      * Test hook: replace any service.
      *
-     * @param string $name 'logo' | 'account' | 'ftpAccount' | 'rule'
+     * @param string $name 'logo' | 'account' | 'ftpAccount' | 'rule' | 'importer'
      * @param object|null $instance
      */
     public static function set($name, $instance)
