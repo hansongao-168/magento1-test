@@ -154,8 +154,43 @@ class XFE_Carrier_Block_Adminhtml_Carrier_FtpAccount_Edit_Form extends Mage_Admi
             $form->setValues($values);
         }
 
+        // ============================================================
+        // 自定义字段(键值对编辑器,1.0.14+)
+        // ============================================================
+        $this->_addCustomFieldsFieldset($form, $ftp);
+
         $this->setForm($form);
         return parent::_prepareForm();
+    }
+
+    /**
+     * 与主账号 Edit/Form 共享同一份 phtml 模板(键值对编辑器)。
+     *
+     * @param Varien_Data_Form $form
+     * @param mixed $ftp
+     * @return void
+     */
+    protected function _addCustomFieldsFieldset(Varien_Data_Form $form, $ftp)
+    {
+        $helper = Mage::helper('xfe_carrier');
+        $fieldset = $form->addFieldset('custom_fields_fieldset', array(
+            'legend' => $helper->__('自定义字段'),
+            'note'   => $helper->__(
+                '用于保存本 FTP账号的私有参数,整体以 JSON 存储。'
+                . ' key 由英文/数字/下划线组成,value 类型决定输入框形态。'
+            ),
+        ));
+
+        $rawJson = $ftp ? (string) $ftp->getCustomFieldsJson() : '';
+
+        $fieldset->addField('custom_fields', 'note', array(
+            'label' => $helper->__('键值对列表'),
+            'text'  => $this->getLayout()->createBlock('core/template')
+                ->setTemplate('xfe_carrier/carrier/account/custom_fields.phtml')
+                ->setData('raw_json', $rawJson)
+                ->setData('entity_type', 'ftp_account')
+                ->toHtml(),
+        ));
     }
 
     protected function _toHtml()

@@ -23,6 +23,7 @@ fresh install / upgrade:
 | `upgrade-1.0.7-1.0.8.php` | New `xfe_carrier_carrier_translation` |
 | `upgrade-1.0.8-1.0.9.php` | Adds `priority` to rule; adds `updated_at` to logo; resolver indexes |
 | `upgrade-1.0.9-1.0.10.php` | New `xfe_carrier_carrier_ftp_account`; adds `ftp_account_id` FK to rule |
+| `upgrade-1.0.13-1.0.14.php` | Adds `custom_fields_json` (TEXT NULL) to both `xfe_carrier_carrier_account` and `xfe_carrier_carrier_ftp_account` for EAV-like key/value extension fields |
 
 ## Files Magento ignores (reference only)
 

@@ -1,56 +1,54 @@
 <?php
 
 /**
- * Block Adminhtml Carrier Account Edit Form
+ * 承运商账号编辑 - Form
  *
- * Layout (matches the carrier-level Rules tab UX):
- *   - 账号信息 fieldset: account identity fields (Varien form)
- *   - 规则设置 section : full-width entry-edit block rendered after the
- *     form, hosting the list of rules bound to this account + a
- *     [+ 添加规则] button that links out to the dedicated Carrier Rule
- *     Edit page (which hosts the conditions builder - same UX as
- *     XFE_ShippingRule Conditions tab).
+ * 字段名严格对齐 XFE_Carrier_Model_Carrier_Account 的真实列(由 1.0.1
+ * install 起的 schema 固化),与 FTP 账号 Edit/Form 同款"键值对编辑器"
+ * 共享同一份 phtml + JS 资源(模板:
+ *   xfe_carrier/carrier/account/custom_fields.phtml)。
  *
- * The rules section is rendered OUTSIDE the Varien form so the Magento
- * grid widget gets the full content width instead of being squeezed
- * into the value column of a <note> element.
+ * 表单分段:
+ *   1. 账号信息    (固定列)
+ *   2. 自定义字段  (EAV-like 键值对,持久化到 custom_fields_json)
+ *   3. 规则设置    (与原 Edit/Tab/Account 风格保持一致,挂载独立 Grid)
+ *
+ * 关联文档: docs/architecture/carrier-account-custom-fields.md
  */
 class XFE_Carrier_Block_Adminhtml_Carrier_Account_Edit_Form extends Mage_Adminhtml_Block_Widget_Form
 {
+    /**
+     * 用于 phtml 区分"主账号"还是"FTP 账号"的容器类型;
+     * FTP Form 继承 / 复用相同模板时改写。
+     */
+    protected $_containerEntityType = 'account';
+
     protected function _prepareForm()
     {
         $helper  = Mage::helper('xfe_carrier');
         $account = Mage::registry('xfe_carrier_account_data');
 
-        // ---------- Form -----------------------------------------------
         $form = new Varien_Data_Form(array(
             'id'     => 'edit_form',
             'action' => $this->getUrl('*/*/saveAccount'),
             'method' => 'post',
         ));
-
         $form->setUseContainer(true);
 
-        // ---------- Fieldset: 账号信息 ---------------------------------
+        // ============================================================
+        // 1) 账号信息(固定列,与 Model 真实字段对齐)
+        // ============================================================
         $fieldset = $form->addFieldset('base_fieldset', array(
             'legend' => $helper->__('账号信息'),
         ));
 
         if ($account && $account->getId()) {
             $fieldset->addField('account_id', 'hidden', array(
-                'name'  => 'account_id',
+                'name' => 'account_id',
             ));
         }
-
         $fieldset->addField('carrier_id', 'hidden', array(
-            'name'  => 'carrier_id',
-        ));
-
-        $fieldset->addField('account_code', 'text', array(
-            'name'     => 'account_code',
-            'label'    => $helper->__('账号编号'),
-            'title'    => $helper->__('账号编号'),
-            'required' => true,
+            'name' => 'carrier_id',
         ));
 
         $fieldset->addField('account_name', 'text', array(
@@ -60,10 +58,22 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Account_Edit_Form extends Mage_Adminht
             'required' => true,
         ));
 
-        $fieldset->addField('company', 'text', array(
-            'name'  => 'company',
-            'label' => $helper->__('物流公司'),
-            'title' => $helper->__('物流公司'),
+        $fieldset->addField('account_no', 'text', array(
+            'name'  => 'account_no',
+            'label' => $helper->__('账号编号'),
+            'title' => $helper->__('账号编号'),
+        ));
+
+        $fieldset->addField('username', 'text', array(
+            'name'  => 'username',
+            'label' => $helper->__('用户名'),
+            'title' => $helper->__('用户名'),
+        ));
+
+        $fieldset->addField('password', 'text', array(
+            'name'  => 'password',
+            'label' => $helper->__('密码'),
+            'title' => $helper->__('密码'),
         ));
 
         $fieldset->addField('api_key', 'text', array(
@@ -78,14 +88,14 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Account_Edit_Form extends Mage_Adminht
             'title' => $helper->__('API Secret'),
         ));
 
-        $fieldset->addField('api_endpoint', 'text', array(
-            'name'  => 'api_endpoint',
-            'label' => $helper->__('API Endpoint'),
-            'title' => $helper->__('API Endpoint'),
+        $fieldset->addField('endpoint_url', 'text', array(
+            'name'  => 'endpoint_url',
+            'label' => $helper->__('API 端点 URL'),
+            'title' => $helper->__('API 端点 URL'),
         ));
 
-        $fieldset->addField('is_active', 'select', array(
-            'name'   => 'is_active',
+        $fieldset->addField('status', 'select', array(
+            'name'   => 'status',
             'label'  => $helper->__('状态'),
             'title'  => $helper->__('状态'),
             'values' => Mage::getSingleton('xfe_carrier/source_status')->toOptionArray(),
@@ -99,98 +109,68 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Account_Edit_Form extends Mage_Adminht
             'note'  => $helper->__('越小越靠前'),
         ));
 
+        $fieldset->addField('note', 'textarea', array(
+            'name'  => 'note',
+            'label' => $helper->__('备注'),
+            'title' => $helper->__('备注'),
+        ));
+
         if ($account) {
             $form->setValues($account->getData());
         }
 
-        // ---------- 预设示例填充 --------------------------------------------
-        // 仅在新建模式(!$account->getId())下生效。
-        // 凭据字段(api_key/api_secret)不预填,需管理员手动补。
-        if ($account && !$account->getId()) {
-            $preset = (string) $this->getRequest()->getParam('preset');
-            if ($preset) {
-                $presetData = $this->_getAccountPreset($preset);
-                if ($presetData) {
-                    $form->setValues($presetData);
-                }
-            }
-        }
+        // ============================================================
+        // 2) 自定义字段(键值对编辑器)
+        // ============================================================
+        $this->_addCustomFieldsFieldset($form, $account);
 
         $this->setForm($form);
-
         return parent::_prepareForm();
     }
 
     /**
-     * 预设示例数据:键对应 form 字段名,值是字段值。
-     * 注意:只填非敏感的标识字段;api_key / api_secret 必须由管理员手动填。
+     * 注入「自定义字段」fieldset。键值对编辑器由独立 phtml + JS 渲染。
      *
-     * @param string $presetKey
-     * @return array
+     * @param Varien_Data_Form                     $form
+     * @param XFE_Carrier_Model_Carrier_Account|null $account
+     * @return void
      */
-    protected function _getAccountPreset($presetKey)
+    protected function _addCustomFieldsFieldset(Varien_Data_Form $form, $account)
     {
-        $presets = array(
-            'sf_international' => array(
-                'account_code'  => 'SFINT0' . substr((string)time(), -3),
-                'account_name'  => 'SF-International',
-                'company'       => '顺丰国际',
-                'api_endpoint'  => 'https://api.sf-express.com/std/v1/',
-                'is_active'     => 1,
-                'sort_order'    => 10,
+        $helper = Mage::helper('xfe_carrier');
+        $fieldset = $form->addFieldset('custom_fields_fieldset', array(
+            'legend' => $helper->__('自定义字段'),
+            'note'   => $helper->__(
+                '用于保存各承运商私有参数(类似 EAV),整体以 JSON 存储。'
+                . ' key 由英文/数字/下划线组成,value 类型决定输入框形态。'
             ),
-            'sf_economy' => array(
-                'account_code'  => 'SFECO0' . substr((string)time(), -3),
-                'account_name'  => 'SF-Economy',
-                'company'       => '顺丰国际',
-                'api_endpoint'  => 'https://api.sf-express.com/economy/v1/',
-                'is_active'     => 1,
-                'sort_order'    => 20,
-            ),
-            'fedex_ie' => array(
-                'account_code'  => 'FDXIE0' . substr((string)time(), -3),
-                'account_name'  => 'FedEx-IE',
-                'company'       => '联邦快递',
-                'api_endpoint'  => 'https://apis.fedex.com/ship/v1',
-                'is_active'     => 1,
-                'sort_order'    => 10,
-            ),
-            'fedex_ip' => array(
-                'account_code'  => 'FDXIP0' . substr((string)time(), -3),
-                'account_name'  => 'FedEx-IP',
-                'company'       => '联邦快递',
-                'api_endpoint'  => 'https://apis.fedex.com/ship/v1',
-                'is_active'     => 1,
-                'sort_order'    => 20,
-            ),
-            'chinapost_ems' => array(
-                'account_code'  => 'CPEMS0' . substr((string)time(), -3),
-                'account_name'  => 'ChinaPost-EMS',
-                'company'       => '中国邮政',
-                'api_endpoint'  => 'https://api.11183.com.cn/ems/v1/',
-                'is_active'     => 1,
-                'sort_order'    => 10,
-            ),
-            'dhl_express' => array(
-                'account_code'  => 'DHLEXP' . substr((string)time(), -3),
-                'account_name'  => 'DHL-Express',
-                'company'       => 'DHL',
-                'api_endpoint'  => 'https://api.dhl.com/mydhlapi/v1',
-                'is_active'     => 1,
-                'sort_order'    => 10,
-            ),
-        );
+        ));
 
-        return isset($presets[$presetKey]) ? $presets[$presetKey] : array();
+        $rawJson = $account ? (string) $account->getCustomFieldsJson() : '';
+
+        $fieldset->addField('custom_fields', 'note', array(
+            'label' => $helper->__('键值对列表'),
+            'text'  => $this->_renderCustomFieldsEditor($rawJson),
+        ));
     }
 
     /**
-     * Render the account form (parent::_toHtml()), then append a
-     * full-width 规则设置 section hosting the rules grid.
+     * 渲染键值对编辑器 phtml,传入已存在的 JSON 字符串。
      *
-     * Using an entry-edit block (instead of a <note> element inside the
-     * form) keeps the grid at the full content width and matches the
-     * look-and-feel of the carrier-level Rules tab.
+     * @param string $rawJson
+     * @return string
+     */
+    protected function _renderCustomFieldsEditor($rawJson)
+    {
+        return $this->getLayout()->createBlock('core/template')
+            ->setTemplate('xfe_carrier/carrier/account/custom_fields.phtml')
+            ->setData('raw_json', $rawJson)
+            ->setData('entity_type', $this->_containerEntityType)
+            ->toHtml();
+    }
+
+    /**
+     * 规则设置区块(原有逻辑保留)。
      *
      * @return string
      */
@@ -207,7 +187,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Account_Edit_Form extends Mage_Adminht
         $html .= '</div>';
         $html .= '<div class="fieldset">';
         $html .= '<p class="note" style="margin:0 0 10px 0;">'
-              . $helper->__('绑定到本账号的规则将作为该账号的优选匹配规则；条件请在规则编辑页（点击列表中的 [编辑] 链接）中维护。')
+              . $helper->__('绑定到本账号的规则将作为该账号的优选匹配规则;条件请在规则编辑页(点击列表中的 [编辑] 链接)中维护。')
               . '</p>';
         $html .= $this->_renderAccountRulesSection($account);
         $html .= '</div>';
@@ -217,16 +197,6 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Account_Edit_Form extends Mage_Adminht
     }
 
     /**
-     * Render the rules grid + the [+ 添加规则] button, or the
-     * "please save the account first" hint when the account hasn't
-     * been saved yet.
-     *
-     * Uses the dedicated
-     * XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Rules_Grid
-     * block so the rules list inherits the standard admin grid styling
-     * (column widths, zebra striping, severity badges via
-     * grid_severity_notice|critical, action links) - no custom inline CSS.
-     *
      * @param XFE_Carrier_Model_Carrier_Account|null $account
      * @return string
      */
@@ -236,14 +206,10 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Account_Edit_Form extends Mage_Adminht
 
         if (!$account || !$account->getId()) {
             return '<p style="color:#999;font-style:italic;padding:6px 0;">'
-                . $helper->__('请先保存账号，然后再为它绑定规则。')
+                . $helper->__('请先保存账号,然后再为它绑定规则。')
                 . '</p>';
         }
 
-        // Registry already carries the account at this point
-        // (editAccountAction populates xfe_carrier_account_data); the
-        // grid picks up account_id from there for both the filter and
-        // the action URLs.
         return $this->getLayout()->createBlock(
             'xfe_carrier/adminhtml_carrier_edit_tab_account_rules_grid'
         )->toHtml();

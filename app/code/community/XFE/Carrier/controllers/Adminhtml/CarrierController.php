@@ -441,6 +441,13 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
             $account->save();
             $accountId = (int)$account->getId();
 
+            // 自定义字段(1.0.14+):键值对列表,以 JSON 整体保存。
+            // Service 内做 diff + 事件广播,不在 Controller 写 json_encode。
+            if (isset($data['custom_fields']) && is_array($data['custom_fields'])) {
+                XFE_Carrier_Model_Service_Registry::accountCustomFieldService()
+                    ->applyFromPost($accountId, $data);
+            }
+
             // Note: since 1.0.8 rules are managed from a dedicated
             // edit page (see Carrier/Rule/Edit/Form.php) - the Account
             // Edit page no longer hosts an inline rule editor. Rules
@@ -586,6 +593,13 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
 
             $ftp->addData($data);
             $ftp->save();
+            $ftpAccountId = (int)$ftp->getId();
+
+            // 自定义字段(1.0.14+):键值对列表,以 JSON 整体保存。
+            if (isset($data['custom_fields']) && is_array($data['custom_fields'])) {
+                XFE_Carrier_Model_Service_Registry::ftpAccountCustomFieldService()
+                    ->applyFromPost($ftpAccountId, $data);
+            }
 
             Mage::getSingleton('adminhtml/session')->addSuccess(
                 $helper->__('FTP账号已保存。')
@@ -1031,6 +1045,390 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
         }
         return $this->_redirect('*/carrier/');
     }
+    // ====================================================================
+    // Rule bulk import / export (规则批量导入与导出)
+    // ====================================================================
+
+    /**
+     * 规则批量导入落地页：渲染上传表单 + 模板下载链接。
+     */
+    public function ruleImportAction()
+    {
+        $this->_initAction()
+            ->_title($this->__('批量导入承运商规则'))
+            ->_addBreadcrumb(
+                Mage::helper('xfe_carrier')->__('批量导入承运商规则'),
+                Mage::helper('xfe_carrier')->__('批量导入承运商规则')
+            )
+            ->renderLayout();
+    }
+
+    /**
+     * 处理规则上传：校验 form_key，交给 Rule_Importer 服务，结果存入
+     * registry 供结果页渲染。
+     */
+    public function ruleImportPostAction()
+    {
+        $helper = Mage::helper('xfe_carrier');
+        if (!$this->_validateFormKey()) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('Invalid form key, please reload the page.')
+            );
+            return $this->_redirect('*/*/ruleImport');
+        }
+
+        $result = XFE_Carrier_Model_Service_Registry::ruleImporter()->importUpload(
+            isset($_FILES['rule_csv']) ? $_FILES['rule_csv'] : array()
+        );
+
+        Mage::register('xfe_carrier_rule_import_result', $result);
+
+        $session = Mage::getSingleton('adminhtml/session');
+        if ($result->created > 0) {
+            $session->addSuccess(
+                $helper->__('%d rule(s) created.', $result->created)
+            );
+        }
+        if ($result->updated > 0) {
+            $session->addSuccess(
+                $helper->__('%d rule(s) updated.', $result->updated)
+            );
+        }
+        if ($result->skipped > 0) {
+            $session->addWarning(
+                $helper->__('%d row(s) skipped (see below).', $result->skipped)
+            );
+        }
+        if ($result->created + $result->updated + $result->skipped === 0
+            && !$result->hasErrors()
+        ) {
+            $session->addNotice($helper->__('Uploaded CSV contained no data rows.'));
+        }
+        return $this->_redirect('*/*/ruleImportResult');
+    }
+
+    /**
+     * 规则导入结果页：展示计数器与逐行错误表。
+     */
+    public function ruleImportResultAction()
+    {
+        $result = Mage::registry('xfe_carrier_rule_import_result');
+        if (!$result) {
+            return $this->_redirect('*/*/ruleImport');
+        }
+        $this->_initAction()
+            ->_title($this->__('批量导入承运商规则结果'))
+            ->_addBreadcrumb(
+                Mage::helper('xfe_carrier')->__('批量导入承运商规则结果'),
+                Mage::helper('xfe_carrier')->__('批量导入承运商规则结果')
+            )
+            ->renderLayout();
+    }
+
+    /**
+     * 流式输出规则导入 CSV 模板。
+     */
+    public function ruleDownloadTemplateAction()
+    {
+        $tmpFile = tempnam(sys_get_temp_dir(), 'xfe_carrier_rule_import_');
+        if (!XFE_Carrier_Model_Service_Registry::ruleImporter()->writeTemplate($tmpFile)) {
+            @unlink($tmpFile);
+            Mage::getSingleton('adminhtml/session')->addError(
+                Mage::helper('xfe_carrier')->__('Failed to build the rule CSV template.')
+            );
+            return $this->_redirect('*/*/ruleImport');
+        }
+
+        $this->getResponse()
+            ->setHttpResponseCode(200)
+            ->setHeader('Content-Type', 'text/csv; charset=utf-8', true)
+            ->setHeader(
+                'Content-Disposition',
+                'attachment; filename="carrier_rule_import_template.csv"',
+                true
+            )
+            ->setHeader('Content-Length', (string)filesize($tmpFile), true)
+            ->setBody(file_get_contents($tmpFile));
+        @unlink($tmpFile);
+        return $this;
+    }
+
+    /**
+     * 导出全部承运商规则为 CSV 附件。
+     */
+    public function ruleExportAction()
+    {
+        $csv = XFE_Carrier_Model_Service_Registry::ruleExporter()->exportAll();
+
+        $this->getResponse()
+            ->setHttpResponseCode(200)
+            ->setHeader('Content-Type', 'text/csv; charset=utf-8', true)
+            ->setHeader(
+                'Content-Disposition',
+                'attachment; filename="carrier_rules_export_' . date('Ymd_His') . '.csv"',
+                true
+            )
+            ->setHeader('Content-Length', (string)strlen($csv), true)
+            ->setBody($csv);
+        return $this;
+    }
+
+    // ====================================================================
+    // Account bulk import / export (账号批量导入与导出)
+    // ====================================================================
+
+    /**
+     * 账号批量导入落地页：渲染上传表单 + 模板下载链接。
+     */
+    public function accountImportAction()
+    {
+        $this->_initAction()
+            ->_title($this->__('批量导入承运商账号'))
+            ->_addBreadcrumb(
+                Mage::helper('xfe_carrier')->__('批量导入承运商账号'),
+                Mage::helper('xfe_carrier')->__('批量导入承运商账号')
+            )
+            ->renderLayout();
+    }
+
+    /**
+     * 处理账号上传：校验 form_key，交给 Account_Importer 服务，结果存入
+     * registry 供结果页渲染。
+     */
+    public function accountImportPostAction()
+    {
+        $helper = Mage::helper('xfe_carrier');
+        if (!$this->_validateFormKey()) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('Invalid form key, please reload the page.')
+            );
+            return $this->_redirect('*/*/accountImport');
+        }
+
+        $result = XFE_Carrier_Model_Service_Registry::accountImporter()->importUpload(
+            isset($_FILES['account_csv']) ? $_FILES['account_csv'] : array()
+        );
+
+        Mage::register('xfe_carrier_account_import_result', $result);
+
+        $session = Mage::getSingleton('adminhtml/session');
+        if ($result->created > 0) {
+            $session->addSuccess(
+                $helper->__('%d account(s) created.', $result->created)
+            );
+        }
+        if ($result->updated > 0) {
+            $session->addSuccess(
+                $helper->__('%d account(s) updated.', $result->updated)
+            );
+        }
+        if ($result->skipped > 0) {
+            $session->addWarning(
+                $helper->__('%d row(s) skipped (see below).', $result->skipped)
+            );
+        }
+        if ($result->created + $result->updated + $result->skipped === 0
+            && !$result->hasErrors()
+        ) {
+            $session->addNotice($helper->__('Uploaded CSV contained no data rows.'));
+        }
+        return $this->_redirect('*/*/accountImportResult');
+    }
+
+    /**
+     * 账号导入结果页：展示计数器与逐行错误表。
+     */
+    public function accountImportResultAction()
+    {
+        $result = Mage::registry('xfe_carrier_account_import_result');
+        if (!$result) {
+            return $this->_redirect('*/*/accountImport');
+        }
+        $this->_initAction()
+            ->_title($this->__('批量导入承运商账号结果'))
+            ->_addBreadcrumb(
+                Mage::helper('xfe_carrier')->__('批量导入承运商账号结果'),
+                Mage::helper('xfe_carrier')->__('批量导入承运商账号结果')
+            )
+            ->renderLayout();
+    }
+
+    /**
+     * 流式输出账号导入 CSV 模板。
+     */
+    public function accountDownloadTemplateAction()
+    {
+        $tmpFile = tempnam(sys_get_temp_dir(), 'xfe_carrier_account_import_');
+        if (!XFE_Carrier_Model_Service_Registry::accountImporter()->writeTemplate($tmpFile)) {
+            @unlink($tmpFile);
+            Mage::getSingleton('adminhtml/session')->addError(
+                Mage::helper('xfe_carrier')->__('Failed to build the account CSV template.')
+            );
+            return $this->_redirect('*/*/accountImport');
+        }
+
+        $this->getResponse()
+            ->setHttpResponseCode(200)
+            ->setHeader('Content-Type', 'text/csv; charset=utf-8', true)
+            ->setHeader(
+                'Content-Disposition',
+                'attachment; filename="carrier_account_import_template.csv"',
+                true
+            )
+            ->setHeader('Content-Length', (string)filesize($tmpFile), true)
+            ->setBody(file_get_contents($tmpFile));
+        @unlink($tmpFile);
+        return $this;
+    }
+
+    /**
+     * 导出全部承运商账号为 CSV 附件。
+     */
+    public function accountExportAction()
+    {
+        $csv = XFE_Carrier_Model_Service_Registry::accountExporter()->exportAll();
+
+        $this->getResponse()
+            ->setHttpResponseCode(200)
+            ->setHeader('Content-Type', 'text/csv; charset=utf-8', true)
+            ->setHeader(
+                'Content-Disposition',
+                'attachment; filename="carrier_accounts_export_' . date('Ymd_His') . '.csv"',
+                true
+            )
+            ->setHeader('Content-Length', (string)strlen($csv), true)
+            ->setBody($csv);
+        return $this;
+    }
+
+    // ====================================================================
+    // FTP账号 bulk import / export (FTP账号批量导入与导出)
+    // ====================================================================
+
+    /**
+     * FTP账号批量导入落地页：渲染上传表单 + 模板下载链接。
+     */
+    public function ftpAccountImportAction()
+    {
+        $this->_initAction()
+            ->_title($this->__('批量导入承运商 FTP账号'))
+            ->_addBreadcrumb(
+                Mage::helper('xfe_carrier')->__('批量导入承运商 FTP账号'),
+                Mage::helper('xfe_carrier')->__('批量导入承运商 FTP账号')
+            )
+            ->renderLayout();
+    }
+
+    /**
+     * 处理 FTP账号上传：校验 form_key，交给 FtpAccount_Importer 服务，
+     * 结果存入 registry 供结果页渲染。
+     */
+    public function ftpAccountImportPostAction()
+    {
+        $helper = Mage::helper('xfe_carrier');
+        if (!$this->_validateFormKey()) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('Invalid form key, please reload the page.')
+            );
+            return $this->_redirect('*/*/ftpAccountImport');
+        }
+
+        $result = XFE_Carrier_Model_Service_Registry::ftpAccountImporter()->importUpload(
+            isset($_FILES['ftp_account_csv']) ? $_FILES['ftp_account_csv'] : array()
+        );
+
+        Mage::register('xfe_carrier_ftp_account_import_result', $result);
+
+        $session = Mage::getSingleton('adminhtml/session');
+        if ($result->created > 0) {
+            $session->addSuccess(
+                $helper->__('%d FTP account(s) created.', $result->created)
+            );
+        }
+        if ($result->updated > 0) {
+            $session->addSuccess(
+                $helper->__('%d FTP account(s) updated.', $result->updated)
+            );
+        }
+        if ($result->skipped > 0) {
+            $session->addWarning(
+                $helper->__('%d row(s) skipped (see below).', $result->skipped)
+            );
+        }
+        if ($result->created + $result->updated + $result->skipped === 0
+            && !$result->hasErrors()
+        ) {
+            $session->addNotice($helper->__('Uploaded CSV contained no data rows.'));
+        }
+        return $this->_redirect('*/*/ftpAccountImportResult');
+    }
+
+    /**
+     * FTP账号导入结果页：展示计数器与逐行错误表。
+     */
+    public function ftpAccountImportResultAction()
+    {
+        $result = Mage::registry('xfe_carrier_ftp_account_import_result');
+        if (!$result) {
+            return $this->_redirect('*/*/ftpAccountImport');
+        }
+        $this->_initAction()
+            ->_title($this->__('批量导入承运商 FTP账号结果'))
+            ->_addBreadcrumb(
+                Mage::helper('xfe_carrier')->__('批量导入承运商 FTP账号结果'),
+                Mage::helper('xfe_carrier')->__('批量导入承运商 FTP账号结果')
+            )
+            ->renderLayout();
+    }
+
+    /**
+     * 流式输出 FTP账号导入 CSV 模板。
+     */
+    public function ftpAccountDownloadTemplateAction()
+    {
+        $tmpFile = tempnam(sys_get_temp_dir(), 'xfe_carrier_ftp_import_');
+        if (!XFE_Carrier_Model_Service_Registry::ftpAccountImporter()->writeTemplate($tmpFile)) {
+            @unlink($tmpFile);
+            Mage::getSingleton('adminhtml/session')->addError(
+                Mage::helper('xfe_carrier')->__('Failed to build the FTP account CSV template.')
+            );
+            return $this->_redirect('*/*/ftpAccountImport');
+        }
+
+        $this->getResponse()
+            ->setHttpResponseCode(200)
+            ->setHeader('Content-Type', 'text/csv; charset=utf-8', true)
+            ->setHeader(
+                'Content-Disposition',
+                'attachment; filename="carrier_ftp_account_import_template.csv"',
+                true
+            )
+            ->setHeader('Content-Length', (string)filesize($tmpFile), true)
+            ->setBody(file_get_contents($tmpFile));
+        @unlink($tmpFile);
+        return $this;
+    }
+
+    /**
+     * 导出全部承运商 FTP账号为 CSV 附件。
+     */
+    public function ftpAccountExportAction()
+    {
+        $csv = XFE_Carrier_Model_Service_Registry::ftpAccountExporter()->exportAll();
+
+        $this->getResponse()
+            ->setHttpResponseCode(200)
+            ->setHeader('Content-Type', 'text/csv; charset=utf-8', true)
+            ->setHeader(
+                'Content-Disposition',
+                'attachment; filename="carrier_ftp_accounts_export_' . date('Ymd_His') . '.csv"',
+                true
+            )
+            ->setHeader('Content-Length', (string)strlen($csv), true)
+            ->setBody($csv);
+        return $this;
+    }
+
 public function resolveAction()
     {
         $helper = Mage::helper('xfe_carrier');
