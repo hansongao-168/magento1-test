@@ -88,6 +88,16 @@ assertEq(true,  $ev->evaluate(array(array('aggregator'=>'all','conditions'=>arra
 assertEq(false, $ev->evaluate(array(array('aggregator'=>'all','conditions'=>array(array('attribute'=>'package_weight','operator'=>'between','value'=>'10~20')))), $ctxW), 'between outside');
 assertEq(true,  $ev->evaluate(array(array('aggregator'=>'all','conditions'=>array(array('attribute'=>'package_weight','operator'=>'between','value'=>'5~10')))), $ctxW), 'between lower-edge inclusive');
 
+$ctxTime = XFE_Carrier_Model_Service_Rule_MatchContext::create(array(
+    'order_created_at' => '2026-08-20 10:30:00',
+));
+assertEq(true, $ev->evaluate(array(array('aggregator'=>'all','conditions'=>array(array('attribute'=>'order_created_at','operator'=>'>','value'=>'2026-08-20 09:00:00')))), $ctxTime), 'datetime greater-than match');
+assertEq(false, $ev->evaluate(array(array('aggregator'=>'all','conditions'=>array(array('attribute'=>'order_created_at','operator'=>'>','value'=>'2026-08-20 11:00:00')))), $ctxTime), 'datetime greater-than miss');
+assertEq(true, $ev->evaluate(array(array('aggregator'=>'all','conditions'=>array(array('attribute'=>'order_created_at','operator'=>'between','value'=>'2026-08-20 09:00:00~2026-08-20 11:00:00')))), $ctxTime), 'datetime between match');
+assertEq(true, $ev->evaluate(array(array('aggregator'=>'all','conditions'=>array(array('attribute'=>'order_created_at','operator'=>'is_not_null')))), $ctxTime), 'datetime is-not-null match');
+assertEq(false, $ev->evaluate(array(array('aggregator'=>'all','conditions'=>array(array('attribute'=>'order_created_at','operator'=>'is_not_null')))), XFE_Carrier_Model_Service_Rule_MatchContext::create()), 'datetime is-not-null miss');
+assertEq(false, $ev->evaluate(array(array('aggregator'=>'all','conditions'=>array(array('attribute'=>'order_created_at','operator'=>'>','value'=>'not-a-date')))), $ctxTime), 'datetime invalid expected value miss');
+
 // nested groups: country=US AND (weight<1 OR weight>5)
 $ruleNested = array(array(
     'aggregator' => 'all',

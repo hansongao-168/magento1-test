@@ -21,6 +21,7 @@ class XFE_Carrier_Test_Service_Rule_OrderContextBuilderTest extends PHPUnit_Fram
             'customer_id'       => 42,
             'customer_group_id' => 4,
             'grand_total'       => 199.5,
+            'created_at'        => '2026-08-20 10:30:00',
         ]);
         $order->setShippingAddress($shipping);
         $order->setBillingAddress($billing);
@@ -43,6 +44,7 @@ class XFE_Carrier_Test_Service_Rule_OrderContextBuilderTest extends PHPUnit_Fram
         $this->assertSame(42, $context->get('user_id'));
         $this->assertSame(4, $context->get('customer_group'));
         $this->assertSame(199.5, $context->get('order_amount'));
+        $this->assertSame('2026-08-20 10:30:00', $context->get('order_created_at'));
         $this->assertSame(2, $context->get('package_count'));
         $this->assertSame(3.5, $context->get('package_weight'));
         $this->assertSame(10, $context->get('length'));
