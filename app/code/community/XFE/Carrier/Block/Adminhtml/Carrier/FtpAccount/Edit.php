@@ -13,12 +13,31 @@ class XFE_Carrier_Block_Adminhtml_Carrier_FtpAccount_Edit extends Mage_Adminhtml
     {
         $this->_objectId   = 'ftp_account_id';
         $this->_blockGroup = 'xfe_carrier';
-        $this->_controller = 'adminhtml_carrier_ftp_account';
+        // _controller 必须等于 Controller 文件名第二段('CarrierController' → 'carrier'),
+        // 否则 getDeleteUrl() 拼出的 URL 是错的。
+        $this->_controller = 'carrier';
         $this->_mode       = 'edit';
 
         parent::__construct();
 
         $this->_updateButton('save', 'label', Mage::helper('xfe_carrier')->__('保存 FTP账号'));
+    }
+
+    /**
+     * 显式挂载 form 子块,见 XFE_Carrier_Block_Adminhtml_Carrier_Account_Edit 的同款注释。
+     *
+     * @return Mage_Core_Block_Abstract
+     */
+    protected function _prepareLayout()
+    {
+        Mage_Adminhtml_Block_Widget_Container::_prepareLayout();
+        $this->setChild(
+            'form',
+            $this->getLayout()->createBlock(
+                'xfe_carrier/adminhtml_carrier_ftpaccount_edit_form'
+            )
+        );
+        return $this;
     }
 
     public function getHeaderText()
