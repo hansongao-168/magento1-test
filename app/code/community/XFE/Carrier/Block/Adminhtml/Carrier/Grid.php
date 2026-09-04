@@ -101,6 +101,23 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Grid extends Mage_Adminhtml_Block_Widg
             'width'  => '160px',
         ));
 
+        $this->addColumn('action', array(
+            'header'   => Mage::helper('xfe_carrier')->__('操作'),
+            'width'    => '80px',
+            'type'     => 'action',
+            'getter'   => 'getId',
+            'actions'  => array(
+                array(
+                    'caption' => Mage::helper('xfe_carrier')->__('编辑'),
+                    'url'     => array('base' => '*/*/edit'),
+                    'field'   => 'id',
+                ),
+            ),
+            'filter'   => false,
+            'sortable' => false,
+            'index'    => 'entity_id',
+        ));
+
         return parent::_prepareColumns();
     }
 

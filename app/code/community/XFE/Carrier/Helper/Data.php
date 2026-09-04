@@ -58,6 +58,7 @@ class XFE_Carrier_Helper_Data extends Mage_Core_Helper_Abstract
             'height'         => Mage::helper('xfe_carrier')->__('高度'),
             'volume'         => Mage::helper('xfe_carrier')->__('体积 (长x宽x高)'),
             'order_amount'   => Mage::helper('xfe_carrier')->__('订单金额'),
+            'order_created_at' => Mage::helper('xfe_carrier')->__('订单创建时间'),
             'customer_group'      => Mage::helper('xfe_carrier')->__('客户组'),
             'billing_country_code' => Mage::helper('xfe_carrier')->__('账单国家'),
             'billing_city'         => Mage::helper('xfe_carrier')->__('账单城市'),
@@ -130,7 +131,27 @@ class XFE_Carrier_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * 属性 → 类型映射 (string|numeric)。前后端共享。
+     * Get operators for datetime attributes.
+     *
+     * @return array
+     */
+    public function getDatetimeOperators()
+    {
+        return array(
+            '=='          => Mage::helper('xfe_carrier')->__('等于'),
+            '!='          => Mage::helper('xfe_carrier')->__('不等于'),
+            '>'           => Mage::helper('xfe_carrier')->__('大于'),
+            '>='          => Mage::helper('xfe_carrier')->__('大于等于'),
+            '<'           => Mage::helper('xfe_carrier')->__('小于'),
+            '<='          => Mage::helper('xfe_carrier')->__('小于等于'),
+            'between'     => Mage::helper('xfe_carrier')->__('范围 (x~y)'),
+            'is_null'     => Mage::helper('xfe_carrier')->__('为空'),
+            'is_not_null' => Mage::helper('xfe_carrier')->__('不为空'),
+        );
+    }
+
+    /**
+     * 属性 → 类型映射 (string|numeric|datetime)。前后端共享。
      *
      * @return array
      */
@@ -152,6 +173,7 @@ class XFE_Carrier_Helper_Data extends Mage_Core_Helper_Abstract
             'height'               => 'numeric',
             'volume'               => 'numeric',
             'order_amount'         => 'numeric',
+            'order_created_at'     => 'datetime',
             'user_id'              => 'numeric',
         );
     }

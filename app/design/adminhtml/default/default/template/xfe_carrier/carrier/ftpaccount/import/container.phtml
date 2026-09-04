@@ -1,0 +1,21 @@
+<?php
+/**
+ * XFE Carrier - FTP账号批量导入容器。
+ *
+ * 渲染页头 + 上传表单（carrier_ftp_account_import_form）。
+ *
+ * @var XFE_Carrier_Block_Adminhtml_Carrier_FtpAccount_Import $this
+ */
+?>
+<div class="content-header">
+    <?php echo $this->getHeaderHtml() ?>
+    <p class="form-buttons"><?php echo $this->getButtonsHtml('header') ?></p>
+</div>
+<?php echo $this->getFormInitScripts() ?>
+<?php echo $this->getChildHtml('form') ?>
+<?php if ($this->hasFooterButtons()): ?>
+    <div class="content-footer">
+        <p class="form-buttons"><?php echo $this->getButtonsHtml('footer') ?></p>
+    </div>
+<?php endif; ?>
+<?php echo $this->getFormScripts() ?>
