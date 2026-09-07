@@ -174,4 +174,91 @@ class XFE_Carrier_Adminhtml_Carrier_CustomAttributeController
         }
         return $this->_redirect('*/*/index');
     }
+
+    /**
+     * 批量导入页(渲染上传表单)。
+     */
+    public function importAction()
+    {
+        $this->_initAction()
+            ->_title($this->__('批量导入自定义属性'))
+            ->renderLayout();
+    }
+
+    /**
+     * 处理上传 + 写入。
+     */
+    public function importPostAction()
+    {
+        $helper = Mage::helper('xfe_carrier');
+        if (!$this->_validateFormKey()) {
+            Mage::getSingleton('adminhtml/session')->addError(
+                $helper->__('Invalid form key, please reload the page.')
+            );
+            return $this->_redirect('*/*/import');
+        }
+
+        $result = XFE_Carrier_Model_Service_CustomAttribute_Importer::instance()
+            ->importUpload(isset($_FILES['custom_attribute_csv']) ? $_FILES['custom_attribute_csv'] : array());
+
+        Mage::register('xfe_carrier_custom_attribute_import_result', $result);
+        $session = Mage::getSingleton('adminhtml/session');
+        if ($result->created > 0) {
+            $session->addSuccess($helper->__('%d attribute(s) created.', $result->created));
+        }
+        if ($result->updated > 0) {
+            $session->addSuccess($helper->__('%d attribute(s) updated.', $result->updated));
+        }
+        if ($result->activated > 0) {
+            $session->addSuccess($helper->__('%d attribute(s) re-activated.', $result->activated));
+        }
+        if ($result->skipped > 0) {
+            $session->addError($helper->__('%d row(s) skipped.', $result->skipped));
+        }
+        return $this->_redirect('*/*/importResult');
+    }
+
+    /**
+     * 导入结果汇总页。
+     */
+    public function importResultAction()
+    {
+        $this->_initAction()
+            ->_title($this->__('批量导入自定义属性 - 结果'))
+            ->renderLayout();
+    }
+
+    /**
+     * 导出:下载 CSV(支持 ?entity_type=carrier 过滤)。
+     */
+    public function exportAction()
+    {
+        $helper = Mage::helper('xfe_carrier');
+        $entityType = $this->getRequest()->getParam('entity_type');
+        $csv = XFE_Carrier_Model_Service_CustomAttribute_Exporter::instance()
+            ->exportToString($entityType);
+        $filename = $entityType
+            ? 'xfe_carrier_custom_attribute_' . $entityType . '_' . date('Ymd_His') . '.csv'
+            : 'xfe_carrier_custom_attribute_all_' . date('Ymd_His') . '.csv';
+        $this->getResponse()
+            ->setHeader('Content-Type', 'text/csv; charset=utf-8')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setHeader('Cache-Control', 'must-revalidate, post-check=0, pre-check=0', true)
+            ->setBody($csv);
+    }
+
+    /**
+     * 导出 CSV 模板(空表 + 3 行示例)。
+     */
+    public function exportTemplateAction()
+    {
+        $helper = Mage::helper('xfe_carrier');
+        $csv = XFE_Carrier_Model_Service_CustomAttribute_Exporter::instance()
+            ->writeTemplate();
+        $filename = 'xfe_carrier_custom_attribute_template.csv';
+        $this->getResponse()
+            ->setHeader('Content-Type', 'text/csv; charset=utf-8')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($csv);
+    }
 }

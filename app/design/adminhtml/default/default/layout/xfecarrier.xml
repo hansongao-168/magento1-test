@@ -142,6 +142,22 @@
         </reference>
     </adminhtml_carrier_customattribute_edit>
 
+    <!-- Custom attribute import (1.0.15+) -->
+    <adminhtml_carrier_customattribute_import>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_customAttribute_import" name="custom_attribute_import"
+                   template="xfe_carrier/custom_attribute/import/container.phtml">
+                <block type="xfe_carrier/adminhtml_customAttribute_import_form" name="custom_attribute_import_form" as="form" />
+            </block>
+        </reference>
+    </adminhtml_carrier_customattribute_import>
+
+    <adminhtml_carrier_customattribute_importresult>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_customAttribute_import" name="custom_attribute_import_result" />
+        </reference>
+    </adminhtml_carrier_customattribute_importresult>
+
     <!-- Carrier grid (ajax) -->
     <adminhtml_carrier_grid>
         <reference name="content">
