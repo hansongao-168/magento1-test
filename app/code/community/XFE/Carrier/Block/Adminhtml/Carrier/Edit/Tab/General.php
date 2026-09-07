@@ -62,6 +62,9 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
             'title' => $helper->__('备注'),
         ));
 
+        // 1.0.15+ 自定义属性 strict editor
+        $this->_addCustomAttributesFieldset($form, $model);
+
         if ($model && $model->getId()) {
             // Surface per-store translations (set by Controller editAction
             // via setStoreId()) so the General tab edits the current store\'s
@@ -85,8 +88,12 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
     protected function _getShippingCompanySearchHtml()
     {
         $model = Mage::registry('xfe_carrier_data');
-        $currentId = ($model && $model->getId() && $model->getShippingCompanyId())
+        // Legacy placeholder IDs used -1001..-1010 before 1.0.13. Migrate them
+        // to the new positive range (1001..1010) at render time so an
+        // unchanged re-save stops writing a negative number back to the DB.
+        $rawId = ($model && $model->getId() && $model->getShippingCompanyId())
             ? (int)$model->getShippingCompanyId() : 0;
+        $currentId = $this->_migrateLegacyShippingCompanyId($rawId);
         $helper = Mage::helper('xfe_carrier');
 
         // 渲染 JS 数组:所有可选线路公司 [{id, name}, ...]
@@ -103,7 +110,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
             . 'placeholder="' . $helper->__('输入名称或 ID 模糊搜索线路公司...') . '" '
             . 'style="width:100%;padding-right:24px;" autocomplete="off" />';
         $html .= '<span id="shipping_company_clear" '
-            . 'style="display:' . ($currentId > 0 ? 'inline' : 'none') . ';'
+            . 'style="display:' . ($currentId !== 0 ? 'inline' : 'none') . ';'
             . 'position:absolute;right:6px;top:50%;transform:translateY(-50%);'
             . 'cursor:pointer;color:#999;font-size:14px;line-height:1;'
             . 'padding:2px 6px;border-radius:3px;" '
@@ -129,7 +136,8 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
                 clearBtn    = $("shipping_company_clear");
 
                 // 编辑模式:已经有 shipping_company_id 时,反查名字显示
-                if (currentId > 0) {
+                // 注:PHP 端已把 -1001..-1010 迁移到 1001..1010,所以这里 currentId 不会再是负数
+                if (currentId !== 0) {
                     var hit = findById(currentId);
                     if (hit) {
                         searchInput.value = hit.name;
@@ -306,7 +314,8 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
                     return;
                 }
                 // 文字看起来是 "#[id]"(历史数据未命中):直接解析
-                var m = txt.match(/^#(\d+)$/);
+                // 历史数据允许负数(如 #-1001),这里也兼容
+                var m = txt.match(/^#(-?\d+)$/);
                 if (m && m[1]) {
                     var parsedId = parseInt(m[1], 10);
                     if (!isNaN(parsedId) && findById(parsedId)) {
@@ -324,6 +333,29 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
         </script>';
 
         return $html;
+    }
+
+    /**
+     * Map a legacy negative placeholder ID (-1001..-1010) to its current
+     * positive equivalent (1001..1010). Any other ID is returned unchanged.
+     *
+     * Background: prior to 1.0.13 the picker used -1001..-1010 to namespace
+     * built-in shipping companies. The DB column was switched to SIGNED INT
+     * to hold them, but a "save as-is" of an existing carrier on the new
+     * picker code would persist the old negative number. Mapping at render
+     * time (and on submit) means a no-touch re-save writes the new positive
+     * ID, so the value naturally self-heals on the next edit.
+     *
+     * @param int $id
+     * @return int
+     */
+    protected function _migrateLegacyShippingCompanyId($id)
+    {
+        $id = (int)$id;
+        if ($id >= -1010 && $id <= -1001) {
+            return abs($id); // -1001 -> 1001, ..., -1010 -> 1010
+        }
+        return $id;
     }
 
     /**
@@ -423,5 +455,48 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
     public function isHidden()
     {
         return false;
+    }
+
+    /**
+     * 1.0.15+ 自定义属性 strict editor 注入。
+     *
+     * @param Varien_Data_Form $form
+     * @param XFE_Carrier_Model_Carrier|null $model
+     * @return void
+     */
+    protected function _addCustomAttributesFieldset(Varien_Data_Form $form, $model)
+    {
+        $helper = Mage::helper('xfe_carrier');
+        $defs   = XFE_Carrier_Model_Service_Registry::customAttributeService()
+            ->getActiveDefs(XFE_Carrier_Domain_CustomAttribute::ENTITY_TYPE_CARRIER);
+        $rawJson = $model ? (string) $model->getCustomFieldsJson() : '';
+        $hasDefs = $defs->count() > 0;
+
+        $note = $hasDefs
+            ? $helper->__(
+                '1.0.15 严格模式:仅显示在"自定义属性"菜单中已登记的字段。标有 * 的为必填,留空将无法保存。'
+            )
+            : $helper->__(
+                '尚未在"自定义属性"菜单登记任何字段。先去登记后再回来填写。'
+            );
+
+        $fieldset = $form->addFieldset('custom_attributes_fieldset', array(
+            'legend' => $helper->__('自定义属性'),
+            'note'   => $note,
+        ));
+
+        $template = $hasDefs
+            ? 'xfe_carrier/custom_attribute/strict_editor.phtml'
+            : 'xfe_carrier/carrier/account/custom_fields.phtml';
+
+        $fieldset->addField('custom_fields', 'note', array(
+            'label' => $helper->__('键值对列表'),
+            'text'  => $this->getLayout()->createBlock('core/template')
+                ->setTemplate($template)
+                ->setData('raw_json', $rawJson)
+                ->setData('entity_type', XFE_Carrier_Domain_CustomAttribute::ENTITY_TYPE_CARRIER)
+                ->setData('defs', $defs)
+                ->toHtml(),
+        ));
     }
 }

@@ -288,6 +288,11 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
 
             $carrierId = (int)$model->getId();
             if ($carrierId) {
+                // 1.0.15+ 自定义属性 strict apply
+                if (isset($data['custom_fields']) && is_array($data['custom_fields'])) {
+                    new XFE_Carrier_Model_Service_Carrier_CustomAttributeApplier()
+                        ->applyFromPost($carrierId, $data);
+                }
                 if (array_key_exists('accounts_data', $data)) {
                     XFE_Carrier_Model_Service_Registry::account()->saveBatch(
                         $carrierId, $data['accounts_data']
@@ -444,7 +449,7 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
             // 自定义字段(1.0.14+):键值对列表,以 JSON 整体保存。
             // Service 内做 diff + 事件广播,不在 Controller 写 json_encode。
             if (isset($data['custom_fields']) && is_array($data['custom_fields'])) {
-                XFE_Carrier_Model_Service_Registry::accountCustomFieldService()
+                new XFE_Carrier_Model_Service_Account_CustomAttributeApplier()
                     ->applyFromPost($accountId, $data);
             }
 
@@ -597,7 +602,7 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
 
             // 自定义字段(1.0.14+):键值对列表,以 JSON 整体保存。
             if (isset($data['custom_fields']) && is_array($data['custom_fields'])) {
-                XFE_Carrier_Model_Service_Registry::ftpAccountCustomFieldService()
+                new XFE_Carrier_Model_Service_FtpAccount_CustomAttributeApplier()
                     ->applyFromPost($ftpAccountId, $data);
             }
 
@@ -788,8 +793,16 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
                     if (!$result->isSuccess()) {
                         Mage::throwException($result->getMessage());
                     }
+                    $logoId = (int) $result->getLogoId();
                 } else {
                     $logo->save();
+                }
+
+                // 1.0.15+ 自定义属性 strict apply
+                $post = $this->getRequest()->getPost();
+                if ($logoId && isset($post['custom_fields']) && is_array($post['custom_fields'])) {
+                    new XFE_Carrier_Model_Service_Logo_CustomAttributeApplier()
+                        ->applyFromPost($logoId, $post);
                 }
 
                 Mage::getSingleton('adminhtml/session')->addSuccess(
@@ -807,6 +820,14 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
                 );
 
                 if ($result->isSuccess()) {
+                    // 1.0.15+ 自定义属性 strict apply
+                    $post = $this->getRequest()->getPost();
+                    $newLogoId = (int) $result->getLogoId();
+                    if ($newLogoId && isset($post['custom_fields']) && is_array($post['custom_fields'])) {
+                        new XFE_Carrier_Model_Service_Logo_CustomAttributeApplier()
+                            ->applyFromPost($newLogoId, $post);
+                    }
+
                     Mage::getSingleton('adminhtml/session')->addSuccess(
                         $helper->__('Logo uploaded.')
                     );

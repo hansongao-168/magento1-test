@@ -86,6 +86,10 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Logo_Edit_Form extends Mage_Adminhtml_
         if ($carrier && $carrier->getId()) {
             $form->getElement('carrier_id')->setValue($carrier->getId());
         }
+
+        // 1.0.15+ 自定义属性 strict editor
+        $this->_addCustomAttributesFieldset($form, $logo);
+
 $form->addField('form_key', 'hidden', array(
             'name'  => 'form_key',
             'value' => Mage::getSingleton('core/session')->getFormKey(),
@@ -131,5 +135,48 @@ $form->addField('form_key', 'hidden', array(
         return $this->getLayout()->createBlock(
             'xfe_carrier/adminhtml_carrier_edit_tab_logo_rules_grid'
         )->toHtml();
+    }
+
+    /**
+     * 1.0.15+ 自定义属性 strict editor 注入(LOGO 实体)。
+     *
+     * @param Varien_Data_Form $form
+     * @param XFE_Carrier_Model_Carrier_Logo|null $logo
+     * @return void
+     */
+    protected function _addCustomAttributesFieldset(Varien_Data_Form $form, $logo)
+    {
+        $helper = Mage::helper('xfe_carrier');
+        $defs   = XFE_Carrier_Model_Service_Registry::customAttributeService()
+            ->getActiveDefs(XFE_Carrier_Domain_CustomAttribute::ENTITY_TYPE_LOGO);
+        $rawJson = $logo ? (string) $logo->getCustomFieldsJson() : '';
+        $hasDefs = $defs->count() > 0;
+
+        $note = $hasDefs
+            ? $helper->__(
+                '1.0.15 严格模式:仅显示在"自定义属性"菜单中已登记的字段。标有 * 的为必填,留空将无法保存。'
+            )
+            : $helper->__(
+                '尚未在"自定义属性"菜单登记任何字段。先去登记后再回来填写。'
+            );
+
+        $fieldset = $form->addFieldset('custom_attributes_fieldset', array(
+            'legend' => $helper->__('自定义属性'),
+            'note'   => $note,
+        ));
+
+        $template = $hasDefs
+            ? 'xfe_carrier/custom_attribute/strict_editor.phtml'
+            : 'xfe_carrier/carrier/account/custom_fields.phtml';
+
+        $fieldset->addField('custom_fields', 'note', array(
+            'label' => $helper->__('键值对列表'),
+            'text'  => $this->getLayout()->createBlock('core/template')
+                ->setTemplate($template)
+                ->setData('raw_json', $rawJson)
+                ->setData('entity_type', XFE_Carrier_Domain_CustomAttribute::ENTITY_TYPE_LOGO)
+                ->setData('defs', $defs)
+                ->toHtml(),
+        ));
     }
 }

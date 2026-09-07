@@ -165,6 +165,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_FtpAccount_Edit_Form extends Mage_Admi
 
     /**
      * 与主账号 Edit/Form 共享同一份 phtml 模板(键值对编辑器)。
+     * 1.0.15 严格模式: 用 strict_editor.phtml + 已登记属性集合。
      *
      * @param Varien_Data_Form $form
      * @param mixed $ftp
@@ -172,23 +173,39 @@ class XFE_Carrier_Block_Adminhtml_Carrier_FtpAccount_Edit_Form extends Mage_Admi
      */
     protected function _addCustomFieldsFieldset(Varien_Data_Form $form, $ftp)
     {
-        $helper = Mage::helper('xfe_carrier');
+        $helper     = Mage::helper('xfe_carrier');
+        $entityType = 'ftp_account';
+        $defs       = XFE_Carrier_Model_Service_Registry::customAttributeService()
+            ->getActiveDefs($entityType);
+        $rawJson    = $ftp ? (string) $ftp->getCustomFieldsJson() : '';
+        $hasDefs    = $defs->count() > 0;
+
+        $note = $hasDefs
+            ? $helper->__(
+                '1.0.15 严格模式:仅显示在"自定义属性"菜单中已登记的字段。标有 * 的为必填,留空将无法保存。'
+            )
+            : $helper->__(
+                '尚未在"自定义属性"菜单登记任何字段。先去登记后再回来填写。'
+            );
+
         $fieldset = $form->addFieldset('custom_fields_fieldset', array(
             'legend' => $helper->__('自定义字段'),
-            'note'   => $helper->__(
-                '用于保存本 FTP账号的私有参数,整体以 JSON 存储。'
-                . ' key 由英文/数字/下划线组成,value 类型决定输入框形态。'
-            ),
+            'note'   => $note,
         ));
 
-        $rawJson = $ftp ? (string) $ftp->getCustomFieldsJson() : '';
+        if ($hasDefs) {
+            $template = 'xfe_carrier/custom_attribute/strict_editor.phtml';
+        } else {
+            $template = 'xfe_carrier/carrier/account/custom_fields.phtml';
+        }
 
         $fieldset->addField('custom_fields', 'note', array(
             'label' => $helper->__('键值对列表'),
             'text'  => $this->getLayout()->createBlock('core/template')
-                ->setTemplate('xfe_carrier/carrier/account/custom_fields.phtml')
+                ->setTemplate($template)
                 ->setData('raw_json', $rawJson)
-                ->setData('entity_type', 'ftp_account')
+                ->setData('entity_type', $entityType)
+                ->setData('defs', $defs)
                 ->toHtml(),
         ));
     }

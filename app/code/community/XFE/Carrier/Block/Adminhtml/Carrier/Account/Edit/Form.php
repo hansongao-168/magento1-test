@@ -129,7 +129,11 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Account_Edit_Form extends Mage_Adminht
     }
 
     /**
-     * 注入「自定义字段」fieldset。键值对编辑器由独立 phtml + JS 渲染。
+     * 注入「自定义字段」fieldset。
+     *
+     * 1.0.15 严格模式: 从 xfe_carrier_custom_attribute 拉已登记属性,
+     * 渲染 strict_editor.phtml(下拉 + 必填校验 + 旧数据兼容)。
+     * 兼容模式(全局表为空): 退化为旧版键值对编辑器(自由 key)。
      *
      * @param Varien_Data_Form                     $form
      * @param XFE_Carrier_Model_Carrier_Account|null $account
@@ -137,35 +141,59 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Account_Edit_Form extends Mage_Adminht
      */
     protected function _addCustomFieldsFieldset(Varien_Data_Form $form, $account)
     {
-        $helper = Mage::helper('xfe_carrier');
+        $helper   = Mage::helper('xfe_carrier');
+        $entityType = $this->_containerEntityType;
+        $defs     = XFE_Carrier_Model_Service_Registry::customAttributeService()
+            ->getActiveDefs($entityType);
+        $rawJson  = $account ? (string) $account->getCustomFieldsJson() : '';
+        $hasDefs  = $defs->count() > 0;
+
+        $note = $hasDefs
+            ? $helper->__(
+                '1.0.15 严格模式:仅显示在"自定义属性"菜单中已登记的字段。标有 * 的为必填,留空将无法保存。'
+            )
+            : $helper->__(
+                '尚未在"自定义属性"菜单登记任何字段。先去登记后再回来填写。'
+            );
+
         $fieldset = $form->addFieldset('custom_fields_fieldset', array(
             'legend' => $helper->__('自定义字段'),
-            'note'   => $helper->__(
-                '用于保存各承运商私有参数(类似 EAV),整体以 JSON 存储。'
-                . ' key 由英文/数字/下划线组成,value 类型决定输入框形态。'
-            ),
+            'note'   => $note,
         ));
-
-        $rawJson = $account ? (string) $account->getCustomFieldsJson() : '';
 
         $fieldset->addField('custom_fields', 'note', array(
             'label' => $helper->__('键值对列表'),
-            'text'  => $this->_renderCustomFieldsEditor($rawJson),
+            'text'  => $this->_renderCustomFieldsEditor($rawJson, $defs),
         ));
     }
 
     /**
-     * 渲染键值对编辑器 phtml,传入已存在的 JSON 字符串。
+     * 渲染键值对编辑器 phtml。
+     *
+     * 1.0.15 严格模式: 用 strict_editor.phtml(下拉 + 必填)。
+     * 兼容模式(全局表为空): 退化为旧版 free-form 编辑器(允许自由 key)。
      *
      * @param string $rawJson
+     * @param XFE_Carrier_Domain_CustomAttributeCollection $defs
      * @return string
      */
-    protected function _renderCustomFieldsEditor($rawJson)
-    {
+    protected function _renderCustomFieldsEditor(
+        $rawJson,
+        XFE_Carrier_Domain_CustomAttributeCollection $defs
+    ) {
+        if ($defs->count() === 0) {
+            // 兼容模式: 用旧的 free-form 模板
+            return $this->getLayout()->createBlock('core/template')
+                ->setTemplate('xfe_carrier/carrier/account/custom_fields.phtml')
+                ->setData('raw_json', $rawJson)
+                ->setData('entity_type', $this->_containerEntityType)
+                ->toHtml();
+        }
         return $this->getLayout()->createBlock('core/template')
-            ->setTemplate('xfe_carrier/carrier/account/custom_fields.phtml')
+            ->setTemplate('xfe_carrier/custom_attribute/strict_editor.phtml')
             ->setData('raw_json', $rawJson)
             ->setData('entity_type', $this->_containerEntityType)
+            ->setData('defs', $defs)
             ->toHtml();
     }
 
