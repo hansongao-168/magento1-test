@@ -117,6 +117,45 @@ class XFE_Carrier_Model_Carrier extends Mage_Core_Model_Abstract
     }
 
     /**
+     * 原始 JSON 字符串(列原文)。Service 通过此 setter 写入。
+     *
+     * @param string|null $json
+     * @return XFE_Carrier_Model_Carrier
+     */
+    public function setCustomFieldsJson($json)
+    {
+        if ($json !== null && $json !== '' && is_string($json) === false) {
+            $json = (string) $json;
+        }
+        return $this->setData('custom_fields_json', $json);
+    }
+
+    /**
+     * 原始 JSON 字符串(列原文,可能为 null)。
+     *
+     * @return string|null
+     */
+    public function getCustomFieldsJson()
+    {
+        return $this->getData('custom_fields_json');
+    }
+
+    /**
+     * 读单个自定义属性值。仅在 Model 已经在内存里时使用 —— 避免再次 load。
+     * 业务模块首选用 Service::getValue() / getCollection(),本方法只是便利访问。
+     *
+     * @param string $key
+     * @return string|int|float|bool|string[]|null
+     */
+    public function getCustomField($key)
+    {
+        $coll = XFE_Carrier_Domain_CustomFieldCodec::decode($this->getCustomFieldsJson());
+        $field = $coll->get($key);
+        return $field ? $field->getValue() : null;
+    }
+}
+
+    /**
      * Get the per-store translation of the carrier's name.
      *
      * Reads `store_name` if previously loaded by setStoreId() or the
