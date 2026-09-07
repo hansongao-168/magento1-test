@@ -61,6 +61,54 @@
         </reference>
     </adminhtml_carrier_editftpaccount>
 
+    <!-- Rule bulk import landing page -->
+    <adminhtml_carrier_ruleimport>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_rule_import" name="carrier_rule_import" template="xfe_carrier/carrier/rule/import/container.phtml">
+                <block type="xfe_carrier/adminhtml_carrier_rule_import_form" name="carrier_rule_import_form" as="form" />
+            </block>
+        </reference>
+    </adminhtml_carrier_ruleimport>
+
+    <!-- Rule bulk import result page -->
+    <adminhtml_carrier_ruleimportresult>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_rule_import_result" name="carrier_rule_import_result" />
+        </reference>
+    </adminhtml_carrier_ruleimportresult>
+
+    <!-- Account bulk import landing page -->
+    <adminhtml_carrier_accountimport>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_account_import" name="carrier_account_import" template="xfe_carrier/carrier/account/import/container.phtml">
+                <block type="xfe_carrier/adminhtml_carrier_account_import_form" name="carrier_account_import_form" as="form" />
+            </block>
+        </reference>
+    </adminhtml_carrier_accountimport>
+
+    <!-- Account bulk import result page -->
+    <adminhtml_carrier_accountimportresult>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_account_import_result" name="carrier_account_import_result" />
+        </reference>
+    </adminhtml_carrier_accountimportresult>
+
+    <!-- FTP账号 bulk import landing page -->
+    <adminhtml_carrier_ftpaccountimport>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_ftpaccount_import" name="carrier_ftpaccount_import" template="xfe_carrier/carrier/ftpaccount/import/container.phtml">
+                <block type="xfe_carrier/adminhtml_carrier_ftpaccount_import_form" name="carrier_ftpaccount_import_form" as="form" />
+            </block>
+        </reference>
+    </adminhtml_carrier_ftpaccountimport>
+
+    <!-- FTP账号 bulk import result page -->
+    <adminhtml_carrier_ftpaccountimportresult>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_ftpaccount_import_result" name="carrier_ftpaccount_import_result" />
+        </reference>
+    </adminhtml_carrier_ftpaccountimportresult>
+
     <!-- Rule edit page -->
     <adminhtml_carrier_editrule>
         <reference name="head">
@@ -76,6 +124,23 @@
             <block type="xfe_carrier/adminhtml_carrier_rule_edit" name="carrier_rule_edit" />
         </reference>
     </adminhtml_carrier_editrule>
+
+    <!-- Custom attribute grid (1.0.15+) -->
+    <adminhtml_carrier_customattribute>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_customAttribute" name="custom_attribute" />
+        </reference>
+    </adminhtml_carrier_customattribute>
+    <adminhtml_carrier_customattribute_new>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_customAttribute_edit" name="custom_attribute_edit" />
+        </reference>
+    </adminhtml_carrier_customattribute_new>
+    <adminhtml_carrier_customattribute_edit>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_customAttribute_edit" name="custom_attribute_edit" />
+        </reference>
+    </adminhtml_carrier_customattribute_edit>
 
     <!-- Carrier grid (ajax) -->
     <adminhtml_carrier_grid>

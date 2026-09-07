@@ -121,6 +121,13 @@
                         <title>承运商管理</title>
                         <sort_order>130</sort_order>
                         <action>adminhtml/carrier/index</action>
+                        <children>
+                            <custom_attribute translate="title" module="xfe_carrier">
+                                <title>自定义属性</title>
+                                <sort_order>50</sort_order>
+                                <action>adminhtml/carrier_customAttribute/index</action>
+                            </custom_attribute>
+                        </children>
                     </xfe_carrier>
                 </children>
             </system>
