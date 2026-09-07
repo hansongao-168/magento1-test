@@ -264,6 +264,10 @@ final class XFE_Carrier_Domain_CustomAttribute
                 return (bool) $value;
 
             case XFE_Carrier_Domain_CustomField::TYPE_SELECT:
+                // 允许 null / 空 (无默认);非空则必须在 options 内
+                if ($value === null || $value === '') {
+                    return null;
+                }
                 $strVal = (string) $value;
                 if (!in_array($strVal, $options, true)) {
                     throw new InvalidArgumentException(
