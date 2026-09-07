@@ -49,6 +49,9 @@
                     <carrier_translation>
                         <table>xfe_carrier_translation</table>
                     </carrier_translation>
+                    <custom_attribute>
+                        <table>xfe_carrier_custom_attribute</table>
+                    </custom_attribute>
                 </entities>
                 <!--
                     Same uc_words reason as the model rewrite above:
