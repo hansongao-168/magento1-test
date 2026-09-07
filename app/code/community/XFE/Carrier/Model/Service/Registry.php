@@ -62,6 +62,9 @@ class XFE_Carrier_Model_Service_Registry
     /** @var XFE_Carrier_Model_Service_FtpAccount_CustomFieldService|null */
     protected static $_ftpAccountCustomFieldService = null;
 
+    /** @var XFE_Carrier_Model_Service_CustomAttributeService|null */
+    protected static $_customAttributeService = null;
+
     /**
      * @return XFE_Carrier_Model_Service_Logo
      */
@@ -240,9 +243,23 @@ class XFE_Carrier_Model_Service_Registry
     }
 
     /**
+     * 自定义属性中央管控服务 (1.0.15+)。
+     * 4 分类(承运商/账号/FTP/LOGO)共享一个属性定义表,统一管理增删改 + Im/Ex。
+     *
+     * @return XFE_Carrier_Model_Service_CustomAttributeService
+     */
+    public static function customAttributeService()
+    {
+        if (self::$_customAttributeService === null) {
+            self::$_customAttributeService = XFE_Carrier_Model_Service_CustomAttributeService::instance();
+        }
+        return self::$_customAttributeService;
+    }
+
+    /**
      * Test hook: replace any service.
      *
-     * @param string $name 'logo' | 'account' | 'ftpAccount' | 'rule' | 'importer' | 'ruleImporter' | 'ruleExporter' | 'accountImporter' | 'accountExporter' | 'ftpAccountImporter' | 'ftpAccountExporter'
+     * @param string $name 'logo' | 'account' | 'ftpAccount' | 'rule' | 'importer' | 'ruleImporter' | 'ruleExporter' | 'accountImporter' | 'accountExporter' | 'ftpAccountImporter' | 'ftpAccountExporter' | 'accountCustomFieldService' | 'ftpAccountCustomFieldService' | 'customAttributeService'
      * @param object|null $instance
      */
     public static function set($name, $instance)
