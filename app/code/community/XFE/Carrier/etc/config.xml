@@ -20,6 +20,7 @@
                 -->
                 <rewrite>
                     <carrier_ftp_account>XFE_Carrier_Model_Carrier_FtpAccount</carrier_ftp_account>
+                    <custom_attribute>XFE_Carrier_Model_CustomAttribute</custom_attribute>
                 </rewrite>
             </xfe_carrier>
             <xfe_carrier_resource>
@@ -64,6 +65,8 @@
                 <rewrite>
                     <carrier_ftp_account>XFE_Carrier_Model_Resource_Carrier_FtpAccount</carrier_ftp_account>
                     <carrier_ftp_account_collection>XFE_Carrier_Model_Resource_Carrier_FtpAccount_Collection</carrier_ftp_account_collection>
+                    <custom_attribute>XFE_Carrier_Model_Resource_CustomAttribute</custom_attribute>
+                    <custom_attribute_collection>XFE_Carrier_Model_Resource_CustomAttribute_Collection</custom_attribute_collection>
                 </rewrite>
             </xfe_carrier_resource>
         </models>
