@@ -88,6 +88,20 @@
                 -->
                 <rewrite>
                     <adminhtml_carrier_ftp_account_edit_form>XFE_Carrier_Block_Adminhtml_Carrier_FtpAccount_Edit_Form</adminhtml_carrier_ftp_account_edit_form>
+                    <!--
+                        Same uc_words reason for CustomAttribute blocks:
+                        alias 'adminhtml_customAttribute_*' has CamelCase inside one segment
+                        ('customAttribute'), so uc_words() lowercases the inner A.
+                        Without rewrite, getBlockClassName() returns e.g.
+                        XFE_Carrier_Block_Adminhtml_Customattribute_Grid which does not exist.
+                        Mirrors the model/resource rewrites for the same root cause.
+                    -->
+                    <adminhtml_customAttribute>XFE_Carrier_Block_Adminhtml_CustomAttribute</adminhtml_customAttribute>
+                    <adminhtml_customAttribute_grid>XFE_Carrier_Block_Adminhtml_CustomAttribute_Grid</adminhtml_customAttribute_grid>
+                    <adminhtml_customAttribute_edit>XFE_Carrier_Block_Adminhtml_CustomAttribute_Edit</adminhtml_customAttribute_edit>
+                    <adminhtml_customAttribute_edit_form>XFE_Carrier_Block_Adminhtml_CustomAttribute_Edit_Form</adminhtml_customAttribute_edit_form>
+                    <adminhtml_customAttribute_import>XFE_Carrier_Block_Adminhtml_CustomAttribute_Import</adminhtml_customAttribute_import>
+                    <adminhtml_customAttribute_import_form>XFE_Carrier_Block_Adminhtml_CustomAttribute_Import_Form</adminhtml_customAttribute_import_form>
                 </rewrite>
             </xfe_carrier>
         </blocks>
