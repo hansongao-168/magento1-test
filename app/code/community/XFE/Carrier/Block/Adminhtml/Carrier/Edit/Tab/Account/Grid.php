@@ -159,6 +159,20 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Grid extends Mage_Adm
         $html .= '<button type="button" class="scalable add" onclick="setLocation(\'' . $addUrl . '\')">';
         $html .= '<span><span><span>' . $helper->__('+ 添加账号') . '</span></span></span>';
         $html .= '</button>';
+        // 预设示例入口:选择一个示例后,会带着 preset=xxx 跳到新建账号页面,
+        // 账号表单会自动填入示例字段(账号编号/名称/物流公司/API Endpoint)。
+        // 凭据字段(api_key/api_secret)不预填,需管理员手动补。
+        $presetUrl = $this->getUrl('*/carrier/editAccount', array('carrier_id' => $carrierId));
+        $html .= '<select id="xfe_carrier_account_preset" style="margin-left:8px;" '
+              . 'onchange="if(this.value){setLocation(\'' . $presetUrl . '&preset=\' + this.value);}">';
+        $html .= '<option value="">' . $helper->__('— 从示例新建 —') . '</option>';
+        $html .= '<option value="sf_international">SF-International(顺丰国际标快)</option>';
+        $html .= '<option value="sf_economy">SF-Economy(顺丰国际特惠)</option>';
+        $html .= '<option value="fedex_ie">FedEx-IE(联邦快递国际经济)</option>';
+        $html .= '<option value="fedex_ip">FedEx-IP(联邦快递国际优先)</option>';
+        $html .= '<option value="chinapost_ems">ChinaPost-EMS(中国邮政 EMS)</option>';
+        $html .= '<option value="dhl_express">DHL-Express(DHL 国际快递)</option>';
+        $html .= '</select>';
         $html .= '</div>';
         $html .= parent::_toHtml();
         $html .= '</div>';

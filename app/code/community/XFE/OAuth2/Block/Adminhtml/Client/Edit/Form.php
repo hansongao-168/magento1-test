@@ -56,12 +56,29 @@ class XFE_OAuth2_Block_Adminhtml_Client_Edit_Form extends Mage_Adminhtml_Block_W
             'note'  => $helper->__('Required for authorization_code grant type'),
         ));
 
-        $fieldset->addField('grant_types', 'text', array(
-            'label' => $helper->__('Grant Types'),
-            'title' => $helper->__('Grant Types'),
-            'name'  => 'grant_types',
-            'value' => $model->getGrantTypes(),
-            'note'  => $helper->__('Comma separated: authorization_code, client_credentials, refresh_token'),
+        $fieldset->addField('grant_types', 'multiselect', array(
+            'label'    => $helper->__('Grant Types'),
+            'title'    => $helper->__('Grant Types'),
+            'name'     => 'grant_types',
+            'required' => true,
+            // Multiselect accepts either an array or a comma-separated string,
+            // both of which it normalises into the selected option set.
+            'value'    => $model->getId() ? $model->getGrantTypes() : 'client_credentials,refresh_token',
+            'values'   => array(
+                array(
+                    'value' => 'authorization_code',
+                    'label' => $helper->__('authorization_code - third-party apps via browser redirect'),
+                ),
+                array(
+                    'value' => 'client_credentials',
+                    'label' => $helper->__('client_credentials - server-to-server access tokens'),
+                ),
+                array(
+                    'value' => 'refresh_token',
+                    'label' => $helper->__('refresh_token - rotate access tokens without recreating the client'),
+                ),
+            ),
+            'note'     => $helper->__('Select at least one. Combining grants lets a single client both call server-to-server and rotate access tokens.'),
         ));
 
         $fieldset->addField('scopes', 'text', array(
@@ -69,7 +86,7 @@ class XFE_OAuth2_Block_Adminhtml_Client_Edit_Form extends Mage_Adminhtml_Block_W
             'title' => $helper->__('Allowed Scopes'),
             'name'  => 'scopes',
             'value' => $model->getScopes(),
-            'note'  => $helper->__('Space separated: basic orders customers admin'),
+            'note'  => $helper->__('Space separated: basic orders customers carriers admin'),
         ));
 
         $fieldset->addField('status', 'select', array(

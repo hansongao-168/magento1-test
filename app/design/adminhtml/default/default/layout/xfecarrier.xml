@@ -17,12 +17,35 @@
         </reference>
     </adminhtml_carrier_edit>
 
+    <!-- Bulk import landing page (1.0.13+). Form posts to importPost. -->
+    <adminhtml_carrier_import>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_import" name="carrier_import" template="xfe_carrier/carrier/import/container.phtml">
+                <block type="xfe_carrier/adminhtml_carrier_import_form" name="carrier_import_form" as="form" />
+            </block>
+        </reference>
+    </adminhtml_carrier_import>
+
+    <!-- Result page (renders from registry, no form_key required). -->
+    <adminhtml_carrier_importResult>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_import_result" name="carrier_import_result" />
+        </reference>
+    </adminhtml_carrier_importResult>
+
     <!-- Add Logo page (standalone Magento form) -->
     <adminhtml_carrier_addlogo>
         <reference name="content">
             <block type="xfe_carrier/adminhtml_carrier_logo_edit" name="carrier_logo_edit" />
         </reference>
     </adminhtml_carrier_addlogo>
+
+    <!-- Edit Logo page (same form block, loaded with a registered logo row) -->
+    <adminhtml_carrier_editlogo>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_logo_edit" name="carrier_logo_edit" />
+        </reference>
+    </adminhtml_carrier_editlogo>
 
     <!-- Account edit page -->
     <adminhtml_carrier_editaccount>
@@ -31,12 +54,109 @@
         </reference>
     </adminhtml_carrier_editaccount>
 
+    <!-- FTP账号 edit page -->
+    <adminhtml_carrier_editftpaccount>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_ftpaccount_edit" name="carrier_ftpaccount_edit" />
+        </reference>
+    </adminhtml_carrier_editftpaccount>
+
+    <!-- Rule bulk import landing page -->
+    <adminhtml_carrier_ruleimport>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_rule_import" name="carrier_rule_import" template="xfe_carrier/carrier/rule/import/container.phtml">
+                <block type="xfe_carrier/adminhtml_carrier_rule_import_form" name="carrier_rule_import_form" as="form" />
+            </block>
+        </reference>
+    </adminhtml_carrier_ruleimport>
+
+    <!-- Rule bulk import result page -->
+    <adminhtml_carrier_ruleimportresult>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_rule_import_result" name="carrier_rule_import_result" />
+        </reference>
+    </adminhtml_carrier_ruleimportresult>
+
+    <!-- Account bulk import landing page -->
+    <adminhtml_carrier_accountimport>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_account_import" name="carrier_account_import" template="xfe_carrier/carrier/account/import/container.phtml">
+                <block type="xfe_carrier/adminhtml_carrier_account_import_form" name="carrier_account_import_form" as="form" />
+            </block>
+        </reference>
+    </adminhtml_carrier_accountimport>
+
+    <!-- Account bulk import result page -->
+    <adminhtml_carrier_accountimportresult>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_account_import_result" name="carrier_account_import_result" />
+        </reference>
+    </adminhtml_carrier_accountimportresult>
+
+    <!-- FTP账号 bulk import landing page -->
+    <adminhtml_carrier_ftpaccountimport>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_ftpaccount_import" name="carrier_ftpaccount_import" template="xfe_carrier/carrier/ftpaccount/import/container.phtml">
+                <block type="xfe_carrier/adminhtml_carrier_ftpaccount_import_form" name="carrier_ftpaccount_import_form" as="form" />
+            </block>
+        </reference>
+    </adminhtml_carrier_ftpaccountimport>
+
+    <!-- FTP账号 bulk import result page -->
+    <adminhtml_carrier_ftpaccountimportresult>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_carrier_ftpaccount_import_result" name="carrier_ftpaccount_import_result" />
+        </reference>
+    </adminhtml_carrier_ftpaccountimportresult>
+
     <!-- Rule edit page -->
     <adminhtml_carrier_editrule>
+        <reference name="head">
+            <action method="addJs">
+                <file>mage/adminhtml/loader.js</file>
+            </action>
+            <action method="addItem">
+                <type>skin_js</type>
+                <name>xfe_shippingrule/js/condition-builder.js</name>
+            </action>
+        </reference>
         <reference name="content">
             <block type="xfe_carrier/adminhtml_carrier_rule_edit" name="carrier_rule_edit" />
         </reference>
     </adminhtml_carrier_editrule>
+
+    <!-- Custom attribute grid (1.0.15+) -->
+    <adminhtml_carrier_customattribute>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_customAttribute" name="custom_attribute" />
+        </reference>
+    </adminhtml_carrier_customattribute>
+    <adminhtml_carrier_customattribute_new>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_customAttribute_edit" name="custom_attribute_edit" />
+        </reference>
+    </adminhtml_carrier_customattribute_new>
+    <adminhtml_carrier_customattribute_edit>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_customAttribute_edit" name="custom_attribute_edit" />
+        </reference>
+    </adminhtml_carrier_customattribute_edit>
+
+    <!-- Custom attribute import (1.0.15+) -->
+    <adminhtml_carrier_customattribute_import>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_customAttribute_import" name="custom_attribute_import"
+                   template="xfe_carrier/custom_attribute/import/container.phtml">
+                <block type="xfe_carrier/adminhtml_customAttribute_import_form" name="custom_attribute_import_form" as="form" />
+            </block>
+        </reference>
+    </adminhtml_carrier_customattribute_import>
+
+    <adminhtml_carrier_customattribute_importresult>
+        <reference name="content">
+            <block type="xfe_carrier/adminhtml_customAttribute_import" name="custom_attribute_import_result" />
+        </reference>
+    </adminhtml_carrier_customattribute_importresult>
 
     <!-- Carrier grid (ajax) -->
     <adminhtml_carrier_grid>

@@ -164,4 +164,85 @@ class XFE_OAuth2_Helper_Data extends Mage_Core_Helper_Abstract
     {
         Mage::log($message, $level, 'xfeoauth2.log', true);
     }
+
+    /**
+     * Canonical list of grant type identifiers known to this server.
+     *
+     * Used by both the admin and storefront save flows to sanitize the
+     * `grant_types` column. Adding a new grant type here will also allow the
+     * storage layer to admit it via {@see self::isAllowedGrantType()}.
+     *
+     * @return string[]
+     */
+    public function getAllowedGrantTypes()
+    {
+        return array(
+            'authorization_code',
+            'client_credentials',
+            'refresh_token',
+        );
+    }
+
+    /**
+     * Membership check against the canonical grant type list, case-insensitive.
+     *
+     * @param string $grantType
+     * @return bool
+     */
+    public function isAllowedGrantType($grantType)
+    {
+        $grantType = strtolower(trim((string)$grantType));
+        return in_array($grantType, $this->getAllowedGrantTypes(), true);
+    }
+
+    /**
+     * Normalize a grant_types submission into a canonical comma-separated
+     * string of allowed, lowercase, deduplicated identifiers.
+     *
+     * Accepts any of: array, comma-separated string, newline-separated string,
+     * whitespace-separated string, mixed punctuation. Order is preserved by
+     * first-seen.
+     *
+     * Examples:
+     *   'client_credentials , refresh_token , BOGUS'
+     *     => 'client_credentials,refresh_token'
+     *   "client_credentials\nrefresh_token"
+     *     => 'client_credentials,refresh_token'
+     *   array('client_credentials', 'REFRESH_TOKEN')
+     *     => 'client_credentials,refresh_token'
+     *
+     * @param string|array $raw
+     * @return string  comma-separated, lowercased, deduped; '' if nothing allowed
+     */
+    public function normalizeGrantTypes($raw)
+    {
+        if (is_array($raw)) {
+            $raw = implode(',', $raw);
+        }
+        if (!is_string($raw)) {
+            $raw = (string)$raw;
+        }
+
+        // Split on any whitespace OR comma; case-fold; trim punctuation.
+        $tokens = preg_split('/[\s,]+/', $raw, -1, PREG_SPLIT_NO_EMPTY);
+        $tokens = array_map('strtolower', array_map('trim', $tokens));
+
+        $allowed = array_map('strtolower', $this->getAllowedGrantTypes());
+
+        $seen = array();
+        $out  = array();
+        foreach ($tokens as $tok) {
+            if ($tok === '' || isset($seen[$tok])) {
+                continue;
+            }
+            if (!in_array($tok, $allowed, true)) {
+                // drop unknown grant types silently - keeps junk out of the DB
+                continue;
+            }
+            $seen[$tok] = true;
+            $out[]      = $tok;
+        }
+
+        return implode(',', $out);
+    }
 }

@@ -90,8 +90,13 @@ class XFE_OAuth2_Model_Storage_ClientCredentials implements
             return false;
         }
 
-        $grantTypes = array_map('trim', explode(',', $details['grant_types']));
-        return in_array($grant_type, $grantTypes);
+        // Tolerate comma/whitespace/newline separators and any case so that
+        // legacy rows saved before the normalization helper existed still
+        // pass the check (e.g. "REFRESH_TOKEN" or "client_credentials\nrefresh_token").
+        $tokens = preg_split('/[\s,]+/', (string)$details['grant_types'], -1, PREG_SPLIT_NO_EMPTY);
+        $tokens = array_map('strtolower', array_map('trim', $tokens));
+
+        return in_array(strtolower((string)$grant_type), $tokens, true);
     }
 
     /**
@@ -104,6 +109,7 @@ class XFE_OAuth2_Model_Storage_ClientCredentials implements
             'basic',
             'orders',
             'customers',
+            'carriers',
             'admin',
         );
 

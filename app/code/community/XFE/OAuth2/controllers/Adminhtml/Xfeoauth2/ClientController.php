@@ -101,6 +101,9 @@ class XFE_OAuth2_Adminhtml_Xfeoauth2_ClientController extends Mage_Adminhtml_Con
                 $model->setClientId($helper->generateUuid());
                 $secret = $helper->generateToken(32);
                 $model->setClientSecret($helper->hashSecret($secret));
+                // Reversible copy so the admin can view the secret later via
+                // the "Show Secret" button.
+                $model->setClientSecretEncrypted($helper->encryptData($secret));
                 // Store raw secret for display (one-time)
                 Mage::register('xfeoauth2_new_secret', $secret);
             }
@@ -108,7 +111,20 @@ class XFE_OAuth2_Adminhtml_Xfeoauth2_ClientController extends Mage_Adminhtml_Con
             $model->setName($data['name'] ?? '');
             $model->setDescription($data['description'] ?? '');
             $model->setRedirectUri($data['redirect_uri'] ?? '');
-            $model->setGrantTypes($data['grant_types'] ?? '');
+            // Normalize grant_types via the shared helper so the stored value
+            // is always a clean, lowercase, comma-separated list of known
+            // grant type identifiers. Unknown values are dropped silently,
+            // case/whitespace/newlines are tolerated on input. The form
+            // requires at least one selection (multiselect validate-select),
+            // and we mirror that server-side so a JS-disabled submit cannot
+            // persist an empty grant_types value.
+            $grantTypesNormalized = $helper->normalizeGrantTypes($data['grant_types'] ?? '');
+            if ($grantTypesNormalized === '') {
+                $session->addError($helper->__('Please select at least one Grant Type for this client.'));
+                $this->_redirect('*/*/edit', array('id' => $data['client_id'] ?? null));
+                return;
+            }
+            $model->setGrantTypes($grantTypesNormalized);
             $model->setScopes($data['scopes'] ?? 'basic');
             $model->setStatus((int)($data['status'] ?? 1));
             $model->setUserId(Mage::getSingleton('admin/session')->getUser()->getId());
@@ -169,6 +185,54 @@ class XFE_OAuth2_Adminhtml_Xfeoauth2_ClientController extends Mage_Adminhtml_Con
     {
         $this->loadLayout();
         $this->renderLayout();
+    }
+
+    /**
+     * GET admin/xfeoauth2_client/reveal?id=xxx - return the client secret as
+     * JSON for the "Show Secret" button on the grid.
+     *
+     * The plaintext secret is recovered from client_secret_encrypted (a
+     * reversible AES copy stored via core/encrypt). Clients created before
+     * version 1.0.2 do not have this column filled, in which case the secret
+     * cannot be recovered (bcrypt hash is one-way) and a 409 is returned.
+     */
+    public function revealAction()
+    {
+        $helper   = Mage::helper('xfeoauth2');
+        $clientId = $this->getRequest()->getParam('id');
+
+        if (!$clientId) {
+            $helper->sendJsonError(400, 'bad_request', $helper->__('Missing client id.'));
+            return;
+        }
+
+        $model = Mage::getModel('xfeoauth2/client')->load($clientId);
+        if (!$model->getId()) {
+            $helper->sendJsonError(404, 'not_found', $helper->__('Client not found.'));
+            return;
+        }
+
+        $encrypted = (string)$model->getClientSecretEncrypted();
+        if ($encrypted === '') {
+            $helper->sendJsonError(409, 'not_recoverable', $helper->__(
+                'This client was created before secret recovery was available. '
+                . 'The secret cannot be recovered. Please create a new client.'
+            ));
+            return;
+        }
+
+        try {
+            $secret = $helper->decryptData($encrypted);
+        } catch (Exception $e) {
+            $helper->log('Admin decrypt client secret error for ' . $clientId . ': ' . $e->getMessage());
+            $helper->sendJsonError(500, 'decrypt_failed', $helper->__('Could not decrypt the client secret.'));
+            return;
+        }
+
+        $helper->sendJson(200, array(
+            'client_id'     => $model->getClientId(),
+            'client_secret' => $secret,
+        ));
     }
 
     /**

@@ -1,0 +1,55 @@
+<?php
+/**
+ * XFE Carrier - 规则批量导入结果。
+ *
+ * @var XFE_Carrier_Block_Adminhtml_Carrier_Rule_Import_Result $this
+ */
+$helper  = Mage::helper('xfe_carrier');
+$created = $this->getCreatedCount();
+$updated = $this->getUpdatedCount();
+$skipped = $this->getSkippedCount();
+$errors  = $this->getErrors();
+?>
+<div class="content-header">
+    <h3 class="icon-head head-adminhtml-carrier"><?php echo $helper->__('批量导入承运商规则结果') ?></h3>
+</div>
+<table class="form-list" cellspacing="0" cellpadding="0" style="max-width: 720px;">
+    <tr>
+        <td class="label"><?php echo $helper->__('新建') ?></td>
+        <td class="value"><strong style="color: #006400;"><?php echo $created ?></strong></td>
+    </tr>
+    <tr>
+        <td class="label"><?php echo $helper->__('更新') ?></td>
+        <td class="value"><strong style="color: #006400;"><?php echo $updated ?></strong></td>
+    </tr>
+    <tr>
+        <td class="label"><?php echo $helper->__('跳过') ?></td>
+        <td class="value"><strong style="color: #b30000;"><?php echo $skipped ?></strong></td>
+    </tr>
+</table>
+
+<?php if (!empty($errors)): ?>
+    <h4 style="margin-top: 20px;"><?php echo $helper->__('错误详情') ?></h4>
+    <table class="data" cellspacing="0" cellpadding="4" style="width: 720px; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #f6f6f6;">
+                <th style="width: 80px; text-align: left;"><?php echo $helper->__('行') ?></th>
+                <th style="text-align: left;"><?php echo $helper->__('错误') ?></th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($errors as $rowNo => $msg): ?>
+            <tr>
+                <td><?php echo $rowNo === 0 ? $helper->__('文件') : (int)$rowNo ?></td>
+                <td><?php echo $this->escapeHtml($msg) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+<?php endif; ?>
+
+<p style="margin-top: 20px;">
+    <a href="<?php echo $this->getBackUrl() ?>"><?php echo $helper->__('再次导入') ?></a>
+    &nbsp;|&nbsp;
+    <a href="<?php echo $this->getListUrl() ?>"><?php echo $helper->__('返回列表') ?></a>
+</p>

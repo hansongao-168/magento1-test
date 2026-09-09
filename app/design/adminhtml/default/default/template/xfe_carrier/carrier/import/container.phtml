@@ -1,0 +1,22 @@
+<?php
+/**
+ * XFE Carrier - Bulk Import Container
+ *
+ * Renders the header + upload form. The form block (carrier_import_form)
+ * owns the <form> tag (useContainer(true)) and posts to importPostAction.
+ *
+ * @var XFE_Carrier_Block_Adminhtml_Carrier_Import $this
+ */
+?>
+<div class="content-header">
+    <?php echo $this->getHeaderHtml() ?>
+    <p class="form-buttons"><?php echo $this->getButtonsHtml('header') ?></p>
+</div>
+<?php echo $this->getFormInitScripts() ?>
+<?php echo $this->getChildHtml('form') ?>
+<?php if ($this->hasFooterButtons()): ?>
+    <div class="content-footer">
+        <p class="form-buttons"><?php echo $this->getButtonsHtml('footer') ?></p>
+    </div>
+<?php endif; ?>
+<?php echo $this->getFormScripts() ?>

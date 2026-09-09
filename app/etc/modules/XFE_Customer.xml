@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <XFE_Customer>
+            <active>false</active>
+            <codePool>community</codePool>
+            <depends>
+                <Mage_Admin />
+                <Mage_Adminhtml />
+            </depends>
+        </XFE_Customer>
+    </modules>
+</config>

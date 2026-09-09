@@ -1,0 +1,246 @@
+<?php
+/**
+ * 自定义属性严格模式编辑器(1.0.15+)
+ *
+ * 模板数据:
+ *   $rawJson        string|null  该实体已存的 custom_fields_json 原文
+ *   $entityType     string       'carrier' | 'account' | 'ftp_account' | 'logo'
+ *   $defs           XFE_Carrier_Domain_CustomAttributeCollection
+ *                                  已登记属性集合
+ *
+ * 行为:
+ *   - 严格模式(全局表非空): 只能从下拉选已登记 key, 不允许自由添加
+ *   - 兼容模式(全局表空): 渲染旧版 free-form 编辑器(由 caller 决定, 这里给空提示)
+ *   - 必填字段: 红色 * 标识, save 时由 Applier Service 校验
+ *   - 旧数据兼容: per-row JSON 里"未登记"key 仍能显示(只读)
+ *
+ * POST 形态(由本模板生成):
+ *   custom_fields[<key>][value] = scalar | string[]
+ *   label/type/options 不再从 POST 提交,Applier 从全局表读取最新值
+ *
+ * 关联文档: docs/architecture/carrier-global-custom-field-defs.md
+ */
+/** @var string|null $rawJson */
+/** @var string $entityType */
+/** @var XFE_Carrier_Domain_CustomAttributeCollection $defs */
+$helper = Mage::helper('xfe_carrier');
+
+// 1) 解析已存 per-row JSON
+$bag = array();
+if (is_string($rawJson) && $rawJson !== '') {
+    $decoded = json_decode($rawJson, true);
+    if (is_array($decoded)) {
+        foreach ($decoded as $k => $v) {
+            if (is_string($k) && is_array($v)) {
+                $bag[$k] = $v;
+            }
+        }
+    }
+}
+
+// 2) 拆分:已登记 vs 未登记(旧数据兼容)
+$registeredKeys   = array();
+$unregisteredKeys = array();
+foreach ($defs as $def) {
+    /** @var XFE_Carrier_Domain_CustomAttribute $def */
+    $registeredKeys[$def->getFieldKey()] = $def;
+}
+foreach (array_keys($bag) as $k) {
+    if (!isset($registeredKeys[$k])) {
+        $unregisteredKeys[] = $k;
+    }
+}
+
+$fieldId = 'xfe-ca-strict-' . md5($entityType . '|' . spl_object_hash($this));
+$hasDefs = $defs->count() > 0;
+?>
+<style>
+.xfe-ca-strict { width:100%; border-collapse:collapse; margin-top:6px; }
+.xfe-ca-strict th, .xfe-ca-strict td {
+    padding:8px 10px; border-bottom:1px solid #e1e1e1; vertical-align:middle;
+}
+.xfe-ca-strict th { background:#f6f6f6; text-align:left; font-weight:600; }
+.xfe-ca-strict select, .xfe-ca-strict input[type=text] { width:100%; box-sizing:border-box; }
+.xfe-ca-required { color:#c00; font-weight:bold; margin-left:3px; }
+.xfe-ca-row-removed td { opacity:0.45; }
+.xfe-ca-row-removed .xfe-ca-row-input { text-decoration:line-through; }
+.xfe-ca-toolbar { margin-top:10px; }
+.xfe-ca-empty { color:#999; font-style:italic; padding:8px 0; }
+.xfe-ca-hint { color:#666; font-size:11px; margin-top:6px; line-height:1.6; }
+.xfe-ca-unregistered { color:#c00; font-size:11px; margin-top:6px; }
+.xfe-ca-chip {
+    display:inline-flex; align-items:center; gap:4px;
+    background:#e1f0ff; border:1px solid #b0d4f1; border-radius:3px;
+    padding:1px 6px; font-size:12px; line-height:18px; margin:2px 2px 2px 0;
+}
+.xfe-ca-chip-x { cursor:pointer; color:#999; font-weight:bold; padding:0 2px; }
+.xfe-ca-chip-x:hover { color:#c00; }
+</style>
+
+<div id="<?php echo $fieldId; ?>" class="xfe-carrier-custom-attribute-strict" data-entity-type="<?php echo $this->escapeHtml($entityType); ?>">
+<?php if (!$hasDefs): ?>
+    <div class="xfe-ca-empty">
+        <?php echo $helper->__('尚未在"系统 → 承运商管理 → 自定义属性"中登记任何字段。'); ?>
+        <br/>
+        <?php echo $helper->__('请先到该菜单登记字段后,再回到此页面填写。'); ?>
+    </div>
+<?php else: ?>
+    <table class="xfe-ca-strict">
+        <thead>
+            <tr>
+                <th style="width:30%;"><?php echo $helper->__('字段'); ?></th>
+                <th style="width:25%;"><?php echo $helper->__('类型'); ?></th>
+                <th style="width:45%;"><?php echo $helper->__('值'); ?></th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($registeredKeys as $def):
+                $key = $def->getFieldKey();
+                $currentValue = isset($bag[$key]) ? $bag[$key] : null;
+                $currentScalar = is_array($currentValue) && isset($currentValue['value'])
+                    ? $currentValue['value']
+                    : $currentValue;
+                $currentType = $def->getFieldType();
+                $options = $def->getOptions();
+                $isReq = $def->isRequired();
+            ?>
+                <tr data-key="<?php echo $this->escapeHtml($key); ?>" data-type="<?php echo $this->escapeHtml($currentType); ?>">
+                    <td>
+                        <strong><?php echo $this->escapeHtml($def->getLabel()); ?></strong>
+                        <code style="color:#888; font-size:11px;">(<?php echo $this->escapeHtml($key); ?>)</code>
+                        <?php if ($isReq): ?>
+                            <span class="xfe-ca-required" title="必填">*</span>
+                        <?php endif; ?>
+                        <?php if ($def->getDescription()): ?>
+                            <div style="color:#666; font-size:11px; margin-top:2px;">
+                                <?php echo $this->escapeHtml($def->getDescription()); ?>
+                            </div>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <?php echo $this->escapeHtml($currentType); ?>
+                        <?php if ($currentType === 'select' || $currentType === 'multiselect'): ?>
+                            <div style="color:#888; font-size:11px;">
+                                <?php echo $helper->__('候选项:'); ?>
+                                <?php echo $this->escapeHtml(implode(', ', $options ?: array())); ?>
+                            </div>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <?php if ($currentType === 'boolean'): ?>
+                            <select name="custom_fields[<?php echo $this->escapeHtml($key); ?>][value]" class="xfe-ca-row-input">
+                                <option value="1"<?php echo $currentScalar ? ' selected' : ''; ?>><?php echo $helper->__('是'); ?></option>
+                                <option value="0"<?php echo !$currentScalar ? ' selected' : ''; ?>><?php echo $helper->__('否'); ?></option>
+                            </select>
+                        <?php elseif ($currentType === 'select'): ?>
+                            <select name="custom_fields[<?php echo $this->escapeHtml($key); ?>][value]" class="xfe-ca-row-input">
+                                <?php foreach (($options ?: array()) as $opt): ?>
+                                    <option value="<?php echo $this->escapeHtml($opt); ?>"<?php echo (string)$currentScalar === (string)$opt ? ' selected' : ''; ?>>
+                                        <?php echo $this->escapeHtml($opt); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php elseif ($currentType === 'multiselect'): ?>
+                            <?php
+                            $msValues = is_array($currentScalar) ? $currentScalar
+                                : (is_string($currentScalar) && $currentScalar !== ''
+                                    ? explode(',', $currentScalar)
+                                    : array());
+                            if (!empty($options)) {
+                                // 固定选项模式
+                                ?>
+                                <select multiple name="custom_fields[<?php echo $this->escapeHtml($key); ?>][value][]" class="xfe-ca-row-input" style="min-height:60px;">
+                                    <?php foreach ($options as $opt): ?>
+                                        <option value="<?php echo $this->escapeHtml($opt); ?>"<?php echo in_array($opt, $msValues, true) ? ' selected' : ''; ?>>
+                                            <?php echo $this->escapeHtml($opt); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <div style="color:#888; font-size:11px;">Ctrl/Shift 多选</div>
+                            <?php } else { ?>
+                                <!-- 自由标签模式(回车添加,×删除) -->
+                                <div class="xfe-ca-chips" tabindex="0"
+                                     data-key="<?php echo $this->escapeHtml($key); ?>"
+                                     data-name="custom_fields[<?php echo $this->escapeHtml($key); ?>][value]">
+                                    <input type="text" class="xfe-ca-chip-input" placeholder="输入后回车" />
+                                </div>
+                                <script type="text/javascript">//<![CDATA[
+                                (function () {
+                                    var root = document.querySelector('#<?php echo $fieldId; ?> .xfe-ca-chips[data-key="<?php echo $this->escapeHtml($key); ?>"]');
+                                    if (!root || root.__inited) return;
+                                    root.__inited = true;
+                                    var values = <?php echo json_encode(array_values($msValues)); ?>;
+                                    var hiddenName = root.getAttribute('data-name');
+                                    // 创建 hidden input(承载真实值,逗号分隔)
+                                    var hidden = document.createElement('input');
+                                    hidden.type = 'hidden';
+                                    hidden.name = hiddenName;
+                                    hidden.value = values.join(',');
+                                    root.appendChild(hidden);
+                                    var input = root.querySelector('.xfe-ca-chip-input');
+                                    function render() {
+                                        // 清空旧 chip
+                                        Array.prototype.forEach.call(
+                                            root.querySelectorAll('.xfe-ca-chip'),
+                                            function (el) { el.parentNode.removeChild(el); }
+                                        );
+                                        values.forEach(function (v, idx) {
+                                            var chip = document.createElement('span');
+                                            chip.className = 'xfe-ca-chip';
+                                            chip.innerHTML = '<span></span><span class="xfe-ca-chip-x">×</span>';
+                                            chip.querySelector('span').textContent = v;
+                                            chip.querySelector('.xfe-ca-chip-x').addEventListener('click', function () {
+                                                values.splice(idx, 1);
+                                                hidden.value = values.join(',');
+                                                render();
+                                            });
+                                            root.insertBefore(chip, input);
+                                        });
+                                    }
+                                    input.addEventListener('keydown', function (e) {
+                                        if (e.key === 'Enter' || e.key === ',') {
+                                            e.preventDefault();
+                                            var v = input.value.trim();
+                                            if (v && values.indexOf(v) === -1) {
+                                                values.push(v);
+                                                hidden.value = values.join(',');
+                                                render();
+                                            }
+                                            input.value = '';
+                                        } else if (e.key === 'Backspace' && input.value === '' && values.length) {
+                                            values.pop();
+                                            hidden.value = values.join(',');
+                                            render();
+                                        }
+                                    });
+                                    render();
+                                })();
+                                //]]></script>
+                            <?php } ?>
+                        <?php else: ?>
+                            <input type="text"
+                                   name="custom_fields[<?php echo $this->escapeHtml($key); ?>][value]"
+                                   class="xfe-ca-row-input"
+                                   value="<?php echo is_scalar($currentScalar) ? $this->escapeHtml($currentScalar) : ''; ?>" />
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    <div class="xfe-ca-hint">
+        <?php echo $helper->__('提示:标有'); ?>
+        <span class="xfe-ca-required">*</span>
+        <?php echo $helper->__('的字段为必填,留空将无法保存。仅显示在"自定义属性"菜单中已登记的字段。'); ?>
+    </div>
+<?php endif; ?>
+
+<?php if (!empty($unregisteredKeys)): ?>
+    <div class="xfe-ca-unregistered">
+        <?php echo $helper->__('⚠ 检测到 %d 个未登记的旧字段(只读,无法编辑或保存):', count($unregisteredKeys)); ?>
+        <code><?php echo $this->escapeHtml(implode(', ', $unregisteredKeys)); ?></code>
+        <br/>
+        <?php echo $helper->__('如需继续使用,请到"自定义属性"菜单登记同名 key 后,这些值会出现在该字段下。'); ?>
+    </div>
+<?php endif; ?>
+</div>

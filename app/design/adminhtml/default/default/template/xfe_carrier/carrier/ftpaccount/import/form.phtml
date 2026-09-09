@@ -1,0 +1,53 @@
+<?php
+/**
+ * XFE Carrier - FTP账号上传表单（渲染在 FTP账号导入容器内部）。
+ *
+ * @var XFE_Carrier_Block_Adminhtml_Carrier_FtpAccount_Import_Form $this
+ */
+$helper = Mage::helper('xfe_carrier');
+?>
+<form id="carrier_ftp_account_import_form" action="<?php echo $this->getPostUrl() ?>" method="post" enctype="multipart/form-data">
+    <?php echo $this->getBlockHtml('formkey') ?>
+    <div class="entry-edit">
+        <div class="entry-edit-head">
+            <h4 class="icon-head head-edit-form fieldset-legend"><?php echo $helper->__('CSV 文件') ?></h4>
+        </div>
+        <fieldset id="carrier_ftp_account_import_fieldset" class="fieldset">
+            <div class="hor-scroll">
+                <table class="form-list">
+                    <tbody>
+                        <tr>
+                            <td class="label">
+                                <label for="ftp_account_csv"><?php echo $helper->__('CSV 文件') ?> <span class="required">*</span></label>
+                            </td>
+                            <td class="value">
+                                <input type="file" name="ftp_account_csv" id="ftp_account_csv" class="required-entry input-file" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label">&nbsp;</td>
+                            <td class="value">
+                                <p class="note" style="max-width: 640px;">
+                                    <?php echo $helper->__(
+                                        '上传 .csv 文件。首行必须是表头,可包含 carrier_code / account_name / account_no / '
+                                        . 'protocol / host / port / username / password / remote_path / mode / encoding / '
+                                        . 'status / sort_order / note。carrier_code、account_name 与 host 为必填;同一承运商下 '
+                                        . 'account_name 与 account_no 均相同的 FTP账号将被更新,否则新增。'
+                                    ) ?>
+                                </p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </fieldset>
+    </div>
+    <div class="form-buttons" style="margin-top: 10px;">
+        <button type="submit" class="scalable save">
+            <span><span><span><?php echo $helper->__('上传并导入') ?></span></span></span>
+        </button>
+    </div>
+</form>
+<script type="text/javascript">
+    var carrierFtpAccountImportForm = new varienForm('carrier_ftp_account_import_form');
+</script>

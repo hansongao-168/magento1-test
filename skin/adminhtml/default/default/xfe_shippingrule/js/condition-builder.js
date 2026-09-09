@@ -17,17 +17,17 @@ var rootGroupOrder = [];      // Ordered array of top-level group IDs
 var nextGroupId = 0;
 var nextConditionId = 0;
 
-// Numeric attributes list (for operator filtering)
-var numericAttributes = [
-    'user_id', 'package_count', 'package_weight',
-    'length', 'width', 'height', 'volume'
-];
-
 // Attribute options (populated from PHP)
 var attributeOptions = [];
 var operatorOptions = {};
 var numericOperators = {};
 var stringOperators = {};
+// 属性 → 类型 ('numeric'|'string') 元数据，由 PHP Conditions Tab 注入。
+// 缺省视为 string，避免新属性被错误地套上数值操作符。
+var attributeTypeMap = {};
+function isNumericAttribute(code) {
+    return attributeTypeMap && attributeTypeMap[code] === 'numeric';
+}
 
 /**
  * Initialize the condition builder from hidden field data
@@ -58,6 +58,14 @@ function initConditionBuilder() {
         try {
             stringOperators = JSON.parse(strOpEl.value);
         } catch(e) { stringOperators = {}; }
+    }
+
+    // 属性 → 类型元数据 (PHP 下发)。缺省回退到空对象。
+    var metaEl = $('attribute_meta_json');
+    if (metaEl) {
+        try {
+            attributeTypeMap = JSON.parse(metaEl.value);
+        } catch (e) { attributeTypeMap = {}; }
     }
 
     // Load existing conditions
@@ -225,6 +233,11 @@ function addConditionToGroup(groupId, conditionData) {
     var html = buildConditionHtml(groupId, conditionId, attr, op, val);
     container.insert({bottom: html});
 
+    // 若操作符不需要值（如 is_null / is_not_null），同步禁用输入框
+    if (op === 'is_null' || op === 'is_not_null') {
+        toggleValueInput(groupId, conditionId, op);
+    }
+
     // Track in data structure
     conditionGroups[groupId].items.push({
         type: 'condition',
@@ -280,7 +293,7 @@ function buildConditionHtml(groupId, conditionId, attr, op, val) {
     html += '<select id="condition-op-' + groupId + '-' + conditionId + '" onchange="onOperatorChange(' + groupId + ', ' + conditionId + ', this.value)" style="width:140px;">';
 
     // Determine which operators to show
-    var isNumeric = numericAttributes.indexOf(attr) >= 0;
+    var isNumeric = isNumericAttribute(attr);
     var operators = isNumeric ? numericOperators : stringOperators;
     for (var opKey in operators) {
         if (operators.hasOwnProperty(opKey)) {
@@ -393,8 +406,10 @@ function onAttributeChange(groupId, conditionId, value) {
 
         // Update operator options based on attribute type
         if (opSelect) {
-            var isNumeric = numericAttributes.indexOf(value) >= 0;
+            var isNumeric = isNumericAttribute(value);
             updateOperatorOptions(opSelect, isNumeric);
+            // 当前操作符切换后要重新判断值输入框是否可用
+            toggleValueInput(groupId, conditionId, opSelect.value);
         }
     }
 
@@ -414,7 +429,23 @@ function onCustomAttributeChange(groupId, conditionId, value) {
  */
 function onOperatorChange(groupId, conditionId, value) {
     updateConditionData(groupId, conditionId, 'operator', value);
+    toggleValueInput(groupId, conditionId, value);
     updateHiddenField();
+}
+
+/**
+ * 根据操作符启用/禁用值输入框；is_null/is_not_null 不需要值。
+ */
+function toggleValueInput(groupId, conditionId, opValue) {
+    var valEl = $('condition-val-' + groupId + '-' + conditionId);
+    if (!valEl) return;
+    if (opValue === 'is_null' || opValue === 'is_not_null') {
+        valEl.value = '';
+        valEl.disabled = true;
+        updateConditionData(groupId, conditionId, 'value', '');
+    } else {
+        valEl.disabled = false;
+    }
 }
 
 /**

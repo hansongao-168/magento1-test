@@ -100,6 +100,34 @@ abstract class XFE_OAuth2_Model_Api_Abstract
     abstract public function dispatch($method, array $params = array());
 
     /**
+     * Get the decoded token data for the currently authenticated request
+     *
+     * Returns an array with keys: expires, client_id, user_id, scope, user_type.
+     * Available after authenticate() has run.
+     *
+     * @return array|null
+     */
+    public function getTokenData()
+    {
+        return $this->_tokenData;
+    }
+
+    /**
+     * Read the request body as decoded JSON
+     *
+     * @return array
+     */
+    protected function _getJsonBody()
+    {
+        $raw = Mage::app()->getRequest()->getRawBody();
+        if (!$raw) {
+            return array();
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : array();
+    }
+
+    /**
      * Extract Bearer token from request headers
      *
      * @return string|null
