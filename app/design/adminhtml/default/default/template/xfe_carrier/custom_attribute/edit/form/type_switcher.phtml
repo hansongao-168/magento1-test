@@ -58,9 +58,16 @@ window.XfeCaMigrationLabels = <?php echo json_encode(array(
     'use strict';
 
     function boot() {
-        var fieldTypeEl = document.getElementById('field_type');
-        var optionsEl   = document.getElementById('options_csv');
-        var defaultEl   = document.getElementById('default_value');
+        // 小改 M(2026-09-18):优先用 name 查找(兼容 Magento Form 给 input 加 id 前缀的场景,如 edit_form[options_csv])
+        function findByName(name) {
+            return document.querySelector('select[name="' + name + '"]')
+                || document.querySelector('input[name="' + name + '"]')
+                || document.querySelector('textarea[name="' + name + '"]')
+                || document.getElementById(name);
+        }
+        var fieldTypeEl = findByName('field_type') || document.getElementById('field_type');
+        var optionsEl   = findByName('options_csv') || document.getElementById('options_csv');
+        var defaultEl   = findByName('default_value') || document.getElementById('default_value');
         if (!fieldTypeEl || !defaultEl) return;
         if (typeof window.XfeCaTypeSwitcher === 'undefined') return;
 

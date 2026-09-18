@@ -1248,6 +1248,107 @@ function setupForm(initial) {
     return { fieldTypeEl, optionsEl, defaultEl };
 }
 
+
+/**
+ * 小改 M(2026-09-18)配套测试
+ *
+ * 模拟 Magento Form 给 input 加 id 前缀的场景(如 'edit_form_options_csv'):
+ * - name 仍 = 'options_csv'(Form.php addField 第二参 'name' 一致)
+ * - id 带前缀
+ *
+ * 验证 type_switcher.phtml 的 findByName('options_csv') 走 querySelector('input[name="options_csv"]')
+ * 能正确找到元素,mountOptionsEditor 挂载容器 + refresh() 正常工作。
+ *
+ * 注:type_switcher.phtml 的 findByName 在 phtml 内 closure 不外暴,这里直接用 querySelector
+ * 模拟 phtml 内的查找逻辑,验证后续 bind() 能 work。
+ */
+describe('小改 M — bind() 兼容 id 带前缀(name 查找)', () => {
+    function setupFormWithPrefixedIds(initial) {
+        document.body.innerHTML = '';
+        const form = document.createElement('form');
+        form.id = 'edit_form';
+        document.body.appendChild(form);
+        // Magento Form 渲染可能给 id 加前缀(实际生产中可能不存在,但留兼容)
+        function make(name) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            const el = document.createElement(name === 'field_type' ? 'select' : 'input');
+            el.name = name;
+            el.id = 'edit_form_' + name; // 带前缀
+            if (name !== 'field_type') el.type = 'text';
+            if (initial && initial[name] !== undefined) el.value = initial[name];
+            td.appendChild(el);
+            tr.appendChild(td);
+            form.appendChild(tr);
+            return el;
+        }
+        const fieldTypeEl = make('field_type');
+        const optionsEl   = make('options_csv');
+        const defaultEl   = make('default_value');
+        // 给 field_type 加几个选项(否则 JS 测试无法切到 select/boolean)
+        [['text','T'],['number','N'],['select','S'],['multiselect','M'],['boolean','B']].forEach(function (p) {
+            const o = document.createElement('option');
+            o.value = p[0]; o.text = p[1];
+            fieldTypeEl.appendChild(o);
+        });
+        // 模拟 phtml findByName 逻辑
+        const findByName = (name) =>
+            document.querySelector('select[name="' + name + '"]')
+            || document.querySelector('input[name="' + name + '"]')
+            || document.querySelector('textarea[name="' + name + '"]')
+            || document.getElementById(name);
+        return {
+            fieldTypeEl: findByName('field_type'),
+            optionsEl:   findByName('options_csv'),
+            defaultEl:   findByName('default_value')
+        };
+    }
+
+    it('id 前缀场景:document.getElementById 找不到,name 查找能找到', () => {
+        const { optionsEl, defaultEl } = setupFormWithPrefixedIds();
+        // 关键断言:即使 id 是 'edit_form_options_csv',name 查找仍能找到
+        assert.ok(optionsEl, 'optionsEl 通过 name 查找应能找到');
+        assert.equal(optionsEl.id, 'edit_form_options_csv', 'id 确实是带前缀的');
+        assert.ok(defaultEl, 'defaultEl 通过 name 查找应能找到');
+    });
+
+    it('id 前缀场景:text -> select,容器正确挂载 + 1 行空 row', () => {
+        const { fieldTypeEl, optionsEl, defaultEl } = setupFormWithPrefixedIds({ field_type: 'text' });
+        XfeCaTypeSwitcher.bind({ fieldTypeEl, optionsEl, defaultEl, yesLabel: 'Y', noLabel: 'N', blankLabel: '-' });
+        fieldTypeEl.value = 'select';
+        fire(fieldTypeEl, 'change');
+        const editor = document.querySelector('.xfe-ca-opt-editor');
+        assert.ok(editor, '容器应已挂载到 optionsEl.parentNode(<td>)');
+        const rows = editor.querySelectorAll('.xfe-ca-opt-row');
+        assert.equal(rows.length, 1, '空 options 时 select 默认 1 行空 row');
+    });
+
+    it('id 前缀场景:text -> boolean,容器正确挂载 + 2 行 readonly {0:否, 1:是}', () => {
+        const { fieldTypeEl, optionsEl, defaultEl } = setupFormWithPrefixedIds({ field_type: 'text' });
+        XfeCaTypeSwitcher.bind({ fieldTypeEl, optionsEl, defaultEl, yesLabel: 'Y', noLabel: 'N', blankLabel: '-' });
+        fieldTypeEl.value = 'boolean';
+        fire(fieldTypeEl, 'change');
+        const editor = document.querySelector('.xfe-ca-opt-editor');
+        assert.ok(editor, '容器应已挂载');
+        const rows = editor.querySelectorAll('.xfe-ca-opt-row');
+        assert.equal(rows.length, 2, 'boolean 默认 2 行');
+        assert.equal(rows[0].querySelector('.xfe-ca-opt-key').value, '0', 'row[0] key=0');
+        assert.equal(rows[0].querySelector('.xfe-ca-opt-label').value, '否', 'row[0] label=否');
+        assert.equal(rows[1].querySelector('.xfe-ca-opt-key').value, '1', 'row[1] key=1');
+        assert.equal(rows[1].querySelector('.xfe-ca-opt-label').value, '是', 'row[1] label=是');
+        assert.ok(rows[0].querySelector('.xfe-ca-opt-key').readOnly, 'boolean key 列 readonly');
+    });
+
+    it('id 前缀场景:text -> multiselect,容器正确挂载 + 1 行空 row', () => {
+        const { fieldTypeEl, optionsEl, defaultEl } = setupFormWithPrefixedIds({ field_type: 'text' });
+        XfeCaTypeSwitcher.bind({ fieldTypeEl, optionsEl, defaultEl, yesLabel: 'Y', noLabel: 'N', blankLabel: '-' });
+        fieldTypeEl.value = 'multiselect';
+        fire(fieldTypeEl, 'change');
+        const editor = document.querySelector('.xfe-ca-opt-editor');
+        assert.ok(editor, '容器应已挂载');
+        assert.equal(editor.querySelectorAll('.xfe-ca-opt-row').length, 1, 'multiselect 空时 1 行空 row');
+    });
+});
 describe('bind() 端到端 — 切 field_type 触发联动', () => {
     it('text -> boolean: default_value 变 Yes/No radio', () => {
         const { fieldTypeEl, optionsEl, defaultEl } = setupForm({ field_type: 'text', default_value: 'hello' });

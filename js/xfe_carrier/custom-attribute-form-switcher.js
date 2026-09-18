@@ -1020,4 +1020,47 @@
         mountOptionsEditor:     mountOptionsEditor,
         bind:               bind
     };
+
+    // 小改 N(2026-09-18):自启动 boot — 不依赖 type_switcher.phtml 的 inline script 渲染
+    // 根因:某些 Magento 后台 layout 配置下 <reference name="js"> 不会渲染 phtml 块,
+    // 导致 bind() 不被调用 → 行编辑器容器从未挂载 → 切 type 无效果。
+    // 现在 JS 文件加载完,自动检测三个 form 元素,找到就启动 bind()。
+    (function autoBoot() {
+        function findByName(name) {
+            if (typeof document === 'undefined') return null;
+            return document.querySelector('select[name="' + name + '"]')
+                || document.querySelector('input[name="' + name + '"]')
+                || document.querySelector('textarea[name="' + name + '"]')
+                || document.getElementById(name);
+        }
+        function tryBoot() {
+            var fieldTypeEl = findByName('field_type');
+            var optionsEl   = findByName('options_csv');
+            var defaultEl   = findByName('default_value');
+            if (!fieldTypeEl || !defaultEl) return false;
+            if (optionsEl && optionsEl.__xfeCaAutoBooted) return true;
+            try {
+                root.XfeCaTypeSwitcher.bind({
+                    fieldTypeEl: fieldTypeEl,
+                    optionsEl:   optionsEl,
+                    defaultEl:   defaultEl,
+                    yesLabel:   (root.XfeCaEditorLabels && root.XfeCaEditorLabels.yesLabel) || '是',
+                    noLabel:    (root.XfeCaEditorLabels && root.XfeCaEditorLabels.noLabel)  || '否',
+                    blankLabel: (root.XfeCaEditorLabels && root.XfeCaEditorLabels.blankLabel) || '-- 请选择 --'
+                });
+                if (optionsEl) optionsEl.__xfeCaAutoBooted = true;
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        if (typeof document === 'undefined') return;
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () {
+                if (!tryBoot()) setTimeout(tryBoot, 200);
+            });
+        } else {
+            if (!tryBoot()) setTimeout(tryBoot, 200);
+        }
+    })();
 }(typeof window !== 'undefined' ? window : this));

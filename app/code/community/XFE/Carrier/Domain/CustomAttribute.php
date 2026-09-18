@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * 自定义属性(L1 Domain 值对象)
  *
@@ -50,6 +50,22 @@ final class XFE_Carrier_Domain_CustomAttribute
         self::ENTITY_TYPE_LOGO,
     );
 
+    /**
+     * 允许的 locale 白名单(小改 P,ADR 0027)。
+     *
+     * 行编辑器按此列表生成 tab;渲染时按当前 store locale 选 label,
+     * 找不到再回退 labels.default。
+     * 新增语言时在此追加常量 + 行编辑器文案注入即可,无需改 schema。
+     *
+     * 'default' 是兜底(必须保留),用于未指定 locale 或缺翻译时回退。
+     */
+    const ALLOWED_LOCALES = array(
+        'default',  // 兜底(必须保留)
+        'zh_CN',    // 简体中文
+        'en_US',    // 英文(美国)
+    );
+
+
     /** @var int|null */
     private $id;
 
@@ -72,6 +88,32 @@ final class XFE_Carrier_Domain_CustomAttribute
      * @var array<int,array{key:string,label:string}>|null
      */
     private $options;
+
+    /**
+     * options 多语言 JSON 字符串原文(小改 P,ADR 0027)。
+     * 解析后形态(对应 localizedOptions 字段):
+     *   [{key: string, labels: {locale: string}}, ...]
+     *
+     * 与 $options 字段的关系:
+     *   - $options     = [{key, label}] (单 label,小改 K 兼容路径)
+     *   - $localizedOptions = [{key, labels: {locale: ...}}] (多语言,新路径)
+     *   - $options 的 label 字段 = $localizedOptions 的 labels.default
+     *
+     * @var string|null
+     */
+    private $optionsJson;
+
+    /**
+     * options 多语言解析缓存(小改 P,ADR 0027)。
+     *
+     * 形态: [{key: string, labels: array<locale, label>}]
+     * - 顺序与 JSON 字符串一致
+     * - labels 至少含 'default' 键(缺失时回填空字符串)
+     *
+     * @var array<int,array{key:string,labels:array<string,string>}>|null
+     */
+    private $localizedOptions;
+
 
     /** @var string|int|float|bool|string[]|null */
     private $defaultValue;
@@ -101,6 +143,7 @@ final class XFE_Carrier_Domain_CustomAttribute
      * @param int                   $sortOrder
      * @param string|null           $description
      *
+     * @param string|null           $optionsJson 多语言 JSON 字符串原文(小改 P,ADR 0027);为 null 时回退 $options 单 label
      * @throws InvalidArgumentException
      */
     public function __construct(
@@ -114,7 +157,8 @@ final class XFE_Carrier_Domain_CustomAttribute
         $isRequired = false,
         $isActive = true,
         $sortOrder = 0,
-        $description = null
+        $description = null,
+        $optionsJson = null
     ) {
         $entityType = (string) $entityType;
         $fieldKey   = (string) $fieldKey;
@@ -186,6 +230,28 @@ final class XFE_Carrier_Domain_CustomAttribute
             $options = null;
         }
 
+
+        // 多语言 JSON 解析(小改 P,ADR 0027)
+        // 优先级:optionsJson 字符串 > options 单 label 数组 > null
+        $localized = null;
+        if (is_string($optionsJson) && $optionsJson !== '') {
+            $decoded = json_decode($optionsJson, true);
+            if (is_array($decoded)) {
+                // 校验 + 规范化 JSON 为结构化 [{key,labels:{locale:str}},...]
+                $localized = self::parseOptionsJsonToLocalizedPairs($decoded, $fieldType);
+            }
+        }
+        if ($localized === null && $options !== null) {
+            // 旧 options 单 label 数组:全部走 default locale,保证 getLocalizedOptions() 可用
+            $localized = array();
+            foreach ($options as $pair) {
+                $localized[] = array(
+                    'key'    => $pair['key'],
+                    'labels' => array('default' => (string) $pair['label']),
+                );
+            }
+        }
+
         // 仅传 keys 给 coerceDefaultValue — CustomField 语义本身只关心 key 集合(小改 K)
         $optionKeys = null;
         if ($options !== null) {
@@ -207,6 +273,8 @@ final class XFE_Carrier_Domain_CustomAttribute
         $this->isActive      = (bool) $isActive;
         $this->sortOrder     = (int) $sortOrder;
         $this->description   = $description === null ? null : (string) $description;
+        $this->optionsJson      = is_string($optionsJson) ? (string) $optionsJson : null;
+        $this->localizedOptions = $localized;
     }
 
     /**
@@ -259,6 +327,160 @@ final class XFE_Carrier_Domain_CustomAttribute
             $out[] = array('key' => $key, 'label' => $label);
         }
         return $out;
+    }
+
+
+    /**
+     * 把外部传入的 labels map 归一化为内部结构 {locale:label}(小改 P,ADR 0027)。
+     *
+     * 规则:
+     *   - 必须是 array<string,string> 形态(键=locale,值=label)
+     *   - 不识别的 locale(不在 ALLOWED_LOCALES 内)直接丢弃,防止脏数据
+     *   - 至少要包含 'default' 键;缺失则自动补空字符串
+     *   - locale 顺序固定:ALLOWED_LOCALES 优先,然后 labels 里出现的其他 locale(防止顺序乱跳)
+     *
+     * @param mixed $labels
+     * @return array<string,string>
+     */
+    public static function normalizeLabelsMap($labels)
+    {
+        $out = array('default' => '');
+        if (!is_array($labels)) {
+            return $out;
+        }
+        foreach ($labels as $locale => $label) {
+            if (!is_string($locale) || !in_array($locale, self::ALLOWED_LOCALES, true)) {
+                continue;  // 不识别的 locale,丢弃
+            }
+            $out[$locale] = trim((string) $label);
+        }
+        // 保证 default 存在(若用户没填)
+        if (!isset($out['default']) || $out['default'] === '') {
+            // 找一个非空 locale 作为 default 兜底
+            foreach (self::ALLOWED_LOCALES as $loc) {
+                if (isset($out[$loc]) && $out[$loc] !== '') {
+                    $out['default'] = $out[$loc];
+                    break;
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * 把 JSON 解码后的 options 数组(可能包含 labels map)解析为结构化对(小改 P,ADR 0027)。
+     *
+     * 输入形态(由 json_decode 第二参=true 得出):
+     *   array<int, array{key:string, labels?:array<string,string>}>
+     *
+     * 校验:
+     *   - 必含 key 字段(字符串)
+     *   - 可选 labels 字段(若给,走 normalizeLabelsMap 规范化)
+     *   - boolean 类型必须正好 2 行 + key ∈ {0,1}
+     *   - select 类型必须非空
+     *
+     * @param mixed $decoded
+     * @param string $fieldType
+     * @return array<int,array{key:string,labels:array<string,string>}>
+     * @throws InvalidArgumentException
+     */
+    public static function parseOptionsJsonToLocalizedPairs($decoded, $fieldType)
+    {
+        if (!is_array($decoded)) {
+            throw new InvalidArgumentException(
+                'CustomAttribute options_json must be a JSON array of objects'
+            );
+        }
+        $out = array();
+        foreach ($decoded as $idx => $item) {
+            if (!is_array($item) || !isset($item['key'])) {
+                throw new InvalidArgumentException(
+                    'CustomAttribute options_json item requires key at index '
+                    . (is_int($idx) ? $idx : '?')
+                );
+            }
+            $key = trim((string) $item['key']);
+            if ($key === '') {
+                throw new InvalidArgumentException(
+                    'CustomAttribute options_json key must be non-empty at index '
+                    . (is_int($idx) ? $idx : '?')
+                );
+            }
+            $labels = isset($item['labels']) ? $item['labels'] : array();
+            // 兼容 {value:'xxx'} 旧结构(label 字段名兼容)
+            if (!is_array($labels) && isset($item['label'])) {
+                $labels = array('default' => (string) $item['label']);
+            }
+            $out[] = array(
+                'key'    => $key,
+                'labels' => self::normalizeLabelsMap($labels),
+            );
+        }
+        // 跟 options 走同样的强校验(boolean / select)
+        if ($fieldType === XFE_Carrier_Domain_CustomField::TYPE_SELECT && count($out) === 0) {
+            throw new InvalidArgumentException(
+                'CustomAttribute field_type=select requires non-empty options_json'
+            );
+        }
+        if ($fieldType === XFE_Carrier_Domain_CustomField::TYPE_BOOLEAN) {
+            if (count($out) === 0) {
+                // 默认 {0:否,1:是}
+                $out = array(
+                    array('key' => '0', 'labels' => array('default' => '否', 'zh_CN' => '否', 'en_US' => 'No')),
+                    array('key' => '1', 'labels' => array('default' => '是', 'zh_CN' => '是', 'en_US' => 'Yes')),
+                );
+            } elseif (count($out) !== 2) {
+                throw new InvalidArgumentException(
+                    'CustomAttribute field_type=boolean options_json must contain exactly 2 rows, got: '
+                    . count($out)
+                );
+            } else {
+                $keys = array_map(function ($p) { return (string) $p['key']; }, $out);
+                sort($keys);
+                if ($keys !== array('0', '1')) {
+                    throw new InvalidArgumentException(
+                        'CustomAttribute field_type=boolean options_json keys must be exactly 0 and 1, got: ['
+                        . implode(',', $keys) . ']'
+                    );
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * 把结构化 [{key,labels:{...}},...] 序列化为 JSON 字符串(小改 P,ADR 0027)。
+     *
+     * 空数组(null / [])时返回 null,避免数据库写入冗余字符串。
+     *
+     * @param array<int,array{key:string,labels:array<string,string>}>|null $pairs
+     * @return string|null
+     */
+    public static function serializeLocalizedPairsToJson($pairs)
+    {
+        if (!is_array($pairs) || count($pairs) === 0) {
+            return null;
+        }
+        // 重新组装成稳定形态:每个 entry 仅含 key + labels,labels 仅含 ALLOWED_LOCALES 内 locale
+        $cleaned = array();
+        foreach ($pairs as $pair) {
+            if (!is_array($pair) || !isset($pair['key'])) {
+                continue;
+            }
+            $cleaned[] = array(
+                'key'    => (string) $pair['key'],
+                'labels' => self::normalizeLabelsMap(
+                    isset($pair['labels']) ? $pair['labels'] : array()
+                ),
+            );
+        }
+        if (count($cleaned) === 0) {
+            return null;
+        }
+        return json_encode(
+            $cleaned,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
     }
 
     /**
@@ -392,6 +614,124 @@ final class XFE_Carrier_Domain_CustomAttribute
         }
         return $map;
     }
+
+    /**
+     * 返回 options 多语言 JSON 字符串原文(小改 P,ADR 0027)。
+     *
+     * 与 getOptions() 的区别:
+     *   - getOptions()       返回 [{key,label}] (单 label,小改 K 路径)
+     *   - getOptionsJson()   返回数据库原始 JSON(可能含多语言)
+     *
+     * @return string|null
+     */
+    public function getOptionsJson()
+    {
+        return $this->optionsJson;
+    }
+
+    /**
+     * 返回允许的 locale 列表(小改 P,ADR 0027)。
+     *
+     * 与 ALLOWED_LOCALES 同步,但用 instance method 暴露方便 service / template 调。
+     *
+     * @return string[]
+     */
+    public function getLocales()
+    {
+        return self::ALLOWED_LOCALES;
+    }
+
+    /**
+     * 返回按指定 locale 选过的 options 结构化数组(小改 P,ADR 0027)。
+     *
+     * 形态: [{key:string, label:string}, ...]
+     * - label 从 localizedOptions[].labels[$locale] 取
+     * - 找不到该 locale 时回退 labels.default(再空才用 key)
+     *
+     * @param string $locale  形如 'zh_CN' / 'en_US' / 'default'
+     * @return array<int,array{key:string,label:string}>|null
+     */
+    public function getLocalizedOptions($locale)
+    {
+        if ($this->localizedOptions === null) {
+            return null;
+        }
+        $locale = is_string($locale) && $locale !== '' ? $locale : 'default';
+        $out = array();
+        foreach ($this->localizedOptions as $pair) {
+            $label = '';
+            if (isset($pair['labels'][$locale]) && $pair['labels'][$locale] !== '') {
+                $label = $pair['labels'][$locale];
+            } elseif (isset($pair['labels']['default']) && $pair['labels']['default'] !== '') {
+                $label = $pair['labels']['default'];
+            } else {
+                $label = (string) $pair['key'];  // 终极兜底:用 key
+            }
+            $out[] = array(
+                'key'   => (string) $pair['key'],
+                'label' => $label,
+            );
+        }
+        return $out;
+    }
+
+    /**
+     * 返回按指定 locale 选过的 boolean label 映射(小改 P,ADR 0027)。
+     *
+     * @param string $locale  形如 'zh_CN' / 'en_US' / 'default'
+     * @return array{0:string,1:string}
+     */
+    public function getLocalizedBooleanLabels($locale)
+    {
+        $map = array('0' => '否', '1' => '是');
+        if ($this->localizedOptions === null) {
+            return $map;
+        }
+        $locale = is_string($locale) && $locale !== '' ? $locale : 'default';
+        foreach ($this->localizedOptions as $pair) {
+            if ($pair['key'] !== '0' && $pair['key'] !== '1') {
+                continue;
+            }
+            $label = '';
+            if (isset($pair['labels'][$locale]) && $pair['labels'][$locale] !== '') {
+                $label = $pair['labels'][$locale];
+            } elseif (isset($pair['labels']['default']) && $pair['labels']['default'] !== '') {
+                $label = $pair['labels']['default'];
+            }
+            if ($label !== '') {
+                $map[$pair['key']] = $label;
+            }
+        }
+        return $map;
+    }
+
+    /**
+     * 按 locale 选单个 option 的 label(小改 P,ADR 0027)。
+     *
+     * @param string $key
+     * @param string $locale
+     * @return string|null  找不到时返回 null(不会回退 default,让调用方决策)
+     */
+    public function getLocalizedLabelFor($key, $locale)
+    {
+        if ($this->localizedOptions === null) {
+            return null;
+        }
+        $locale = is_string($locale) && $locale !== '' ? $locale : 'default';
+        foreach ($this->localizedOptions as $pair) {
+            if ((string) $pair['key'] === (string) $key) {
+                if (isset($pair['labels'][$locale]) && $pair['labels'][$locale] !== '') {
+                    return $pair['labels'][$locale];
+                }
+                if (isset($pair['labels']['default']) && $pair['labels']['default'] !== '') {
+                    return $pair['labels']['default'];
+                }
+                return null;
+            }
+        }
+        return null;
+    }
+
 
     /** @return string|int|float|bool|string[]|null */
     public function getDefaultValue() { return $this->defaultValue; }
