@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!--
+    XFE_MagePlugin 后台布局更新。
+    - 登录页注入短信验证表单（用于登录 IP 白名单流程）。
+-->
+<config>
+    <layout>
+        <adminhtml_index_login>
+            <reference name="form.additional.info">
+                <block type="xfe_mageplugin_adminhtml/login_sms" name="xfe_mageplugin_login_sms" />
+            </reference>
+        </adminhtml_index_login>
+    </layout>
+</config>

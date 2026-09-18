@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Admin Client Grid
  *
@@ -71,6 +71,19 @@ class XFE_OAuth2_Block_Adminhtml_Client_Grid extends Mage_Adminhtml_Block_Widget
             'width'  => '150px',
         ));
 
+        // Secret expiry column. Per ADR 0007 this is informational only -
+        // the Storage layer keeps verifying bcrypt regardless of expiry -
+        // but it is what lets the operator spot a soon-to-expire client at
+        // a glance. The renderer takes care of colour-coding (green /
+        // yellow / red / grey) so the Grid itself stays data-only.
+        $this->addColumn('client_secret_expires_at', array(
+            'header'   => $helper->__('Secret Expires'),
+            'index'    => 'client_secret_expires_at',
+            'type'     => 'datetime',
+            'renderer' => 'xfeoauth2/adminhtml_client_grid_renderer_secretExpiry',
+            'width'    => '150px',
+        ));
+
         $this->addColumn('reveal', array(
             'header'   => $helper->__('Secret'),
             'index'    => 'client_id',
@@ -94,12 +107,25 @@ class XFE_OAuth2_Block_Adminhtml_Client_Grid extends Mage_Adminhtml_Block_Widget
             'getter'   => 'getClientId',
             'filter'   => false,
             'sortable' => false,
-            'width'    => '70px',
+            'width'    => '120px',
             'actions'  => array(
                 array(
                     'caption' => $helper->__('Edit'),
                     'url'     => array('base' => '*/*/edit'),
                     'field'   => 'id',
+                ),
+                array(
+                    // Regenerate issues a new client_secret. The onclick
+                    // confirm() makes the operator acknowledge that all
+                    // existing tokens for this client will stop working
+                    // immediately - bshaffer re-verifies client_secret on
+                    // every token request.
+                    'caption' => $helper->__('Regenerate'),
+                    'url'     => array('base' => '*/*/regenerate'),
+                    'field'   => 'id',
+                    'confirm' => $helper->__(
+                        'Regenerate the client secret? Existing tokens will stop working immediately.'
+                    ),
                 ),
             ),
         ));

@@ -24,6 +24,7 @@
  *   billing_city          string
  *   billing_region        string
  *   billing_zip           string
+ *   order_created_at      string
  *
  * Callers should use the named setters OR the create() factory. Any
  * extra key passed in is preserved verbatim so the rule engine stays

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    XFE_Demo 模块配置。
+
+    本模块是教学示例,演示 XFE_Injection 的完整使用流程:
+      - 声明 2 个 service (Greeter / Logger)
+      - 声明 2 个 hook (demo_user_login / demo_page_view)
+      - 声明 3 个 calling 关系
+
+    运行时:
+      调用 XFE_Injection_Model_Runner::trigger('demo_user_login', \$ctx)
+      自动执行 logging + greeting 2 个 calling。
+-->
+<config>
+    <modules>
+        <XFE_Demo>
+            <version>1.0.0</version>
+        </XFE_Demo>
+    </modules>
+    <global>
+        <models>
+            <xfe_demo>
+                <class>XFE_Demo_Model</class>
+            </xfe_demo>
+        </models>
+    </global>
+</config>

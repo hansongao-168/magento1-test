@@ -459,6 +459,8 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
 
     /**
      * 1.0.15+ 自定义属性 strict editor 注入。
+     * 1.0.16 修复:当"自定义属性"菜单未登记任何字段时,整个 fieldset 都不渲染,
+     * 避免出现一个空 legend + 占位说明的视觉噪音。
      *
      * @param Varien_Data_Form $form
      * @param XFE_Carrier_Model_Carrier|null $model
@@ -472,27 +474,21 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
         $rawJson = $model ? (string) $model->getCustomFieldsJson() : '';
         $hasDefs = $defs->count() > 0;
 
-        $note = $hasDefs
-            ? $helper->__(
-                '1.0.15 严格模式:仅显示在"自定义属性"菜单中已登记的字段。标有 * 的为必填,留空将无法保存。'
-            )
-            : $helper->__(
-                '尚未在"自定义属性"菜单登记任何字段。先去登记后再回来填写。'
-            );
+        if (!$hasDefs) {
+            return;
+        }
 
         $fieldset = $form->addFieldset('custom_attributes_fieldset', array(
             'legend' => $helper->__('自定义属性'),
-            'note'   => $note,
+            'note'   => $helper->__(
+                '1.0.15 严格模式:仅显示在"自定义属性"菜单中已登记的字段。标有 * 的为必填,留空将无法保存。'
+            ),
         ));
-
-        $template = $hasDefs
-            ? 'xfe_carrier/custom_attribute/strict_editor.phtml'
-            : 'xfe_carrier/carrier/account/custom_fields.phtml';
 
         $fieldset->addField('custom_fields', 'note', array(
             'label' => $helper->__('键值对列表'),
             'text'  => $this->getLayout()->createBlock('core/template')
-                ->setTemplate($template)
+                ->setTemplate('xfe_carrier/custom_attribute/strict_editor.phtml')
                 ->setData('raw_json', $rawJson)
                 ->setData('entity_type', XFE_Carrier_Domain_CustomAttribute::ENTITY_TYPE_CARRIER)
                 ->setData('defs', $defs)
@@ -500,3 +496,5 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_General extends Mage_Adminhtm
         ));
     }
 }
+
+

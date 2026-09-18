@@ -2,9 +2,16 @@
 /**
  * RefreshToken Storage - implements bshaffer RefreshTokenInterface
  *
+ * 【关键 - 2026-09-09】顶部显式 require 接口文件。详见
+ * Model/Storage/AccessToken.php 同款注释。
+ *
  * @category   Community
  * @package    XFE_OAuth2
  */
+require_once BP . '/lib/XFE/OAuth2/Autoloader.php';
+XFE_OAuth2_Autoloader::register();
+require_once BP . '/lib/OAuth2/Storage/RefreshTokenInterface.php';
+
 class XFE_OAuth2_Model_Storage_RefreshToken implements OAuth2\Storage\RefreshTokenInterface
 {
     /**
@@ -29,9 +36,9 @@ class XFE_OAuth2_Model_Storage_RefreshToken implements OAuth2\Storage\RefreshTok
 
     /**
      * @param string $refresh_token
-     * @param mixed $client_id
-     * @param mixed $user_id
-     * @param int $expires
+     * @param mixed  $client_id
+     * @param mixed  $user_id
+     * @param int    $expires
      * @param string $scope
      * @return void
      */

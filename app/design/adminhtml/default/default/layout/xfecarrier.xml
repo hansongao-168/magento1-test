@@ -27,11 +27,11 @@
     </adminhtml_carrier_import>
 
     <!-- Result page (renders from registry, no form_key required). -->
-    <adminhtml_carrier_importResult>
+    <adminhtml_carrier_importresult>
         <reference name="content">
             <block type="xfe_carrier/adminhtml_carrier_import_result" name="carrier_import_result" />
         </reference>
-    </adminhtml_carrier_importResult>
+    </adminhtml_carrier_importresult>
 
     <!-- Add Logo page (standalone Magento form) -->
     <adminhtml_carrier_addlogo>
@@ -126,19 +126,41 @@
     </adminhtml_carrier_editrule>
 
     <!-- Custom attribute grid (1.0.15+) -->
-    <adminhtml_carrier_customattribute>
+    <adminhtml_carrier_customattribute_index>
         <reference name="content">
             <block type="xfe_carrier/adminhtml_customAttribute" name="custom_attribute" />
         </reference>
-    </adminhtml_carrier_customattribute>
+    </adminhtml_carrier_customattribute_index>
     <adminhtml_carrier_customattribute_new>
         <reference name="content">
             <block type="xfe_carrier/adminhtml_customAttribute_edit" name="custom_attribute_edit" />
+        </reference>
+        <!-- 自定义属性表单 field_type 联动脚本 (ADR 0008) -->
+        <reference name="head">
+            <action method="addItem">
+                <type>js</type>
+                <name>xfe_carrier/custom-attribute-form-switcher.js</name>
+            </action>
+        </reference>
+        <reference name="js">
+            <block type="xfe_carrier/adminhtml_customAttribute_edit_form_type_switcher"
+                   name="custom_attribute_edit_type_switcher" />
         </reference>
     </adminhtml_carrier_customattribute_new>
     <adminhtml_carrier_customattribute_edit>
         <reference name="content">
             <block type="xfe_carrier/adminhtml_customAttribute_edit" name="custom_attribute_edit" />
+        </reference>
+        <!-- 自定义属性表单 field_type 联动脚本 (ADR 0008) -->
+        <reference name="head">
+            <action method="addItem">
+                <type>js</type>
+                <name>xfe_carrier/custom-attribute-form-switcher.js</name>
+            </action>
+        </reference>
+        <reference name="js">
+            <block type="xfe_carrier/adminhtml_customAttribute_edit_form_type_switcher"
+                   name="custom_attribute_edit_type_switcher" />
         </reference>
     </adminhtml_carrier_customattribute_edit>
 

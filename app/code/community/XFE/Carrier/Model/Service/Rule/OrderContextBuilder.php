@@ -58,6 +58,7 @@ class XFE_Carrier_Model_Service_Rule_OrderContextBuilder
         $context->set('customer_group', $this->_order->getCustomerGroupId());
         $context->set('user_id',        $this->_order->getCustomerId());
         $context->set('order_amount',   (float)$this->_order->getGrandTotal());
+        $context->set('order_created_at', $this->_order->getCreatedAt());
 
         $context->set('package_count',   $this->_packageCount);
         $context->set('package_weight',  $this->_packageWeight);

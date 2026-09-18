@@ -153,7 +153,6 @@ class XFE_Carrier_Model_Carrier extends Mage_Core_Model_Abstract
         $field = $coll->get($key);
         return $field ? $field->getValue() : null;
     }
-}
 
     /**
      * Get the per-store translation of the carrier's name.

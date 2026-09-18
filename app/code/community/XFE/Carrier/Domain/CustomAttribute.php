@@ -13,21 +13,28 @@
  *   3. field_type 复用 CustomField::ALLOWED_TYPES
  *   4. field_type=select 时 options 非空
  *   5. field_type=multiselect 时 options 可选(空=自由输入,非空=固定选项)
- *   6. default_value 会被强制为对应 PHP 标量类型
- *   7. label 1~64 字符
+ *   6. field_type=boolean 时 options 必须正好 2 行,key ∈ {0,1}(label 可改,小改 K,ADR 0023)
+ *   7. default_value 会被强制为对应 PHP 标量类型
+ *   8. label 1~64 字符
  *
  * 序列化形态(由 toCustomFieldArray() 给出):
  *   [
  *     'label'   => string,
  *     'type'    => 'text'|'number'|'select'|'multiselect'|'boolean',
- *     'options' => string[],   // select/multiselect
+ *     'options' => string[],   // select/multiselect/boolean — 仅 key 喂给 CustomField
  *     'value'   => scalar|string[]|null
  *   ]
- * 复用 CustomField 构造签名:可直接喂给 CustomField::__construct / CustomFieldCollection::fromArray。
+ *
+ * options 内部结构(由 getOptions() 给出,小改 K,ADR 0023):
+ *   [{key: string, label: string}, ...]
+ *
+ * boolean 专属 label 映射(由 getBooleanLabels() 给出,缺记录回退 {0:否, 1:是}):
+ *   [0: string, 1: string]
  *
  * 关联文档:
  *   - docs/architecture/carrier-global-custom-field-defs.md
  *   - docs/architecture/decisions/0006-custom-attribute-management.md
+ *   - docs/architecture/decisions/0023-boolean-custom-label.md
  */
 final class XFE_Carrier_Domain_CustomAttribute
 {
@@ -58,7 +65,12 @@ final class XFE_Carrier_Domain_CustomAttribute
     /** @var string */
     private $fieldType;
 
-    /** @var string[]|null */
+    /**
+     * options 内部结构(小改 K,ADR 0023):
+     *   [{key: string, label: string}, ...]
+     *
+     * @var array<int,array{key:string,label:string}>|null
+     */
     private $options;
 
     /** @var string|int|float|bool|string[]|null */
@@ -77,19 +89,19 @@ final class XFE_Carrier_Domain_CustomAttribute
     private $description;
 
     /**
-     * @param int|null     $id           数据库自增 ID(新建时可为 null)
-     * @param string       $entityType   4 选 1: carrier | account | ftp_account | logo
-     * @param string       $fieldKey     英文/数字/下划线,1~64 字符
-     * @param string       $label        展示名,1~64 字符
-     * @param string       $fieldType    复用 CustomField::TYPE_*
-     * @param string[]|null $options     仅 select 必填;multiselect 可选
-     * @param mixed        $defaultValue scalar | string[] | null(由 fieldType 决定)
-     * @param bool         $isRequired
-     * @param bool         $isActive
-     * @param int          $sortOrder
-     * @param string|null  $description
+     * @param int|null              $id
+     * @param string                $entityType   4 选 1
+     * @param string                $fieldKey     1~64 字符
+     * @param string                $label        1~64 字符
+     * @param string                $fieldType
+     * @param array|string[]|null   $options      select 必填;multiselect 可选;boolean 可选
+     * @param mixed                 $defaultValue
+     * @param bool                  $isRequired
+     * @param bool                  $isActive
+     * @param int                   $sortOrder
+     * @param string|null           $description
      *
-     * @throws InvalidArgumentException 当 entity_type / field_key / label / field_type / options / defaultValue 非法时
+     * @throws InvalidArgumentException
      */
     public function __construct(
         $id,
@@ -97,7 +109,7 @@ final class XFE_Carrier_Domain_CustomAttribute
         $fieldKey,
         $label,
         $fieldType,
-        ?array $options = null,
+        $options = null,
         $defaultValue = null,
         $isRequired = false,
         $isActive = true,
@@ -133,25 +145,56 @@ final class XFE_Carrier_Domain_CustomAttribute
             );
         }
 
-        // options 校验(规则与 CustomField::__construct 一致)
+        // options 校验 — 内部升级为结构化 [{key, label}, ...](小改 K,ADR 0023)
         if ($fieldType === XFE_Carrier_Domain_CustomField::TYPE_SELECT) {
             if ($options === null || count($options) === 0) {
                 throw new InvalidArgumentException(
                     "CustomAttribute field_type=select requires non-empty options"
                 );
             }
-            $options = array_values(array_map('strval', $options));
+            $options = self::normalizeOptionsList($options);
         } elseif ($fieldType === XFE_Carrier_Domain_CustomField::TYPE_MULTISELECT) {
             $options = $options === null
                 ? array()
-                : array_values(array_map('strval', $options));
+                : self::normalizeOptionsList($options);
+        } elseif ($fieldType === XFE_Carrier_Domain_CustomField::TYPE_BOOLEAN) {
+            // boolean:可选 options;空时默认 {0:否,1:是};非空时必须正好 2 行 + key ∈ {0,1}
+            $options = ($options === null || count($options) === 0)
+                ? array(
+                    array('key' => '0', 'label' => '否'),
+                    array('key' => '1', 'label' => '是'),
+                )
+                : self::normalizeOptionsList($options);
+            if (count($options) !== 2) {
+                throw new InvalidArgumentException(
+                    'CustomAttribute field_type=boolean options must contain exactly 2 rows, got: '
+                    . count($options)
+                );
+            }
+            $keys = array_map(
+                function ($p) { return (string) $p['key']; },
+                $options
+            );
+            sort($keys);
+            if ($keys !== array('0', '1')) {
+                throw new InvalidArgumentException(
+                    'CustomAttribute field_type=boolean options keys must be exactly 0 and 1, got: ['
+                    . implode(',', $keys) . ']'
+                );
+            }
         } else {
             $options = null;
         }
 
-        // defaultValue 按 fieldType coerce(复用 CustomField 私有 coerce 规则)
-        // 拷贝一份精简版的 coerce 逻辑(因 CustomField::coerceValue 是 private)
-        $coercedDefault = $this->coerceDefaultValue($defaultValue, $fieldType, $options);
+        // 仅传 keys 给 coerceDefaultValue — CustomField 语义本身只关心 key 集合(小改 K)
+        $optionKeys = null;
+        if ($options !== null) {
+            $optionKeys = array_map(
+                function ($p) { return $p['key']; },
+                $options
+            );
+        }
+        $coercedDefault = $this->coerceDefaultValue($defaultValue, $fieldType, $optionKeys);
 
         $this->id            = $id === null ? null : (int) $id;
         $this->entityType    = $entityType;
@@ -164,6 +207,130 @@ final class XFE_Carrier_Domain_CustomAttribute
         $this->isActive      = (bool) $isActive;
         $this->sortOrder     = (int) $sortOrder;
         $this->description   = $description === null ? null : (string) $description;
+    }
+
+    /**
+     * 把外部传入的 options 列表归一化为内部结构 [{key:string, label:string}, ...]。
+     *
+     * @param mixed $options
+     * @return array<int,array{key:string,label:string}>
+     */
+    public static function normalizeOptionsList($options)
+    {
+        if ($options === null) {
+            return array();
+        }
+        $out = array();
+        foreach ($options as $idx => $item) {
+            if (is_string($item)) {
+                // 小改 K:string token 当作 'key|label' 解析(支持 Importer/Service 传 string[] 形态)
+                $parsed = self::parseOptionToken($item);
+                $key   = $parsed['key'];
+                $label = $parsed['label'];
+            } elseif (is_array($item)) {
+                if (!isset($item['key']) && !isset($item['value'])) {
+                    throw new InvalidArgumentException(
+                        'CustomAttribute option item requires key/value at index '
+                        . (is_int($idx) ? $idx : '?')
+                    );
+                }
+                $key = (string) (isset($item['key']) ? $item['key'] : $item['value']);
+                if (isset($item['label'])) {
+                    $label = (string) $item['label'];
+                } elseif (isset($item['value'])) {
+                    $label = (string) $item['value'];
+                } else {
+                    $label = $key;
+                }
+            } else {
+                throw new InvalidArgumentException(
+                    'CustomAttribute option item must be string or array at index '
+                    . (is_int($idx) ? $idx : '?')
+                );
+            }
+            $key = trim($key);
+            $label = trim($label);
+            if ($key === '') {
+                throw new InvalidArgumentException(
+                    'CustomAttribute option key must be non-empty at index '
+                    . (is_int($idx) ? $idx : '?')
+                );
+            }
+            $out[] = array('key' => $key, 'label' => $label);
+        }
+        return $out;
+    }
+
+    /**
+     * 把单个 string token 解析为 {key, label}(小改 K,与 JS parseOptionToken 对齐)。
+     *
+     * @param mixed $s
+     * @return array{key:string,label:string}
+     */
+    public static function parseOptionToken($s)
+    {
+        if (!is_string($s)) { return array('key' => '', 'label' => ''); }
+        $t = trim($s);
+        if ($t === '') { return array('key' => '', 'label' => ''); }
+        $pipeIdx = strpos($t, '|');
+        if ($pipeIdx === false) {
+            return array('key' => $t, 'label' => $t);
+        }
+        $key = trim(substr($t, 0, $pipeIdx));
+        $label = trim(substr($t, $pipeIdx + 1));
+        if ($key === '') {
+            return array('key' => $t, 'label' => $t);
+        }
+        return array('key' => $key, 'label' => $label === '' ? $key : $label);
+    }
+
+    /**
+     * 把存储形态的 options_csv 解析为结构化对。
+     *
+     * @param string $csv
+     * @return array<int,array{key:string,label:string}>
+     */
+    public static function parseOptionsCsvToPairs($csv)
+    {
+        if (!is_string($csv) || $csv === '') {
+            return array();
+        }
+        $out = array();
+        $tokens = explode(',', $csv);
+        foreach ($tokens as $token) {
+            $t = trim($token);
+            if ($t === '') { continue; }
+            $pair = self::parseOptionToken($t);
+            if ($pair['key'] === '') { continue; }
+            $out[] = $pair;
+        }
+        return $out;
+    }
+
+    /**
+     * 把结构化 options 对序列化为 options_csv 字符串。
+     *
+     * @param array<int,array{key:string,label:string}>|null $pairs
+     * @return string
+     */
+    public static function serializeOptionsPairsToCsv($pairs)
+    {
+        if ($pairs === null || count($pairs) === 0) {
+            return '';
+        }
+        $parts = array();
+        foreach ($pairs as $pair) {
+            if (!is_array($pair) || !isset($pair['key'])) { continue; }
+            $key = trim((string) $pair['key']);
+            if ($key === '') { continue; }
+            $label = isset($pair['label']) ? trim((string) $pair['label']) : '';
+            if ($label === '' || $label === $key) {
+                $parts[] = $key;
+            } else {
+                $parts[] = $key . '|' . $label;
+            }
+        }
+        return implode(',', $parts);
     }
 
     /** @return int|null */
@@ -181,8 +348,50 @@ final class XFE_Carrier_Domain_CustomAttribute
     /** @return string */
     public function getFieldType()    { return $this->fieldType; }
 
-    /** @return string[]|null */
+    /**
+     * 返回结构化 options(小改 K,ADR 0023)。
+     *
+     * @return array<int,array{key:string,label:string}>|null
+     */
     public function getOptions()      { return $this->options; }
+
+    /**
+     * 返回 options 的 key 列表(供 CustomField 构造使用,小改 K)。
+     *
+     * @return string[]
+     */
+    public function getOptionKeys()
+    {
+        if ($this->options === null) {
+            return array();
+        }
+        $keys = array();
+        foreach ($this->options as $pair) {
+            $keys[] = $pair['key'];
+        }
+        return $keys;
+    }
+
+    /**
+     * 返回 boolean 类型的 label 映射(小改 K,ADR 0023)。
+     *
+     * @return array{0:string,1:string}
+     */
+    public function getBooleanLabels()
+    {
+        $map = array('0' => '否', '1' => '是');
+        if ($this->options === null) {
+            return $map;
+        }
+        foreach ($this->options as $pair) {
+            if ($pair['key'] === '0' && $pair['label'] !== '') {
+                $map['0'] = $pair['label'];
+            } elseif ($pair['key'] === '1' && $pair['label'] !== '') {
+                $map['1'] = $pair['label'];
+            }
+        }
+        return $map;
+    }
 
     /** @return string|int|float|bool|string[]|null */
     public function getDefaultValue() { return $this->defaultValue; }
@@ -200,7 +409,9 @@ final class XFE_Carrier_Domain_CustomAttribute
     public function getDescription()  { return $this->description; }
 
     /**
-     * 转为 CustomField 构造签名形态,供 per-row JSON 写入时复用 coerceValue 逻辑。
+     * 转为 CustomField 构造签名形态。
+     *
+     * options 仅喂 key 列表给 CustomField;label 信息由 template 直接从 def 拿(小改 K)。
      *
      * @return array
      */
@@ -213,23 +424,22 @@ final class XFE_Carrier_Domain_CustomAttribute
         );
         if ($this->fieldType === XFE_Carrier_Domain_CustomField::TYPE_SELECT
             || $this->fieldType === XFE_Carrier_Domain_CustomField::TYPE_MULTISELECT
+            || $this->fieldType === XFE_Carrier_Domain_CustomField::TYPE_BOOLEAN
         ) {
-            $out['options'] = $this->options;
+            $out['options'] = $this->getOptionKeys();
         }
         return $out;
     }
 
     /**
-     * 类型强转(简化版,与 CustomField::coerceValue 行为一致,因后者是 private)。
+     * 类型强转(简化版,与 CustomField::coerceValue 行为一致)。
      *
      * @param mixed         $value
      * @param string        $type
-     * @param string[]|null $options
+     * @param string[]|null $options key 列表
      * @return string|int|float|bool|string[]|null
-     *
-     * @throws InvalidArgumentException 当 type=select 的 defaultValue 不在 options 中
      */
-    private function coerceDefaultValue($value, $type, ?array $options = null)
+    private function coerceDefaultValue($value, $type, $options = null)
     {
         switch ($type) {
             case XFE_Carrier_Domain_CustomField::TYPE_TEXT:
@@ -264,7 +474,6 @@ final class XFE_Carrier_Domain_CustomAttribute
                 return (bool) $value;
 
             case XFE_Carrier_Domain_CustomField::TYPE_SELECT:
-                // 允许 null / 空 (无默认);非空则必须在 options 内
                 if ($value === null || $value === '') {
                     return null;
                 }

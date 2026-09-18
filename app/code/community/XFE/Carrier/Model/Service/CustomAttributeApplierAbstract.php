@@ -195,7 +195,7 @@ abstract class XFE_Carrier_Model_Service_CustomAttributeApplierAbstract
             // value 由 POST 决定;label/type/options 由全局表覆盖(若有)
             $type    = $def !== null ? $def->getFieldType() : 'text';
             $label   = $def !== null ? $def->getLabel()     : (isset($spec['label']) ? $spec['label'] : $key);
-            $options = $def !== null ? $def->getOptions()   : null;
+            $options = $def !== null ? $def->getOptionKeys() : null;  // 小改 K:CustomField 仅消费 key
             $value   = isset($spec['value']) ? $spec['value'] : null;
 
             // multiselect 接受 array / 逗号分隔字符串

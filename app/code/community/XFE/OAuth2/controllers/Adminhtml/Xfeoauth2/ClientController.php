@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Admin Client Controller - CRUD for OAuth 2.0 Clients
  *
@@ -104,6 +104,14 @@ class XFE_OAuth2_Adminhtml_Xfeoauth2_ClientController extends Mage_Adminhtml_Con
                 // Reversible copy so the admin can view the secret later via
                 // the "Show Secret" button.
                 $model->setClientSecretEncrypted($helper->encryptData($secret));
+                // Stamp the secret TTL on creation so the Grid/list can render
+                // "expires at". Default TTL is 90 days and is sourced from
+                // system config via Helper::getDefaultSecretTtlDays().
+                $now = gmdate('Y-m-d H:i:s');
+                $model->setClientSecretExpiresAt($helper->calcSecretExpiresAt(
+                    $helper->getDefaultSecretTtlDays()
+                ));
+                $model->setClientSecretLastRotatedAt($now);
                 // Store raw secret for display (one-time)
                 Mage::register('xfeoauth2_new_secret', $secret);
             }
@@ -233,6 +241,58 @@ class XFE_OAuth2_Adminhtml_Xfeoauth2_ClientController extends Mage_Adminhtml_Con
             'client_id'     => $model->getClientId(),
             'client_secret' => $secret,
         ));
+    }
+
+    /**
+     * POST admin/xfeoauth2_client/regenerate - rotate the client_secret.
+     *
+     * Mints a new raw token, refreshes bcrypt + AES copy, and rewrites the
+     * client_secret_expires_at / client_secret_last_rotated_at columns.
+     * The plaintext secret is surfaced once via a session notice (same UX
+     * as a brand-new client) so the admin can copy it before the page is
+     * refreshed.
+     *
+     * Idempotency: this is intentionally NOT idempotent. Each call mints a
+     * fresh secret, which is the operator's intent ("I want to invalidate
+     * the leaked one"). The previous secret becomes unusable for token
+     * issuance the moment save() returns.
+     */
+    public function regenerateAction()
+    {
+        $helper   = Mage::helper('xfeoauth2');
+        $session  = Mage::getSingleton('adminhtml/session');
+        $clientId = $this->getRequest()->getParam('id');
+
+        if (!$clientId) {
+            $session->addError($helper->__('Missing client id.'));
+            $this->_redirect('*/*/');
+            return;
+        }
+
+        $model = Mage::getModel('xfeoauth2/client')->load($clientId);
+        if (!$model->getId()) {
+            $session->addError($helper->__('This client no longer exists.'));
+            $this->_redirect('*/*/');
+            return;
+        }
+
+        try {
+            $secret = $helper->rotateClientSecret($model);
+            $session->addNotice(
+                $helper->__('Client Secret (shown once): %s', $secret)
+            );
+            $session->addSuccess(
+                $helper->__('The client secret has been regenerated. Existing tokens will stop working immediately.')
+            );
+            $helper->log('Admin regenerated client_secret for ' . $clientId);
+        } catch (Exception $e) {
+            $helper->log('Admin regenerate client error for ' . $clientId . ': ' . $e->getMessage());
+            $session->addError($e->getMessage());
+            $this->_redirect('*/*/edit', array('id' => $clientId));
+            return;
+        }
+
+        $this->_redirect('*/*/edit', array('id' => $clientId));
     }
 
     /**

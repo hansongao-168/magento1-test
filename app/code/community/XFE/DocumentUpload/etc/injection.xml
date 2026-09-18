@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    XFE_DocumentUpload 模块 injection.xml 声明。
+
+    作为消费方，在 hook_documentupload_resolve_accounts 上调用
+    service_carrier_list_accounts 来列出该 carrier 下的所有可用账号。
+
+    调用链:
+      Colissimo::getAccountsViaInjection($contextValues)
+        -> XFE_Injection_Model_Runner::trigger('hook_documentupload_resolve_accounts', $injCtx)
+          -> 查找 calling_documentupload_list_accounts
+            -> XFE_Carrier_Service_Account_CredentialViaInjection::listAccountsByCarrier
+              -> 返回 array<int> account_ids
+
+    注意:本模块 PHP 代码不出现 use XFE_Carrier_* / new XFE_Carrier_*。
+    所有跨模块依赖通过本 XML 声明,实现单向依赖 + 低耦合。
+
+    关联文档:
+      - docs/architecture/documentupload-injection-integration.md §4.1
+      - docs/architecture/decisions/0017-documentupload-injection-integration.md
+-->
+<config>
+    <modules>
+        <XFE_DocumentUpload>
+            <version>1.1.0</version>
+        </XFE_DocumentUpload>
+    </modules>
+    <injection>
+        <hooks>
+            <hook_documentupload_resolve_accounts>
+                <description>DocumentUpload 解析账号列表时触发</description>
+            </hook_documentupload_resolve_accounts>
+        </hooks>
+        <callings>
+            <calling id="calling_documentupload_list_accounts"
+                     hook="hook_documentupload_resolve_accounts"
+                     service="service_carrier_list_accounts"
+                     method="listAccountsByCarrier">
+                <argument name="carrierCode"   from="context.carrierCode"/>
+                <argument name="contextValues" from="context.contextValues"/>
+            </calling>
+        </callings>
+    </injection>
+</config>

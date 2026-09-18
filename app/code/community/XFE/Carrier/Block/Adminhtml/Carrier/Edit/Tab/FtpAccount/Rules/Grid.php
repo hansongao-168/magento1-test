@@ -40,6 +40,24 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_FtpAccount_Rules_Grid
         return parent::_prepareCollection();
     }
 
+    /**
+     * Materialise the condition tree for every loaded rule.
+     *
+     * Collection loads don't populate conditions_data (the resource
+     * model's _afterLoad() only runs on a single-model load), so without
+     * this the 条件描述 column would show "匹配所有" for every rule.
+     *
+     * @return $this
+     */
+    protected function _afterLoadCollection()
+    {
+        $collection = $this->getCollection();
+        if ($collection instanceof XFE_Carrier_Model_Resource_Rule_Collection) {
+            $collection->loadConditions();
+        }
+        return parent::_afterLoadCollection();
+    }
+
     protected function _prepareColumns()
     {
         $helper = Mage::helper('xfe_carrier');
@@ -52,6 +70,14 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_FtpAccount_Rules_Grid
         $this->addColumn('description', array(
             'header' => $helper->__('描述'),
             'index'  => 'description',
+        ));
+
+        $this->addColumn('conditions_description', array(
+            'header'   => $helper->__('条件描述'),
+            'frame_callback' => array($this, 'decorateConditionsDescription'),
+            'filter'   => false,
+            'sortable' => false,
+            'width'    => '280px',
         ));
 
         $this->addColumn('status', array(
@@ -123,6 +149,23 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_FtpAccount_Rules_Grid
     public function getEmptyText()
     {
         return Mage::helper('xfe_carrier')->__('暂无规则，请点击上方按钮添加。');
+    }
+
+    /**
+     * @param mixed $value
+     * @param Varien_Object $row
+     * @param Mage_Adminhtml_Block_Widget_Grid_Column $column
+     * @param bool $isExport
+     * @return string
+     */
+    public function decorateConditionsDescription($value, $row, $column, $isExport)
+    {
+        $description = (string)$row->getConditionsDescription();
+        if ($isExport) {
+            return $description;
+        }
+
+        return nl2br(htmlspecialchars($description, ENT_QUOTES, 'UTF-8'));
     }
 
     public function getRowUrl($row)

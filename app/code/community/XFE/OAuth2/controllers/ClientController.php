@@ -75,19 +75,24 @@ class XFE_OAuth2_ClientController extends Mage_Core_Controller_Front_Action
             );
         }
 
-        // Replace any existing list/new child of my.account.wrapper with our
-        // block so the page renders the OAuth2 form/table.
+        // The page-specific OAuth2 block is normally declared by
+        // xfeoauth2_customer.xml (see docs/architecture/oauth2-customer-navigation.md).
+        // This controller is the defensive fallback for skins where that
+        // layout file is not loaded (or the handle was renamed). Only create
+        // the block here when layout XML has not already done so - otherwise
+        // we end up appending a duplicate block and rendering "My API
+        // Clients" twice on screen.
+        $newName  = 'customer.oauth2.client.' . $blockName;
+        $existing = $layout->getBlock($newName);
+        if ($existing) {
+            // Layout already wired the block; leave it alone.
+            return;
+        }
+
         $blockAlias = 'xfeoauth2/customer_oauth2Client';
         $template   = $blockName === 'new'
             ? 'xfeoauth2/customer/oauth2client/new.phtml'
             : 'xfeoauth2/customer/oauth2client/list.phtml';
-        $newName    = 'customer.oauth2.client.' . $blockName;
-
-        // Remove any stale block with our name (e.g. when re-running after FPC)
-        $existing = $layout->getBlock($newName);
-        if ($existing) {
-            $layout->removeBlock($newName);
-        }
 
         $block = $layout->createBlock($blockAlias, $newName, array('template' => $template));
         $layout->getBlock('my.account.wrapper')->append($block);
@@ -164,6 +169,13 @@ class XFE_OAuth2_ClientController extends Mage_Core_Controller_Front_Action
             $secret = $helper->generateToken(32);
             $model->setClientSecret($helper->hashSecret($secret));
             $model->setClientSecretEncrypted($helper->encryptData($secret));
+            // Stamp the secret TTL on creation so the storefront list can
+            // render "Expires" and the customer can plan rotation. Default
+            // TTL is 90 days (configurable via xfeoauth2/general/client_secret_ttl_days).
+            $model->setClientSecretExpiresAt($helper->calcSecretExpiresAt(
+                $helper->getDefaultSecretTtlDays()
+            ));
+            $model->setClientSecretLastRotatedAt(gmdate('Y-m-d H:i:s'));
 
             $model->setName($name);
             $model->setDescription(trim((string)($data['description'] ?? '')));
@@ -283,4 +295,70 @@ class XFE_OAuth2_ClientController extends Mage_Core_Controller_Front_Action
             'client_secret' => $secret,
         ));
     }
+
+    /**
+     * POST /oauth2/client/regenerate - rotate the client_secret for a client
+     * owned by the currently-logged-in customer.
+     *
+     * Security: the owner check (`$model->getUserId() === $customerId`) is
+     * mandatory; without it a logged-in customer could rotate another
+     * tenant's client and lock them out of their own token flow. The
+     * check mirrors deleteAction / revealAction and intentionally fails
+     * closed (redirect to list with a generic error) on any mismatch.
+     *
+     * UX: the new secret is stashed in core/session (mirroring the save
+     * flow) and the user is redirected to the list page with a
+     * "show_secret" query parameter so the existing list.phtml "save your
+     * secret now" panel renders. Existing access tokens for this client
+     * immediately stop working because bshaffer re-verifies client_secret
+     * on every token request.
+     */
+    public function regenerateAction()
+    {
+        $helper   = Mage::helper('xfeoauth2');
+        $session  = Mage::getSingleton('customer/session');
+        $clientId = $this->getRequest()->getParam('id');
+
+        if (!$clientId) {
+            $session->addError($helper->__('Missing client id.'));
+            $this->_redirect('*/*/index');
+            return;
+        }
+
+        try {
+            $model = Mage::getModel('xfeoauth2/client')->load($clientId);
+            if (!$model->getId()) {
+                $session->addError($helper->__('Client not found.'));
+                $this->_redirect('*/*/index');
+                return;
+            }
+
+            // Mandatory owner check.
+            if ((int)$model->getUserId() !== (int)$session->getCustomerId()) {
+                $helper->log('Customer regenerate attempt for client ' . $clientId
+                    . ' by non-owner customer ' . $session->getCustomerId());
+                $session->addError($helper->__('You are not allowed to regenerate this client.'));
+                $this->_redirect('*/*/index');
+                return;
+            }
+
+            $secret = $helper->rotateClientSecret($model);
+
+            // Stash secret for the success page to render once.
+            Mage::getSingleton('core/session')->setData(
+                'xfeoauth2_new_secret_' . $model->getClientId(),
+                $secret
+            );
+            $session->addSuccess(
+                $helper->__('The client secret has been regenerated. Existing tokens will stop working immediately.')
+            );
+        } catch (Exception $e) {
+            $helper->log('Customer regenerate client error for ' . $clientId . ': ' . $e->getMessage());
+            $session->addError($helper->__('Could not regenerate the client secret: %s', $e->getMessage()));
+        }
+
+        $this->_redirect('*/*/index', array('show_secret' => $clientId));
+    }
 }
+
+

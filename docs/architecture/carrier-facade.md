@@ -1,5 +1,19 @@
-# Carrier Account 门面(Facade)架构方案
+# Carrier Account 门面(Facade)架构方案 [已废弃]
 
+> ⚠️ **本文件已废弃（Deprecated）**
+>
+> 日期：2026-09-17
+>
+> 原因：本文件设计的 PHP Facade（XFE_Carrier_Model_CredentialResolver）属于 PHP 代码级耦合，未实现"配置级别切换实现"的目标。
+>
+> **替代方案**：XFE_Injection XML 注入机制（ADR 0014）。
+>
+> **新文档**：请阅读 [carrier-facade-deprecation.md](./carrier-facade-deprecation.md) 了解迁移指南。
+>
+> **保留原因**：作为历史设计决策存档（2026-08-10 版本），以及对比新旧方案的教学价值。
+>
+> ---
+>
 > 主题:其他业务模块如何**模块化、低耦合、高内聚、单向依赖**地调用 `XFE_Carrier` 的承运商账号。
 >
 > 状态:**提案**(2026-08-10)

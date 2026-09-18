@@ -658,6 +658,7 @@ final class XFE_Carrier_Domain_CustomAttributeCollection
 |---------|------|------|
 | `CustomFieldService::applyFromPost()` | 改造:增加严格校验 | 见 §5.2 |
 | 账号 / FTP 账号编辑页模板 `custom_fields.phtml` | 改造:下拉选 key 而非自由输入;移除 "[+ 添加新字段]";新增"必填 * 提示" | 见 §7.8 |
+| 4 个编辑页 fieldset 显隐逻辑(1.0.16) | 新增守卫:getActiveDefs()->count() === 0 时整个 fieldset 不渲染 | 见 §7.8 末段 |
 | 旧账号 per-row JSON 里**未登记**的 key | **完全保留** | 读时按原样显示(只读);写时拒绝新提交 |
 | `CredentialResolver::resolveAccount()` 业务模块读 `getCustomField($key)` | **不变** | 仍读 per-row JSON,值永远在 |
 | `Account/Importer` / `Exporter` | **不变** | per-row JSON 列透传 |
@@ -687,6 +688,7 @@ final class XFE_Carrier_Domain_CustomAttributeCollection
 13. ✅ 所有新增文件 `php -l` 通过
 14. ✅ L1 Domain 不引用任何 `Mage_*` 类
 15. ✅ 文档齐全:本文件 + ADR 0006 + `findings.md` + `progress.md`
+16. ✅ (1.0.16) 4 个编辑页在全局属性表为空时,**不渲染** "自定义字段"/"自定义属性" fieldset(无空 legend + 占位说明)
 
 ---
 
@@ -697,3 +699,5 @@ final class XFE_Carrier_Domain_CustomAttributeCollection
 - [`decisions/0004-carrier-account-custom-fields-json.md`](./decisions/0004-carrier-account-custom-fields-json.md) — JSON 选型 ADR
 - [`decisions/0005-custom-field-multiselect.md`](./decisions/0005-custom-field-multiselect.md) — multiselect ADR
 - [`decisions/0006-custom-attribute-management.md`](./decisions/0006-custom-attribute-management.md) — **本方案选型 ADR**
+
+

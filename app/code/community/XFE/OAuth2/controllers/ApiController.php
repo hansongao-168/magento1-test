@@ -4,9 +4,15 @@
  *
  * Uses __call() to route requests to the appropriate API Model based on the URL path.
  *
+ * 【2026-09-09】本控制器路由到的 API Model 会引用 OAuth2\Server。
+ * 顶部显式注册 autoloader，详见 lib/XFE/OAuth2/Autoloader.php。
+ *
  * @category   Community
  * @package    XFE_OAuth2
  */
+require_once BP . '/lib/XFE/OAuth2/Autoloader.php';
+XFE_OAuth2_Autoloader::register();
+
 class XFE_OAuth2_ApiController extends Mage_Core_Controller_Front_Action
 {
     /**

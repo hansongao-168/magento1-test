@@ -91,6 +91,22 @@ class XFE_OAuth2_Block_Customer_OAuth2Client extends Mage_Core_Block_Template
     }
 
     /**
+     * URL helper - regenerate (rotate) client secret.
+     *
+     * This is the storefront-side counterpart to the admin "Regenerate"
+     * action. The controller enforces a mandatory owner check so a
+     * logged-in customer can only rotate their own clients; see
+     * XFE_OAuth2_ClientController::regenerateAction.
+     *
+     * @param string $clientId
+     * @return string
+     */
+    public function getRegenerateUrl($clientId)
+    {
+        return Mage::getUrl('oauth2/client/regenerate', array('id' => $clientId));
+    }
+
+    /**
      * Read the one-time secret for a client (only valid in the same request
      * after creation). Returns null after the secret has been read.
      *

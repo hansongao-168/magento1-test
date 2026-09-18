@@ -146,7 +146,7 @@ class XFE_Carrier_Model_Service_CustomAttribute_Exporter
             $def->getFieldKey(),
             $def->getLabel(),
             $def->getFieldType(),
-            $def->getOptions() === null ? '' : implode(',', $def->getOptions()),
+            XFE_Carrier_Domain_CustomAttribute::serializeOptionsPairsToCsv($def->getOptions()),
             (string) $default,
             $def->isRequired() ? '1' : '0',
             $def->isActive()   ? '1' : '0',

@@ -150,9 +150,8 @@ final class XFE_Carrier_Domain_CustomAttributeCollection
                 continue;
             }
             $options       = isset($row['options_csv']) && $row['options_csv'] !== ''
-                ? array_map('trim', explode(',', (string) $row['options_csv']))
-                : null;
-            $defaultRaw    = isset($row['default_value']) ? $row['default_value'] : null;
+                ? XFE_Carrier_Domain_CustomAttribute::parseOptionsCsvToPairs((string) $row['options_csv'])
+                : null;  // 小改 K:用 parseOptionsCsvToPairs 解析 key|label 形态
             $defaultValue  = $defaultRaw === null || $defaultRaw === ''
                 ? null
                 : json_decode((string) $defaultRaw, true);

@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <XFE_Logistic>
+            <active>true</active>
+            <codePool>community</codePool>
+            <depends>
+                <Mage_Core/>
+                <XFE_Injection/>
+            </depends>
+        </XFE_Logistic>
+    </modules>
+</config>

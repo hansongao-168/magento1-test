@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    XFE_Logistic 模块 injection.xml 声明。
+
+    作为消费方,在 hook_logistic_before_request 上调用
+    service_carrier_resolve_account 来解析承运商账号。
+
+    调用链:
+      PodService::resolveCredentialsViaInjection($code, $ctx)
+        → XFE_Injection_Model_Runner::trigger('hook_logistic_before_request', $injCtx)
+          → 查找 calling_logistic_resolve_account
+            → XFE_Carrier_Service_Account_CredentialViaInjection::resolveAccountId
+              → 返回 account_id
+
+    注意:本模块 PHP 代码不出现 use XFE_Carrier_* / new XFE_Carrier_*。
+    所有跨模块依赖通过本 XML 声明,实现单向依赖 + 低耦合。
+
+    关联文档:
+      - docs/architecture/injection-carrier-logistic-integration.md §4.1
+      - docs/architecture/decisions/0015-injection-carrier-logistic-integration.md
+-->
+<config>
+    <modules>
+        <XFE_Logistic>
+            <version>1.1.0</version>
+        </XFE_Logistic>
+    </modules>
+    <injection>
+        <hooks>
+            <hook_logistic_before_request>
+                <description>Logistic 准备发起第三方 API 请求前触发,用于解析承运商账号</description>
+            </hook_logistic_before_request>
+        </hooks>
+        <callings>
+            <calling id="calling_logistic_resolve_account"
+                     hook="hook_logistic_before_request"
+                     service="service_carrier_resolve_account"
+                     method="resolveAccountId">
+                <argument name="carrierCode" from="context.carrierCode"/>
+                <argument name="contextValues" from="context.contextValues"/>
+            </calling>
+            <calling id="calling_logistic_resolve_credentials"
+                     hook="hook_logistic_before_request"
+                     service="service_carrier_get_credentials"
+                     method="getCredentialsByCarrier">
+                <argument name="carrierCode"   from="context.carrierCode"/>
+                <argument name="contextValues" from="context.contextValues"/>
+            </calling>
+        </callings>
+    </injection>
+</config>

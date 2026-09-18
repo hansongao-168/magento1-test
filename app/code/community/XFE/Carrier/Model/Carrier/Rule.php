@@ -148,6 +148,20 @@ class XFE_Carrier_Model_Carrier_Rule extends Mage_Core_Model_Abstract
             }
             $this->setData('conditions_data', $data);
         }
+        // Safety net: when this rule was obtained via a Db collection the
+        // resource model's _afterLoad() never runs, so conditions_data is
+        // empty even though the row may have a saved condition tree.
+        // Trigger afterLoad() once so getConditionsDescription() (and any
+        // other consumer) sees the real conditions rather than the
+        // "匹配所有" fallback. No-op for collection rows already pre-loaded
+        // by XFE_Carrier_Model_Resource_Rule_Collection::loadConditions().
+        if ((!is_array($data) || empty($data)) && $this->getId()) {
+            $this->afterLoad();
+            $data = $this->_getData('conditions_data');
+            if (is_string($data)) {
+                $data = Mage::helper('core')->jsonDecode($data);
+            }
+        }
         return is_array($data) ? $data : array();
     }
 
@@ -172,5 +186,81 @@ class XFE_Carrier_Model_Carrier_Rule extends Mage_Core_Model_Abstract
     {
         $data = $this->getConditionsData();
         return Mage::helper('core')->jsonEncode($data);
+    }
+
+    /**
+     * Get a human-readable description of the condition tree.
+     *
+     * @return string
+     */
+    public function getConditionsDescription()
+    {
+        $groups = $this->getConditionsData();
+        if (empty($groups)) {
+            return Mage::helper('xfe_carrier')->__('匹配所有');
+        }
+
+        $groupDescriptions = array();
+        foreach ($groups as $group) {
+            $groupDescriptions[] = $this->_formatConditionGroup($group, false);
+        }
+
+        if (count($groupDescriptions) === 1) {
+            return $groupDescriptions[0];
+        }
+
+        return Mage::helper('xfe_carrier')->__('全部条件组（AND）：%s', implode('；', $groupDescriptions));
+    }
+
+    /**
+     * @param array $group
+     * @param bool $nested
+     * @return string
+     */
+    protected function _formatConditionGroup(array $group, $nested)
+    {
+        $aggregator = isset($group['aggregator']) ? strtolower($group['aggregator']) : 'all';
+        $items = isset($group['conditions']) && is_array($group['conditions'])
+            ? $group['conditions']
+            : array();
+        $descriptions = array();
+
+        foreach ($items as $item) {
+            if (isset($item['type']) && $item['type'] === 'group') {
+                $descriptions[] = $this->_formatConditionGroup($item, true);
+            } else {
+                $descriptions[] = $this->_formatCondition($item);
+            }
+        }
+
+        if (empty($descriptions)) {
+            return $nested ? '（匹配所有）' : '匹配所有';
+        }
+
+        $separator = $aggregator === 'any' ? ' 或 ' : ' 且 ';
+        $description = implode($separator, $descriptions);
+        return $nested ? '（' . $description . '）' : $description;
+    }
+
+    /**
+     * @param array $condition
+     * @return string
+     */
+    protected function _formatCondition(array $condition)
+    {
+        $attribute = isset($condition['attribute']) ? (string)$condition['attribute'] : '';
+        $operator = isset($condition['operator']) ? (string)$condition['operator'] : '==';
+        $value = isset($condition['value']) ? $condition['value'] : '';
+        $attributeOptions = Mage::helper('xfe_carrier')->getConditionAttributeOptions();
+        $operatorOptions = Mage::helper('xfe_carrier')->getOperatorOptions();
+        $attributeLabel = isset($attributeOptions[$attribute]) ? $attributeOptions[$attribute] : $attribute;
+        $operatorLabel = isset($operatorOptions[$operator]) ? $operatorOptions[$operator] : $operator;
+        $description = $attributeLabel . ' ' . $operatorLabel;
+
+        if ($operator !== 'is_null' && $operator !== 'is_not_null') {
+            $description .= ' ' . (string)$value;
+        }
+
+        return $description;
     }
 }

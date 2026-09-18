@@ -53,9 +53,7 @@ class XFE_Carrier_Block_Adminhtml_CustomAttribute_Grid
                 'field_key'    => $def->getFieldKey(),
                 'label'        => $def->getLabel(),
                 'field_type'   => $def->getFieldType(),
-                'options_csv'  => $def->getOptions() === null
-                    ? ''
-                    : implode(',', $def->getOptions()),
+                'options_csv'  => XFE_Carrier_Domain_CustomAttribute::serializeOptionsPairsToCsv($def->getOptions()),
                 'is_required'  => $def->isRequired() ? 1 : 0,
                 'is_active'    => $def->isActive()   ? 1 : 0,
                 'sort_order'   => $def->getSortOrder(),

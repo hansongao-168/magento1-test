@@ -161,7 +161,7 @@ $sel = new XFE_Carrier_Domain_CustomAttribute(
     null, 'account', 'svc', '服务', 'select',
     array('standard', 'express', 'economy'), 'express'
 );
-assertEq(array('standard', 'express', 'economy'), $sel->getOptions(), 'select options 数组');
+assertEq(array(array('key' => 'standard', 'label' => 'standard'), array('key' => 'express', 'label' => 'express'), array('key' => 'economy', 'label' => 'economy')), $sel->getOptions(), 'select options 结构化({key,label})');
 assertEq('express', $sel->getDefaultValue(), 'select default value');
 
 // select 无默认(null)→ 允许
@@ -265,8 +265,8 @@ $msFixed = new XFE_Carrier_Domain_CustomAttribute(
     'express,standard'
 );
 assertEq(
-    array('standard', 'express', 'economy'),
-    $msFixed->getOptions(),
+    array(array('key' => 'standard', 'label' => 'standard'), array('key' => 'express', 'label' => 'express'), array('key' => 'economy', 'label' => 'economy')),
+    array(array('key' => 'standard', 'label' => 'standard'), array('key' => 'express', 'label' => 'express'), array('key' => 'economy', 'label' => 'economy')),
     'multiselect 固定模式 options 保留'
 );
 assertEq(array('express', 'standard'), $msFixed->getDefaultValue(),
@@ -286,7 +286,7 @@ assertEq('服务', $arr['label'], 'toCustomFieldArray label');
 assertEq('select', $arr['type'], 'toCustomFieldArray type');
 assertEq('express', $arr['value'], 'toCustomFieldArray value');
 assertEq(true, isset($arr['options']), 'toCustomFieldArray 含 options');
-assertEq(array('standard', 'express', 'economy'), $arr['options'], 'toCustomFieldArray options');
+assertEq(array('standard', 'express', 'economy'), $arr['options'], 'toCustomFieldArray options 仅 keys 喂给 CustomField');
 
 // text 不含 options
 $arrText = (new XFE_Carrier_Domain_CustomAttribute(
@@ -304,7 +304,7 @@ $arrBool = (new XFE_Carrier_Domain_CustomAttribute(
     null, 'account', 'k', 'L', 'boolean', null, '1'
 ))->toCustomFieldArray();
 assertEq(true, $arrBool['value'], 'boolean toCustomFieldArray value');
-assertEq(false, isset($arrBool['options']), 'boolean toCustomFieldArray 不含 options');
+assertEq(true, isset($arrBool['options']), 'boolean toCustomFieldArray 含 options(keys=[0,1])');
 
 $arrNum = (new XFE_Carrier_Domain_CustomAttribute(
     null, 'account', 'k', 'L', 'number', null, '5'
@@ -325,5 +325,50 @@ $booleansFalse = new XFE_Carrier_Domain_CustomAttribute(
 assertEq(false, $booleansFalse->isRequired(), 'isRequired 空字符串 → false');
 assertEq(false, $booleansFalse->isActive(), 'isActive 0 → false');
 
+
+// ---------- 15. boolean 默认 options(空 → {0:否,1:是}) 小改 K ADR 0023 ----
+$b1 = new XFE_Carrier_Domain_CustomAttribute(null, 'account', 'urgent', '是否紧急', 'boolean');
+assertEq(array(array('key' => '0', 'label' => '否'), array('key' => '1', 'label' => '是')), $b1->getOptions(), 'boolean 空 options → 默认 2 行{0:否,1:是}');
+assertEq(array('0' => '否', '1' => '是'), $b1->getBooleanLabels(), 'boolean 默认 getBooleanLabels → 否/是');
+assertEq(array('0', '1'), $b1->getOptionKeys(), 'boolean 默认 getOptionKeys → [0,1]');
+
+// ---------- 16. boolean 自定义 label(小改 K) ----
+$b2 = new XFE_Carrier_Domain_CustomAttribute(null, 'account', 'sw', '启用开关', 'boolean', array(array('key' => '0', 'label' => '关闭'), array('key' => '1', 'label' => '开启')));
+assertEq(array(array('key' => '0', 'label' => '关闭'), array('key' => '1', 'label' => '开启')), $b2->getOptions(), 'boolean 自定义 label options');
+assertEq(array('0' => '关闭', '1' => '开启'), $b2->getBooleanLabels(), 'boolean 自定义 label getBooleanLabels');
+assertEq(array('0', '1'), $b2->getOptionKeys(), 'boolean 自定义 getOptionKeys');
+
+// ---------- 17. boolean string[] 入口(向后兼容小改 G 之前的代码) ----
+$b3 = new XFE_Carrier_Domain_CustomAttribute(null, 'account', 'sw2', '开关2', 'boolean', array('0', '1'));
+assertEq(array(array('key' => '0', 'label' => '0'), array('key' => '1', 'label' => '1')), $b3->getOptions(), 'boolean string[] 入口归一化为结构化');
+assertEq(array('0' => '0', '1' => '1'), $b3->getBooleanLabels(), 'boolean string[] getBooleanLabels → 用 key 当 label');
+
+// ---------- 18. boolean 校验失败:行数 != 2 ----
+assertThrows('InvalidArgumentException', function () {
+    new XFE_Carrier_Domain_CustomAttribute(null, 'account', 'k', 'L', 'boolean', array(array('key' => '0', 'label' => '否')));
+}, 'boolean options 只有 1 行 → 抛异常');
+assertThrows('InvalidArgumentException', function () {
+    new XFE_Carrier_Domain_CustomAttribute(null, 'account', 'k', 'L', 'boolean', array(array('key' => '0', 'label' => '否'), array('key' => '1', 'label' => '是'), array('key' => 'x', 'label' => 'X')));
+}, 'boolean options 3 行 → 抛异常');
+
+// ---------- 19. boolean 校验失败:key 不是 0/1 ----
+assertThrows('InvalidArgumentException', function () {
+    new XFE_Carrier_Domain_CustomAttribute(null, 'account', 'k', 'L', 'boolean', array(array('key' => '1', 'label' => '是'), array('key' => '2', 'label' => '二')));
+}, 'boolean options key=2 → 抛异常');
+assertThrows('InvalidArgumentException', function () {
+    new XFE_Carrier_Domain_CustomAttribute(null, 'account', 'k', 'L', 'boolean', array(array('key' => 'a', 'label' => 'a'), array('key' => 'b', 'label' => 'b')));
+}, 'boolean options key=ab → 抛异常');
+
+// ---------- 20. parseOptionsCsvToPairs ----
+assertEq(array(), XFE_Carrier_Domain_CustomAttribute::parseOptionsCsvToPairs(''), 'parseOptionsCsv 空 → []');
+assertEq(array(), XFE_Carrier_Domain_CustomAttribute::parseOptionsCsvToPairs(null), 'parseOptionsCsv null → []');
+assertEq(array(array('key' => 'red', 'label' => 'red'), array('key' => 'blue', 'label' => 'blue')), XFE_Carrier_Domain_CustomAttribute::parseOptionsCsvToPairs('red,blue'), 'parseOptionsCsv 普通');
+assertEq(array(array('key' => '0', 'label' => '否'), array('key' => '1', 'label' => '是')), XFE_Carrier_Domain_CustomAttribute::parseOptionsCsvToPairs('0|否,1|是'), 'parseOptionsCsv key|label');
+
+// ---------- 21. serializeOptionsPairsToCsv ----
+assertEq('', XFE_Carrier_Domain_CustomAttribute::serializeOptionsPairsToCsv(null), 'serializePairs null → 空串');
+assertEq('', XFE_Carrier_Domain_CustomAttribute::serializeOptionsPairsToCsv(array()), 'serializePairs 空 → 空串');
+assertEq('red,blue', XFE_Carrier_Domain_CustomAttribute::serializeOptionsPairsToCsv(array(array('key' => 'red', 'label' => 'red'), array('key' => 'blue', 'label' => 'blue'))), 'serializePairs label==key → 只输出 key');
+assertEq('0|否,1|是', XFE_Carrier_Domain_CustomAttribute::serializeOptionsPairsToCsv(array(array('key' => '0', 'label' => '否'), array('key' => '1', 'label' => '是'))), 'serializePairs key|label');
 echo PHP_EOL . ($failed ? "FAILED: {$failed} assertion(s)" : 'ALL PASS') . PHP_EOL;
 exit($failed ? 1 : 0);

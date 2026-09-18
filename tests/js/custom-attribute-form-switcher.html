@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <title>XFE_Carrier custom-attribute-form-switcher 测试</title>
+    <style>
+        body { font: 13px/1.5 -apple-system, "Segoe UI", sans-serif; margin: 16px; color: #222; }
+        h1 { font-size: 16px; margin: 0 0 8px; }
+        #summary { padding: 10px 14px; margin-bottom: 16px; border-radius: 4px; font-weight: 600; }
+        #summary.pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        #summary.fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .group { margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; }
+        .group-head { padding: 6px 12px; background: #f6f6f6; font-weight: 600; }
+        .group-head .count { color: #888; font-weight: normal; font-size: 11px; margin-left: 8px; }
+        ul.tests { list-style: none; margin: 0; padding: 0; }
+        li.test { padding: 4px 12px; border-top: 1px solid #eee; font-family: Menlo, Consolas, monospace; font-size: 12px; }
+        li.test.pass::before { content: "✓ "; color: #28a745; font-weight: 700; }
+        li.test.fail::before { content: "✗ "; color: #dc3545; font-weight: 700; }
+        li.test .err { color: #dc3545; margin-left: 12px; }
+        .legend { color: #888; font-size: 11px; margin-top: 16px; }
+    </style>
+</head>
+<body>
+    <h1>XFE_Carrier — custom-attribute-form-switcher 测试</h1>
+    <div id="summary">运行中…</div>
+    <div id="results"></div>
+    <p class="legend">
+        关联文档: <code>docs/architecture/xfe-carrier-custom-attribute-form-switcher-js.md</code> §3<br />
+        运行方式:直接浏览器打开此文件 / 后续可加 node + jsdom 命令行跑
+    </p>
+
+    <!-- 加载被测代码 -->
+    <script src="../../js/xfe_carrier/custom-attribute-form-switcher.js"></script>
+
+    <!-- mini test runner -->
+    <script>
+    /* global XfeCaTypeSwitcher */
+    (function () {
+        'use strict';
+
+        var currentGroup = null;
+        var groups = [];
+        var totalCount = 0;
+        var failedCount = 0;
+
+        function describe(name, fn) {
+            currentGroup = { name: name, tests: [] };
+            groups.push(currentGroup);
+            try {
+                fn();
+            } catch (e) {
+                it('(describe 内部异常)', function () { throw e; });
+            }
+            currentGroup = null;
+        }
+
+        function it(name, fn) {
+            totalCount++;
+            var t = { name: name, error: null };
+            try {
+                fn();
+            } catch (e) {
+                t.error = e;
+                failedCount++;
+            }
+            (currentGroup || { tests: [] }).tests.push(t);
+        }
+
+        var assert = {
+            equal: function (actual, expected, msg) {
+                var aStr = (actual && actual.outerHTML !== undefined) ? actual.outerHTML : String(actual);
+                var eStr = (expected && expected.outerHTML !== undefined) ? expected.outerHTML : String(expected);
+                if (aStr !== eStr) {
+                    throw new Error((msg || 'equal failed') +
+                        '\n  expected: ' + eStr +
+                        '\n  actual:   ' + aStr);
+                }
+            },
+            deepEqual: function (actual, expected, msg) {
+                var a = JSON.stringify(actual);
+                var e = JSON.stringify(expected);
+                if (a !== e) {
+                    throw new Error((msg || 'deepEqual failed') +
+                        '\n  expected: ' + e +
+                        '\n  actual:   ' + a);
+                }
+            },
+            ok: function (cond, msg) {
+                if (!cond) throw new Error(msg || 'expected truthy');
+            },
+            throws: function (fn, msg) {
+                var threw = false;
+                try { fn(); } catch (e) { threw = true; }
+                if (!threw) throw new Error(msg || 'expected throw');
+            }
+        };
+
+        window.__test = { describe: describe, it: it, assert: assert, run: runTests };
+
+        function render() {
+            var summary = document.getElementById('summary');
+            var pass = totalCount - failedCount;
+            summary.textContent = failedCount === 0
+                ? '✓ ' + pass + ' passed, 0 failed, ' + totalCount + ' total'
+                : '✗ ' + failedCount + ' failed, ' + pass + ' passed, ' + totalCount + ' total';
+            summary.className = failedCount === 0 ? 'pass' : 'fail';
+
+            var results = document.getElementById('results');
+            results.innerHTML = '';
+            groups.forEach(function (g) {
+                var groupEl = document.createElement('div');
+                groupEl.className = 'group';
+
+                var head = document.createElement('div');
+                head.className = 'group-head';
+                var gPass = g.tests.filter(function (t) { return !t.error; }).length;
+                head.innerHTML = g.name +
+                    '<span class="count">' + gPass + '/' + g.tests.length + ' passed</span>';
+                groupEl.appendChild(head);
+
+                var ul = document.createElement('ul');
+                ul.className = 'tests';
+                g.tests.forEach(function (t) {
+                    var li = document.createElement('li');
+                    li.className = 'test ' + (t.error ? 'fail' : 'pass');
+                    li.appendChild(document.createTextNode(t.name));
+                    if (t.error) {
+                        var span = document.createElement('span');
+                        span.className = 'err';
+                        span.textContent = '— ' + t.error.message.split('\n')[0];
+                        li.appendChild(span);
+                    }
+                    ul.appendChild(li);
+                });
+                groupEl.appendChild(ul);
+                results.appendChild(groupEl);
+            });
+        }
+
+        function runTests() {
+            render();
+        }
+
+        // 暴露给测试用例使用
+        window.describe = describe;
+        window.it = it;
+        window.assert = assert;
+        window.renderResults = render;
+    }());
+
+    // ===================== 测试用例 =====================
+    describe('parseOptionsCsv()', function () {
+        it('空字符串返回 []', function () {
+            assert.deepEqual(XfeCaTypeSwitcher.parseOptionsCsv(''), []);
+        });
+        it('null / undefined 返回 []', function () {
+            assert.deepEqual(XfeCaTypeSwitcher.parseOptionsCsv(null), []);
+            assert.deepEqual(XfeCaTypeSwitcher.parseOptionsCsv(undefined), []);
+            assert.deepEqual(XfeCaTypeSwitcher.parseOptionsCsv(123), []);
+        });
+        it('单个值', function () {
+            assert.deepEqual(XfeCaTypeSwitcher.parseOptionsCsv('a'), ['a']);
+        });
+        it('多个值', function () {
+            assert.deepEqual(XfeCaTypeSwitcher.parseOptionsCsv('a,b,c'), ['a', 'b', 'c']);
+        });
+        it('前后空白被去除', function () {
+            assert.deepEqual(XfeCaTypeSwitcher.parseOptionsCsv('  a ,b , c '), ['a', 'b', 'c']);
+        });
+        it('空项被过滤', function () {
+            assert.deepEqual(XfeCaTypeSwitcher.parseOptionsCsv('a,,b,  ,c'), ['a', 'b', 'c']);
+        });
+        it('末尾逗号不产生空项', function () {
+            assert.deepEqual(XfeCaTypeSwitcher.parseOptionsCsv('a,b,'), ['a', 'b']);
+        });
+    });
+
+    describe('buildTextInput()', function () {
+        it('memo 空 → value 空', function () {
+            var i = XfeCaTypeSwitcher.buildTextInput({ memo: '' });
+            assert.equal(i.outerHTML, '<input type="text" id="default_value" name="default_value" value="" class="input-text">');
+        });
+        it('memo 有值 → value 透传', function () {
+            var i = XfeCaTypeSwitcher.buildTextInput({ memo: 'hello' });
+            assert.equal(i.value, 'hello');
+        });
+        it('withNumberValidator → class 含 validate-number', function () {
+            var i = XfeCaTypeSwitcher.buildTextInput({ memo: '', withNumberValidator: true });
+            assert.equal(i.className, 'input-text validate-number');
+        });
+        it('id 始终是 default_value', function () {
+            var i = XfeCaTypeSwitcher.buildTextInput({});
+            assert.equal(i.id, 'default_value');
+        });
+    });
+
+    describe('buildSelect()', function () {
+        it('single + blank 选项', function () {
+            var s = XfeCaTypeSwitcher.buildSelect({
+                memo: '', multiple: false, blankLabel: '-- 请选择 --',
+                optionsCsv: 'a,b,c'
+            });
+            assert.equal(s.multiple, false);
+            assert.equal(s.options.length, 4); // blank + 3 项
+            assert.equal(s.options[0].text, '-- 请选择 --');
+            assert.equal(s.options[0].value, '');
+            assert.equal(s.options[1].value, 'a');
+            assert.equal(s.options[3].value, 'c');
+        });
+        it('multiple 不含 blank, size=5', function () {
+            var s = XfeCaTypeSwitcher.buildSelect({
+                memo: '', multiple: true, blankLabel: '--',
+                optionsCsv: 'x,y'
+            });
+            assert.equal(s.multiple, true);
+            assert.equal(s.size, 5);
+            assert.equal(s.options.length, 2);
+        });
+        it('optionsCsv 空 → single 只有 blank, multiple 空数组', function () {
+            var s1 = XfeCaTypeSwitcher.buildSelect({
+                multiple: false, blankLabel: '--', optionsCsv: ''
+            });
+            assert.equal(s1.options.length, 1);
+            var s2 = XfeCaTypeSwitcher.buildSelect({
+                multiple: true, optionsCsv: ''
+            });
+            assert.equal(s2.options.length, 0);
+        });
+        it('id 始终是 default_value', function () {
+            var s = XfeCaTypeSwitcher.buildSelect({});
+            assert.equal(s.id, 'default_value');
+        });
+    });
+
+    describe('buildBooleanRadios()', function () {
+        it('memo="1" → yes checked', function () {
+            var d = XfeCaTypeSwitcher.buildBooleanRadios({
+                memo: '1', yesLabel: '是', noLabel: '否'
+            });
+            var inputs = d.getElementsByTagName('input');
+            assert.equal(inputs.length, 2);
+            assert.equal(inputs[0].checked, true);  // '1'
+            assert.equal(inputs[1].checked, false); // '0'
+            assert.equal(inputs[0].value, '1');
+            assert.equal(inputs[1].value, '0');
+        });
+        it('memo="0" → no checked', function () {
+            var d = XfeCaTypeSwitcher.buildBooleanRadios({
+                memo: '0', yesLabel: '是', noLabel: '否'
+            });
+            var inputs = d.getElementsByTagName('input');
+            assert.equal(inputs[0].checked, false);
+            assert.equal(inputs[1].checked, true);
+        });
+        it('memo="" → 默认勾否', function () {
+            var d = XfeCaTypeSwitcher.buildBooleanRadios({
+                memo: '', yesLabel: 'Yes', noLabel: 'No'
+            });
+            var inputs = d.getElementsByTagName('input');
+            assert.equal(inputs[0].checked, false);
+            assert.equal(inputs[1].checked, true);
+        });
+        it('id 是 default_value', function () {
+            var d = XfeCaTypeSwitcher.buildBooleanRadios({});
+            assert.equal(d.id, 'default_value');
+        });
+        it('labels 透传', function () {
+            var d = XfeCaTypeSwitcher.buildBooleanRadios({
+                memo: '', yesLabel: '开启', noLabel: '关闭'
+            });
+            assert.ok(d.innerHTML.indexOf('开启') !== -1, '应包含 是');
+            assert.ok(d.innerHTML.indexOf('关闭') !== -1, '应包含 否');
+        });
+    });
+
+    describe('readCurrentValue()', function () {
+        it('text input', function () {
+            var i = document.createElement('input');
+            i.type = 'text'; i.value = 'hello';
+            assert.equal(XfeCaTypeSwitcher.readCurrentValue(i), 'hello');
+        });
+        it('select 单选', function () {
+            var s = document.createElement('select');
+            s.innerHTML = '<option value="">--</option><option value="x">X</option><option value="y">Y</option>';
+            s.value = 'y';
+            assert.equal(XfeCaTypeSwitcher.readCurrentValue(s), 'y');
+        });
+        it('select-multiple 多选 join |', function () {
+            var s = document.createElement('select');
+            s.multiple = true;
+            s.innerHTML = '<option value="a">A</option><option value="b">B</option><option value="c">C</option>';
+            s.options[0].selected = true;
+            s.options[2].selected = true;
+            assert.equal(XfeCaTypeSwitcher.readCurrentValue(s), 'a|c');
+        });
+        it('boolean radio 容器', function () {
+            var d = XfeCaTypeSwitcher.buildBooleanRadios({ memo: '1' });
+            assert.equal(XfeCaTypeSwitcher.readCurrentValue(d), '1');
+        });
+        it('null / undefined 返回空字符串', function () {
+            assert.equal(XfeCaTypeSwitcher.readCurrentValue(null), '');
+            assert.equal(XfeCaTypeSwitcher.readCurrentValue(undefined), '');
+        });
+    });
+
+    describe('restoreMultiselect()', function () {
+        it('还原单选', function () {
+            var s = XfeCaTypeSwitcher.buildSelect({
+                multiple: true, optionsCsv: 'a,b,c'
+            });
+            XfeCaTypeSwitcher.restoreMultiselect(s, 'b');
+            assert.equal(s.options[0].selected, false);
+            assert.equal(s.options[1].selected, true);
+            assert.equal(s.options[2].selected, false);
+        });
+        it('还原多选', function () {
+            var s = XfeCaTypeSwitcher.buildSelect({
+                multiple: true, optionsCsv: 'a,b,c'
+            });
+            XfeCaTypeSwitcher.restoreMultiselect(s, 'a|c');
+            assert.equal(s.options[0].selected, true);
+            assert.equal(s.options[1].selected, false);
+            assert.equal(s.options[2].selected, true);
+        });
+        it('空 memo 不动', function () {
+            var s = XfeCaTypeSwitcher.buildSelect({
+                multiple: true, optionsCsv: 'a,b'
+            });
+            XfeCaTypeSwitcher.restoreMultiselect(s, '');
+            assert.equal(s.options[0].selected, false);
+            assert.equal(s.options[1].selected, false);
+        });
+        it('null sel 不抛错', function () {
+            XfeCaTypeSwitcher.restoreMultiselect(null, 'a'); // 不应抛
+            assert.ok(true);
+        });
+    });
+
+    describe('setRowVisible()', function () {
+        it('显示 → 清空 display', function () {
+            var s = document.createElement('span');
+            s.style.display = 'none';
+            // 包一层 <tr>
+            var td = document.createElement('td');
+            var tr = document.createElement('tr');
+            tr.style.display = 'none';
+            tr.appendChild(td); td.appendChild(s);
+            XfeCaTypeSwitcher.setRowVisible(s, true);
+            assert.equal(tr.style.display, '');
+        });
+        it('隐藏 → display none', function () {
+            var s = document.createElement('span');
+            var td = document.createElement('td');
+            var tr = document.createElement('tr');
+            tr.appendChild(td); td.appendChild(s);
+            XfeCaTypeSwitcher.setRowVisible(s, false);
+            assert.equal(tr.style.display, 'none');
+        });
+        it('null 不抛错', function () {
+            XfeCaTypeSwitcher.setRowVisible(null, true);
+            assert.ok(true);
+        });
+    });
+
+    // 全部测试注册完,渲染结果
+    window.renderResults();
+    </script>
+</body>
+</html>

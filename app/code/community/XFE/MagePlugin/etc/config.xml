@@ -2,28 +2,54 @@
 <!--
     XFE_MagePlugin 模块配置。
 
-    本模块替换原 XFE_Customer 的「批量修改名字」功能。
+    本模块包含：
+      A. 原「批量修改后台用户登录名」功能（Grid massaction + PluginController）。
+      B. 后台登录 IP 白名单 + 短信验证码（Model/Observer、Model/Service/IpGuard、Model/Sms）。
+      C. 订单导出脱敏（重写 adminhtml/sales_order_grid）。
+      D. 客户地址查看/导出权限（重写 adminhtml/customer_grid、
+         adminhtml/customer_edit_tab_addresses、模板）。
+      E. 退款控制（重写 adminhtml/sales_order_view + TrackingDetector）。
 
     实现要点：
-      - Grid 上的 "批量修改名字" massaction item + inline textarea 都由
-        XFE_MagePlugin_Block_Adminhtml_Permissions_User_Grid 子类注入
-        （覆盖 _prepareMassaction() 一个方法）。
-      - 提交走 /admin/plugin/massSave/ 到 controller。
-      - URL 路由通过 <admin><routers><adminhtml><args><modules>
-        把 XFE_MagePlugin_Adminhtml 命名空间前置到 Mage_Adminhtml 之前实现。
+      - block 类继承：通过 <blocks><adminhtml><rewrite> 覆盖核心 block。
+      - 事件 observer：通过 <global><events> 监听后台登录认证事件。
+      - 路由：通过 <admin><routers> 把 XFE_MagePlugin_Adminhtml 前置到 Mage_Adminhtml。
       - 未改动 app/code/core/Mage/Adminhtml/ 下任何文件。
 -->
 <config>
     <modules>
         <XFE_MagePlugin>
-            <version>1.1.0</version>
+            <version>1.2.0</version>
         </XFE_MagePlugin>
     </modules>
     <global>
         <models>
             <xfe_mageplugin>
                 <class>XFE_MagePlugin_Model</class>
+                <resourceModel>xfe_mageplugin_resource</resourceModel>
             </xfe_mageplugin>
+            <!-- 重写核心 Mage_Admin_Model_Observer（放行短信验证 action）
+                和 Mage_Admin_Model_User（持久化手机号 / IP 白名单） -->
+            <admin>
+                <rewrite>
+                    <observer>XFE_MagePlugin_Model_Admin_Observer</observer>
+                    <user>XFE_MagePlugin_Model_Admin_User</user>
+                </rewrite>
+            </admin>
+            <xfe_mageplugin_resource>
+                <class>XFE_MagePlugin_Model_Resource</class>
+                <entities>
+                    <admin_whitelist>
+                        <table>xfe_mageplugin_admin_ip_whitelist</table>
+                    </admin_whitelist>
+                    <admin_phone>
+                        <table>xfe_mageplugin_admin_phone</table>
+                    </admin_phone>
+                    <sms_verification>
+                        <table>xfe_mageplugin_sms_verification</table>
+                    </sms_verification>
+                </entities>
+            </xfe_mageplugin_resource>
         </models>
         <helpers>
             <xfe_mageplugin>
@@ -38,15 +64,37 @@
                 <class>XFE_MagePlugin_Block_Adminhtml</class>
             </xfe_mageplugin_adminhtml>
             <!--
-                类继承：把 adminhtml/permissions_user_grid 指向我们的子类。
-                这是 Mage 原生支持的扩展点（与 <class> 类继承同源）。
+                类继承：把核心 block 指向我们的子类。
+                这是 Mage 原生支持的扩展点。
             -->
             <adminhtml>
                 <rewrite>
                     <permissions_user_grid>XFE_MagePlugin_Block_Adminhtml_Permissions_User_Grid</permissions_user_grid>
+                    <permissions_user_edit_tab_main>XFE_MagePlugin_Block_Adminhtml_Permissions_User_Edit_Tab_Main</permissions_user_edit_tab_main>
+                    <sales_order_grid>XFE_MagePlugin_Block_Adminhtml_Sales_Order_Grid</sales_order_grid>
+                    <customer_grid>XFE_MagePlugin_Block_Adminhtml_Customer_Grid</customer_grid>
+                    <customer_edit_tab_addresses>XFE_MagePlugin_Block_Adminhtml_Customer_Edit_Tab_Addresses</customer_edit_tab_addresses>
+                    <sales_order_view>XFE_MagePlugin_Block_Adminhtml_Sales_Order_View</sales_order_view>
                 </rewrite>
             </adminhtml>
         </blocks>
+        <events>
+            <admin_user_authenticate_before>
+                <observers>
+                    <xfe_mageplugin_ip_guard>
+                        <class>xfe_mageplugin/observer</class>
+                        <method>beforeAuthenticateIpGuard</method>
+                    </xfe_mageplugin_ip_guard>
+                </observers>
+            </admin_user_authenticate_before>
+        </events>
+        <resources>
+            <xfe_mageplugin_setup>
+                <setup>
+                    <module>XFE_MagePlugin</module>
+                </setup>
+            </xfe_mageplugin_setup>
+        </resources>
     </global>
     <admin>
         <routers>
@@ -59,4 +107,19 @@
             </adminhtml>
         </routers>
     </admin>
+    <default>
+        <xfe_mageplugin>
+            <login>
+                <!-- 登录 IP 白名单总开关：0=关闭(不拦截任何登录) 1=开启(按用户白名单限制) -->
+                <!-- 默认关闭，配置好数据库与白名单后再开启 -->
+                <enabled>0</enabled>
+                <!-- 短信验证码网关：log(测试/日志模拟) 或后续接入真实服务商 -->
+                <sms_gateway>log</sms_gateway>
+                <!-- 验证码有效期（秒） -->
+                <sms_code_ttl>600</sms_code_ttl>
+                <!-- 允许通过短信自动添加 IP 的用户 id（逗号分隔） -->
+                <sms_auto_add_user_ids>1,2,3,4,5</sms_auto_add_user_ids>
+            </login>
+        </xfe_mageplugin>
+    </default>
 </config>

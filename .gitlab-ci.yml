@@ -1,0 +1,41 @@
+# GitLab CI — XFE_Carrier 自定义属性表单联动 JS 测试 (ADR 0011)
+#
+# 跑 tests/js/run-tests.js(jsdom + 自写 mini runner,40 个用例)
+# 默认分支(push)与 MR(opening sync)时自动跑
+#
+# 关联文档:
+#   docs/architecture/decisions/0009-js-extract-and-tests.md
+#   docs/architecture/decisions/0010-jsdom-test-runtime.md
+#   docs/architecture/decisions/0011-ci-integration.md
+
+stages:
+  - test
+
+variables:
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm"
+
+cache:
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - .npm/
+    - node_modules/
+
+js-tests:
+  stage: test
+  image: node:20-alpine
+  timeout: 5 minutes
+  script:
+    - npm ci --cache .npm --prefer-offline
+    - node tests/js/run-tests.js
+
+# XFE_Injection 纯 PHP 测试套件(ADR 0018)
+# 与 js-tests 并列,纯 PHP CLI 即可跑(测试自带 autoloader,不需 Magento)
+# 当前累计 156 assertions(单元 71 + 集成 36 + 集成 49)
+php-tests:
+  stage: test
+  image: php:8.3-cli-alpine
+  timeout: 3 minutes
+  script:
+    - php tests/php/run-tests.php

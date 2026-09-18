@@ -101,7 +101,7 @@ $hasDefs = $defs->count() > 0;
                     ? $currentValue['value']
                     : $currentValue;
                 $currentType = $def->getFieldType();
-                $options = $def->getOptions();
+                $options = $def->getOptions();  // 小改 K:返回结构化 [{key,label}];boolean 改用 getBooleanLabels()
                 $isReq = $def->isRequired();
             ?>
                 <tr data-key="<?php echo $this->escapeHtml($key); ?>" data-type="<?php echo $this->escapeHtml($currentType); ?>">
@@ -122,107 +122,32 @@ $hasDefs = $defs->count() > 0;
                         <?php if ($currentType === 'select' || $currentType === 'multiselect'): ?>
                             <div style="color:#888; font-size:11px;">
                                 <?php echo $helper->__('候选项:'); ?>
-                                <?php echo $this->escapeHtml(implode(', ', $options ?: array())); ?>
+<?php echo $this->escapeHtml(implode(', ', array_map(function ($p) { return $p['key'] . ($p['label'] !== $p['key'] ? ' / ' . $p['label'] : ''); }, is_array($options) ? $options : array()))); ?>
                             </div>
                         <?php endif; ?>
                     </td>
                     <td>
-                        <?php if ($currentType === 'boolean'): ?>
-                            <select name="custom_fields[<?php echo $this->escapeHtml($key); ?>][value]" class="xfe-ca-row-input">
-                                <option value="1"<?php echo $currentScalar ? ' selected' : ''; ?>><?php echo $helper->__('是'); ?></option>
-                                <option value="0"<?php echo !$currentScalar ? ' selected' : ''; ?>><?php echo $helper->__('否'); ?></option>
-                            </select>
-                        <?php elseif ($currentType === 'select'): ?>
-                            <select name="custom_fields[<?php echo $this->escapeHtml($key); ?>][value]" class="xfe-ca-row-input">
-                                <?php foreach (($options ?: array()) as $opt): ?>
-                                    <option value="<?php echo $this->escapeHtml($opt); ?>"<?php echo (string)$currentScalar === (string)$opt ? ' selected' : ''; ?>>
-                                        <?php echo $this->escapeHtml($opt); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php elseif ($currentType === 'multiselect'): ?>
-                            <?php
-                            $msValues = is_array($currentScalar) ? $currentScalar
-                                : (is_string($currentScalar) && $currentScalar !== ''
-                                    ? explode(',', $currentScalar)
-                                    : array());
-                            if (!empty($options)) {
-                                // 固定选项模式
-                                ?>
-                                <select multiple name="custom_fields[<?php echo $this->escapeHtml($key); ?>][value][]" class="xfe-ca-row-input" style="min-height:60px;">
-                                    <?php foreach ($options as $opt): ?>
-                                        <option value="<?php echo $this->escapeHtml($opt); ?>"<?php echo in_array($opt, $msValues, true) ? ' selected' : ''; ?>>
-                                            <?php echo $this->escapeHtml($opt); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <div style="color:#888; font-size:11px;">Ctrl/Shift 多选</div>
-                            <?php } else { ?>
-                                <!-- 自由标签模式(回车添加,×删除) -->
-                                <div class="xfe-ca-chips" tabindex="0"
-                                     data-key="<?php echo $this->escapeHtml($key); ?>"
-                                     data-name="custom_fields[<?php echo $this->escapeHtml($key); ?>][value]">
-                                    <input type="text" class="xfe-ca-chip-input" placeholder="输入后回车" />
-                                </div>
-                                <script type="text/javascript">//<![CDATA[
-                                (function () {
-                                    var root = document.querySelector('#<?php echo $fieldId; ?> .xfe-ca-chips[data-key="<?php echo $this->escapeHtml($key); ?>"]');
-                                    if (!root || root.__inited) return;
-                                    root.__inited = true;
-                                    var values = <?php echo json_encode(array_values($msValues)); ?>;
-                                    var hiddenName = root.getAttribute('data-name');
-                                    // 创建 hidden input(承载真实值,逗号分隔)
-                                    var hidden = document.createElement('input');
-                                    hidden.type = 'hidden';
-                                    hidden.name = hiddenName;
-                                    hidden.value = values.join(',');
-                                    root.appendChild(hidden);
-                                    var input = root.querySelector('.xfe-ca-chip-input');
-                                    function render() {
-                                        // 清空旧 chip
-                                        Array.prototype.forEach.call(
-                                            root.querySelectorAll('.xfe-ca-chip'),
-                                            function (el) { el.parentNode.removeChild(el); }
-                                        );
-                                        values.forEach(function (v, idx) {
-                                            var chip = document.createElement('span');
-                                            chip.className = 'xfe-ca-chip';
-                                            chip.innerHTML = '<span></span><span class="xfe-ca-chip-x">×</span>';
-                                            chip.querySelector('span').textContent = v;
-                                            chip.querySelector('.xfe-ca-chip-x').addEventListener('click', function () {
-                                                values.splice(idx, 1);
-                                                hidden.value = values.join(',');
-                                                render();
-                                            });
-                                            root.insertBefore(chip, input);
-                                        });
-                                    }
-                                    input.addEventListener('keydown', function (e) {
-                                        if (e.key === 'Enter' || e.key === ',') {
-                                            e.preventDefault();
-                                            var v = input.value.trim();
-                                            if (v && values.indexOf(v) === -1) {
-                                                values.push(v);
-                                                hidden.value = values.join(',');
-                                                render();
-                                            }
-                                            input.value = '';
-                                        } else if (e.key === 'Backspace' && input.value === '' && values.length) {
-                                            values.pop();
-                                            hidden.value = values.join(',');
-                                            render();
-                                        }
-                                    });
-                                    render();
-                                })();
-                                //]]></script>
-                            <?php } ?>
-                        <?php else: ?>
-                            <input type="text"
-                                   name="custom_fields[<?php echo $this->escapeHtml($key); ?>][value]"
-                                   class="xfe-ca-row-input"
-                                   value="<?php echo is_scalar($currentScalar) ? $this->escapeHtml($currentScalar) : ''; ?>" />
-                        <?php endif; ?>
+                        <?php
+                        $name = 'custom_fields[' . $this->escapeHtml($key) . '][value]';
+                        if ($currentType === 'multiselect' && !empty($options)) {
+                            $name .= '[]';
+                        }
+                        $defaultJson = is_array($currentScalar)
+                            ? json_encode($currentScalar)
+                            : json_encode((string) $currentScalar);
+                        // 小改 K:options 保持结构化 JSON(含 key|label),给 JS boolean/select 渲染
+                        $optionsJson = json_encode($options ?: array());
+                        ?>
+                        <span data-value-cell
+                              data-type="<?php echo $this->escapeHtml($currentType); ?>"
+                              data-default="<?php echo $this->escapeHtml($defaultJson); ?>"
+                              data-options="<?php echo $this->escapeHtml($optionsJson); ?>"
+                              data-name="<?php echo $this->escapeHtml($name); ?>"
+                              style="display:inline-block; width:100%;">
+                            <?php if ($currentType === 'multiselect' && empty($options)): ?>
+                                <input type="text" class="xfe-ca-chip-input" placeholder="<?php echo $helper->__('输入后回车'); ?>" />
+                            <?php endif; ?>
+                        </span>
                     </td>
                 </tr>
             <?php endforeach; ?>
@@ -243,4 +168,70 @@ $hasDefs = $defs->count() > 0;
         <?php echo $helper->__('如需继续使用,请到"自定义属性"菜单登记同名 key 后,这些值会出现在该字段下。'); ?>
     </div>
 <?php endif; ?>
+    <script type="text/javascript">
+    //<![CDATA[
+    (function () {
+        function onReady() {
+            if (typeof window.XfeCaTypeSwitcher === 'undefined') return;
+            var yesLabel = '<?php echo $helper->__('是'); ?>';
+            var noLabel  = '<?php echo $helper->__('否'); ?>';
+
+            document.querySelectorAll('#<?php echo $fieldId; ?> [data-value-cell]').forEach(function (cell) {
+                var type    = cell.getAttribute('data-type');
+                var name    = cell.getAttribute('data-name');
+                var optsRaw = cell.getAttribute('data-options') || '[]';
+                var defRaw  = cell.getAttribute('data-default') || '""';
+
+                var options;
+                try { options = JSON.parse(optsRaw); } catch (e) { options = []; }
+
+                // 自由 chips 模式(multiselect 且无 options)
+                if (type === 'multiselect' && options.length === 0) {
+                    var values;
+                    try { values = JSON.parse(defRaw); } catch (e) { values = []; }
+                    if (!Array.isArray(values)) values = [];
+                    XfeCaTypeSwitcher.buildChips(cell, { name: name, currentValues: values });
+                    return;
+                }
+
+                // 标准模式(renderValueCell)
+                var memo;
+                if (type === 'multiselect' && defRaw) {
+                    try {
+                        memo = JSON.parse(defRaw);
+                        if (!Array.isArray(memo)) memo = defRaw;
+                    } catch (e) {
+                        memo = defRaw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+                    }
+                } else {
+                    memo = defRaw;
+                    if (defRaw && defRaw.charAt(0) === '"') {
+                        try { memo = JSON.parse(defRaw); } catch (e) {}
+                    }
+                }
+
+                XfeCaTypeSwitcher.renderValueCell(cell, {
+                    type:        type,
+                    memo:        memo,
+                    optionsCsv:  options.join(','),
+                    name:        name,
+                    className:   'xfe-ca-row-input',
+                    yesLabel:    yesLabel,
+                    noLabel:     noLabel,
+                    blankLabel:  ''
+                });
+            });
+        }
+
+        if (document.observe) {
+            document.observe('dom:loaded', onReady);
+        } else if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', onReady);
+        } else {
+            onReady();
+        }
+    })();
+    //]]>
+    </script>
 </div>
+

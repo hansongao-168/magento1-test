@@ -23,6 +23,26 @@ class XFE_Carrier_Model_Service_CustomAttributeService
     /** @var self|null */
     protected static $_instance = null;
 
+    // -------------------------------------------------------------------------
+    // options_csv 变更迁移策略(小改 C,2026-09-17)
+    // -------------------------------------------------------------------------
+
+    /** 策略:拒绝修改,旧 default_value 不兼容时抛异常(默认,向后兼容) */
+    const MIGRATION_STRATEGY_REJECT = 'reject';
+
+    /** 策略:自动清洗 — select 置 null;multiselect 过滤非法项 */
+    const MIGRATION_STRATEGY_AUTO_CLEAN = 'auto_clean';
+
+    /** 策略:置空 — select 置 null;multiselect 置空数组 */
+    const MIGRATION_STRATEGY_SET_NULL = 'set_null';
+
+    /** 全部合法策略(校验 POST 输入用) */
+    const MIGRATION_STRATEGIES = array(
+        self::MIGRATION_STRATEGY_REJECT,
+        self::MIGRATION_STRATEGY_AUTO_CLEAN,
+        self::MIGRATION_STRATEGY_SET_NULL,
+    );
+
     public static function instance()
     {
         if (self::$_instance === null) {
@@ -195,6 +215,29 @@ class XFE_Carrier_Model_Service_CustomAttributeService
         $normalized = $this->_normalizePost($post, $isNew = false);
         $normalized['entity_type'] = (string) $model->getData('entity_type');
         $normalized['field_key']   = (string) $model->getData('field_key');
+
+        // 小改 C(2026-09-17):options_csv 变更时检测 default_value 兼容性
+        // 默认 reject 抛异常,行为与改动前一致;POST 传 migration_strategy 可选 auto_clean / set_null
+        $oldOptionsCsv = (string) $model->getData('options_csv');
+        if ($oldOptionsCsv !== $normalized['options_csv']) {
+            list($status, $incompatible, $oldOpts) = $this->_detectOptionsMigration(
+                $oldOptionsCsv,
+                $normalized['options_csv'],
+                $normalized['field_type'],
+                $normalized['default_value']
+            );
+            if ($status === 'incompatible') {
+                $strategy = isset($post['migration_strategy'])
+                    ? (string) $post['migration_strategy']
+                    : self::MIGRATION_STRATEGY_REJECT;
+                $normalized = $this->_applyMigrationStrategy(
+                    $normalized,
+                    $incompatible,
+                    $strategy,
+                    $normalized['field_type']
+                );
+            }
+        }
 
         $this->_applyNormalizedToModel($model, $normalized);
         $model->save();
@@ -400,5 +443,154 @@ class XFE_Carrier_Model_Service_CustomAttributeService
         $model->setData('is_active',   $normalized['is_active']   ? 1 : 0);
         $model->setData('sort_order',  $normalized['sort_order']);
         $model->setData('description', $normalized['description']);
+    }
+
+
+    /**
+     * 检测 options_csv 变更后,default_value 是否会落入不合法状态(小改 C,2026-09-17)。
+     *
+     * @param string $oldOptionsCsv
+     * @param string $newOptionsCsv
+     * @param string                            $newFieldType
+     * @param mixed                             $newDefaultValue 规范化后的新 default_value
+     * @return array{0:string,1:array,2:string[]}
+     *   [0] = 'ok' 或 'incompatible'
+     *   [1] = 不在新 options 内的值(select=单字符串,multiselect=字符串数组,其他=空数组)
+     *   [2] = 旧 options(字符串数组,供日志)
+     */
+    protected function _detectOptionsMigration($oldOptionsCsv, $newOptionsCsv, $newFieldType, $newDefaultValue)
+    {
+        // 小改 K(2026-09-18):boolean 也走 options 校验(2 行 + key ∈ {0,1} + default ∈ {0,1})(ADR 0023)
+        if ($newFieldType === XFE_Carrier_Domain_CustomField::TYPE_BOOLEAN) {
+            return $this->_detectBooleanMigration($oldOptionsCsv, $newOptionsCsv, $newDefaultValue);
+        }
+        if ($newFieldType !== XFE_Carrier_Domain_CustomField::TYPE_SELECT
+            && $newFieldType !== XFE_Carrier_Domain_CustomField::TYPE_MULTISELECT
+        ) {
+            return array('ok', array(), array());
+        }
+        $newOptions = array();
+        if ($newOptionsCsv !== '') {
+            $newOptions = array_values(array_filter(array_map('trim', explode(',', $newOptionsCsv))));
+        }
+        $oldOptions = array();
+        if ($oldOptionsCsv !== '') {
+            $oldOptions = array_values(array_filter(array_map('trim', explode(',', $oldOptionsCsv))));
+        }
+        if ($newDefaultValue === null || $newDefaultValue === '' || $newDefaultValue === array()) {
+            return array('ok', array(), $oldOptions);
+        }
+        if ($newFieldType === XFE_Carrier_Domain_CustomField::TYPE_SELECT) {
+            if (!in_array((string) $newDefaultValue, $newOptions, true)) {
+                return array('incompatible', array((string) $newDefaultValue), $oldOptions);
+            }
+            return array('ok', array(), $oldOptions);
+        }
+        if (!is_array($newDefaultValue)) {
+            $newDefaultValue = array((string) $newDefaultValue);
+        }
+        $bad = array();
+        foreach ($newDefaultValue as $v) {
+            if (!in_array((string) $v, $newOptions, true)) {
+                $bad[] = (string) $v;
+            }
+        }
+        if (count($bad) > 0) {
+            return array('incompatible', $bad, $oldOptions);
+        }
+        return array('ok', array(), $oldOptions);
+    }
+
+    /**
+     * 按 strategy 处理不兼容的 default_value(小改 C,2026-09-17)。
+     *
+     * @param array  $normalized
+     * @param array  $incompatible  不在新 options 内的值列表
+     * @param string $strategy      reject | auto_clean | set_null
+     * @param string $newFieldType
+     * @return array 修改后的 $normalized
+     * @throws Mage_Core_Exception strategy=reject 时
+     */
+
+    /**
+     * 校验规则:
+     *   1. newOptionsCsv 解析后必须正好 2 行
+     *   2. 解析出的 key(按 trim)集合必须 \u2261 {0, 1}
+     *   3. newDefaultValue 非空时必须 ∈ {0, 1}
+     *
+     * 旧 options 不参与校验(允许 label 文案修改)。
+     *
+     * @param string $oldOptionsCsv \u672a\u4f7f\u7528(\u4fdd\u7559\u53c2\u6570\u4ee5\u4fbf\u672a\u6765\u6269\u5c55)
+     * @param string $newOptionsCsv
+     * @param mixed  $newDefaultValue
+     * @return array{0:string,1:array,2:string[]} \u4e0e _detectOptionsMigration \u540c\u5f62\u6001
+     */
+    protected function _detectBooleanMigration($oldOptionsCsv, $newOptionsCsv, $newDefaultValue)
+    {
+        // 解析 new options 为结构化对
+        $newPairs = XFE_Carrier_Domain_CustomAttribute::parseOptionsCsvToPairs($newOptionsCsv);
+        if (count($newPairs) !== 2) {
+            return array('incompatible', array('options_count=' . count($newPairs)), array());
+        }
+        // key 集合必须 \u2261 {0, 1}
+        $keys = array_map(function ($p) { return (string) $p['key']; }, $newPairs);
+        sort($keys);
+        if ($keys !== array('0', '1')) {
+            return array('incompatible', array('options_keys=[' . implode(',', $keys) . ']'), array());
+        }
+        // default_value 必须 ∈ {0, 1}(如果非空)
+        if ($newDefaultValue !== null && $newDefaultValue !== '' && $newDefaultValue !== false) {
+            $norm = (is_bool($newDefaultValue)) ? ($newDefaultValue ? '1' : '0') : (string) $newDefaultValue;
+            if ($norm !== '0' && $norm !== '1') {
+                return array('incompatible', array('default_value=' . $norm), array());
+            }
+        }
+        return array('ok', array(), array());
+    }
+
+    protected function _applyMigrationStrategy(array $normalized, array $incompatible, $strategy, $newFieldType)
+    {
+        if (!in_array($strategy, self::MIGRATION_STRATEGIES, true)) {
+            $strategy = self::MIGRATION_STRATEGY_REJECT;
+        }
+        if ($strategy === self::MIGRATION_STRATEGY_REJECT) {
+            $badList = implode(', ', array_map(
+                function ($v) { return '"' . $v . '"'; },
+                $incompatible
+            ));
+            Mage::throwException(Mage::helper('xfe_carrier')->__(
+                '字段 "%s" 的候选项(options_csv)变更后,默认值 %s 已不在新候选项内。'
+                . '请在提交前调整 default_value,或在 POST 中传 migration_strategy'
+                . ' = auto_clean | set_null 以自动处理。',
+                (string) $normalized['field_key'],
+                $badList
+            ));
+        }
+        if ($strategy === self::MIGRATION_STRATEGY_SET_NULL) {
+            if ($newFieldType === XFE_Carrier_Domain_CustomField::TYPE_MULTISELECT) {
+                $normalized['default_value'] = array();
+            } else {
+                $normalized['default_value'] = null;
+            }
+            return $normalized;
+        }
+        // auto_clean
+        if ($newFieldType === XFE_Carrier_Domain_CustomField::TYPE_SELECT) {
+            $normalized['default_value'] = null;
+            return $normalized;
+        }
+        if ($newFieldType === XFE_Carrier_Domain_CustomField::TYPE_MULTISELECT) {
+            $current = is_array($normalized['default_value']) ? $normalized['default_value'] : array();
+            $incompatibleMap = array_flip($incompatible);
+            $kept = array();
+            foreach ($current as $v) {
+                if (!isset($incompatibleMap[(string) $v])) {
+                    $kept[] = (string) $v;
+                }
+            }
+            $normalized['default_value'] = array_values($kept);
+            return $normalized;
+        }
+        return $normalized;
     }
 }

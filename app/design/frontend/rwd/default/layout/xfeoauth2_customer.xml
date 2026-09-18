@@ -1,6 +1,10 @@
 <?xml version="1.0"?>
 <!--
     OAuth2 storefront account navigation + page layouts (rwd skin).
+
+    IMPORTANT: handle names are "xfeoauth2_client_index" /
+    "xfeoauth2_client_new" (route name, not frontName). See
+    base/default/.../xfeoauth2_customer.xml for the full explanation.
 -->
 <layout version="0.0.1">
 
@@ -14,9 +18,9 @@
         </reference>
     </customer_account>
 
-    <oauth2_client_index>
+    <xfeoauth2_client_index>
+        <update handle="customer_account"/>
         <reference name="root">
-            <action method="setTemplate"><template>page/2columns-left.phtml</template></action>
             <action method="setHeaderTitle" translate="title" module="xfeoauth2"><title>My API Clients</title></action>
         </reference>
         <reference name="content">
@@ -29,11 +33,11 @@
             <block type="xfeoauth2/customer_oauth2Client" name="customer.oauth2.client.list"
                    template="xfeoauth2/customer/oauth2client/list.phtml"/>
         </reference>
-    </oauth2_client_index>
+    </xfeoauth2_client_index>
 
-    <oauth2_client_new>
+    <xfeoauth2_client_new>
+        <update handle="customer_account"/>
         <reference name="root">
-            <action method="setTemplate"><template>page/2columns-left.phtml</template></action>
             <action method="setHeaderTitle" translate="title" module="xfeoauth2"><title>New API Client</title></action>
         </reference>
         <reference name="content">
@@ -46,6 +50,6 @@
             <block type="xfeoauth2/customer_oauth2Client" name="customer.oauth2.client.new"
                    template="xfeoauth2/customer/oauth2client/new.phtml"/>
         </reference>
-    </oauth2_client_new>
+    </xfeoauth2_client_new>
 
 </layout>

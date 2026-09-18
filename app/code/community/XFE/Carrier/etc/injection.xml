@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    XFE_Carrier 模块 injection.xml 声明。
+
+    通过 XML 注入机制对外暴露账号解析能力,供其他业务模块
+    (如 XFE_Logistic)在不直接 use XFE_Carrier_* 的前提下调用。
+
+    服务调用链:
+      业务模块 → XFE_Injection_Model_Runner::trigger('hook_xxx', $ctx)
+              → 查找 calling → 调用 service_carrier_resolve_account::resolveAccountId
+              → XFE_Carrier_Service_Account_CredentialViaInjection (本文件声明)
+              → XFE_Carrier_Model_Service_Rule_Resolver (内部委托)
+              → 返回 account_id
+
+    关联文档:
+      - docs/architecture/injection-carrier-logistic-integration.md §3.2
+      - docs/architecture/decisions/0015-injection-carrier-logistic-integration.md
+-->
+<config>
+    <modules>
+        <XFE_Carrier>
+            <version>1.0.19</version>
+        </XFE_Carrier>
+    </modules>
+    <injection>
+        <services>
+            <service_carrier_resolve_account>
+                <class>XFE_Carrier_Service_Account_CredentialViaInjection</class>
+                <method>resolveAccountId</method>
+            </service_carrier_resolve_account>
+            <service_carrier_list_accounts>
+                <class>XFE_Carrier_Service_Account_CredentialViaInjection</class>
+                <method>listAccountsByCarrier</method>
+            </service_carrier_list_accounts>
+            <service_carrier_get_credentials>
+                <class>XFE_Carrier_Service_Account_CredentialViaInjection</class>
+                <method>getCredentialsByCarrier</method>
+            </service_carrier_get_credentials>
+        </services>
+        <hooks>
+            <hook_carrier_account_resolved>
+                <description>Carrier 的账号被其他模块解析时触发(预留扩展点)</description>
+            </hook_carrier_account_resolved>
+        </hooks>
+        <callings/>
+    </injection>
+</config>

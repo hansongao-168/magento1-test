@@ -2,9 +2,16 @@
 /**
  * AuthorizationCode Storage - implements bshaffer AuthorizationCodeInterface
  *
+ * 【关键 - 2026-09-09】顶部显式 require 接口文件。详见
+ * Model/Storage/AccessToken.php 同款注释。
+ *
  * @category   Community
  * @package    XFE_OAuth2
  */
+require_once BP . '/lib/XFE/OAuth2/Autoloader.php';
+XFE_OAuth2_Autoloader::register();
+require_once BP . '/lib/OAuth2/Storage/AuthorizationCodeInterface.php';
+
 class XFE_OAuth2_Model_Storage_AuthorizationCode implements OAuth2\Storage\AuthorizationCodeInterface
 {
     /**
@@ -30,10 +37,10 @@ class XFE_OAuth2_Model_Storage_AuthorizationCode implements OAuth2\Storage\Autho
 
     /**
      * @param string $code
-     * @param mixed $client_id
-     * @param mixed $user_id
+     * @param mixed  $client_id
+     * @param mixed  $user_id
      * @param string $redirect_uri
-     * @param int $expires
+     * @param int    $expires
      * @param string $scope
      * @return void
      */
