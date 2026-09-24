@@ -16,19 +16,13 @@ class XFE_Logistic_Service_PodService implements XFE_Logistic_Api_PodApiInterfac
     /** @var XFE_Logistic_Model_Print_Gls_GlsGateway */
     protected $_gateway;
 
-    /** @var XFE_Logistic_Helper_Data */
-    protected $_helper;
-
     /**
      * @param XFE_Logistic_Model_Print_Gls_GlsGateway|null $gateway
-     * @param XFE_Logistic_Helper_Data|null                $helper
      */
     public function __construct(
-        ?XFE_Logistic_Model_Print_Gls_GlsGateway $gateway = null,
-        ?XFE_Logistic_Helper_Data $helper = null
+        ?XFE_Logistic_Model_Print_Gls_GlsGateway $gateway = null
     ) {
         $this->_gateway = $gateway ?: Mage::getModel('xfe_logistic/print_gls_glsGateway');
-        $this->_helper  = $helper ?: Mage::helper('xfe_logistic');
     }
 
     /**
@@ -43,30 +37,41 @@ class XFE_Logistic_Service_PodService implements XFE_Logistic_Api_PodApiInterfac
 
         $config = 'XFE_Logistic_Domain_Constant_GlsApiConfig';
 
-        // 新路径（ADR 0019）：通过 XML 注入从 XFE_Carrier 拿 GLS API 凭据。
-        // 成功：使用注入返回的 endpoint_url + username/password 组装 URL + Basic Auth。
-        // 失败（返回 null）：fallback 到 system config 旧路径，保持向后兼容。
+        // 主流路径（ADR 0021 最终态）：通过 XML 注入从 XFE_Carrier 拿 GLS API 凭据。
+        // 注入返 null = 配置缺失，硬失败提示 admin 立即排查（Carrier 后台需配 GLS 账号）。
         $credentials = $this->_resolveCredentialsViaInjection('gls', array());
-        $parcelPodResource = $this->_helper->getParcelPodResource();
-
-        if (is_array($credentials) && !empty($credentials['endpoint_url'])) {
-            $parcelPodUrl = rtrim((string)$credentials['endpoint_url'], '/')
-                . '/' . ltrim($parcelPodResource, '/');
-            $basicAuthUser = (string)(isset($credentials['username']) ? $credentials['username'] : '');
-            $basicAuthPass = (string)(isset($credentials['password']) ? $credentials['password'] : '');
-            $basicAuthHeader = $config::AUTH_SCHEME_BASIC . ' '
-                . base64_encode($basicAuthUser . ':' . $basicAuthPass);
-        } else {
-            // fallback：旧 system config 路径（数据迁移过渡期保留）
-            $parcelPodUrl    = $this->_helper->getParcelPodUrl();
-            $basicAuthHeader = $this->_helper->getBasicAuthHeaderValue();
+        if (!is_array($credentials) || empty($credentials['endpoint_url'])) {
+            Mage::throwException('GLS Carrier account not configured (injection returned null)');
         }
 
-        $podItem = $this->_gateway->requestParcelPod(
-            $trackId,
-            $parcelPodUrl,
-            $basicAuthHeader
-        );
+        $parcelPodUrl = rtrim((string)$credentials['endpoint_url'], '/')
+            . '/' . $config::RESOURCE_PARCELPOD;
+        $basicAuthUser = (string)(isset($credentials['username']) ? $credentials['username'] : '');
+        $basicAuthPass = (string)(isset($credentials['password']) ? $credentials['password'] : '');
+        $basicAuthHeader = $config::AUTH_SCHEME_BASIC . ' '
+            . base64_encode($basicAuthUser . ':' . $basicAuthPass);
+
+        // L2 GlsGateway 在非 2xx 时抛 GlsApiException，并携带 Error / Message header 信息；
+        // 这里按 ADR 0028 在 L3 做业务分类：命中"PoD 不可用"白名单 → 转抛 PoDNotAvailableException。
+        try {
+            $podItem = $this->_gateway->requestParcelPod(
+                $trackId,
+                $parcelPodUrl,
+                $basicAuthHeader
+            );
+        } catch (XFE_Logistic_Domain_Exception_GlsApiException $e) {
+            $errorCode = $e->getErrorCode();
+            if ($errorCode !== ''
+                && in_array($errorCode, $config::POD_NOT_AVAILABLE_ERROR_CODES, true)
+            ) {
+                throw new XFE_Logistic_Domain_Exception_PoDNotAvailableException(
+                    $trackId,
+                    $errorCode,
+                    $e->getRawMessage()
+                );
+            }
+            throw $e;
+        }
 
         $podTrackId = isset($podItem[$config::RESPONSE_TRACK_ID])
             ? (string) $podItem[$config::RESPONSE_TRACK_ID]
@@ -148,7 +153,7 @@ class XFE_Logistic_Service_PodService implements XFE_Logistic_Api_PodApiInterfac
      *
      * 单向依赖：
      *   - 本方法依赖 XFE_Injection_Model_Runner(公共模块 L3)
-     *   - 不依赖任何 XFE_Carrier_* 类(第二个参数为原生 array,见 ADR 0016)
+     *   - 不直接依赖任何 XFE_Carrier_* 类(通过 XFE_Injection 公共模块注入,第二个参数为原生 array,见 ADR 0016)
      *
      * @param string $carrierCode  承运商 code,如 gls / chronopost
      * @param array  $contextValues 业务上下文 key=>value 集合
