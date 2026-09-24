@@ -1,6 +1,8 @@
 # 0021. 终结 PodService 注入化:删除 fallback、Helper 与 system config
 
-- 状态：Proposed
+- 状态：Accepted
+- 验证日期：2026-09-24
+- 验证摘要：PodService 删除 fallback + $_helper；Helper 瘦身至空壳；system.xml 删除 gls_api 组；config.xml 1.2.0 → 1.3.0；cleanup 脚本就绪；GlsApiConfigTest 11 断言 + PodServiceMainPathTest +4 断言全过；累计 467 断言 0 失败
 - 日期：2026-09-17
 - 决策者：AI 助手(经用户确认)
 

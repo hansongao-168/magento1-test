@@ -1,6 +1,8 @@
 # 0020. GLS API 凭据迁移：core_config_data → xfe_carrier_account
 
-- 状态：Proposed
+- 状态：Accepted
+- 验证日期：2026-09-17
+- 验证摘要：dry-run + run 各执行一次；xfe_carrier_account 表已含迁移行；MigrateGlsCredentialsTest 40 断言全过；core_config_data 4 行残留待 ADR 0021 清理脚本下线
 - 日期：2026-09-17
 - 决策者：AI 助手（经用户确认）
 
