@@ -10,7 +10,7 @@
  *   1. InjectionTest.php                          —  71 assertions (Domain / Registry / Runner / XmlReader / Merger)
  *   2. CarrierLogisticTest.php                    —  42 assertions (Carrier ↔ Logistic XML 注入调用链)
  *   3. DocumentUploadTest.php                     —  49 assertions (DocumentUpload ↔ Carrier XML 注入接入)
- *   4. PodServiceMainPathTest.php                 —  37 assertions (PodService 主流路径接 XML 注入)
+ *   4. PodServiceMainPathTest.php                 —  41 assertions（ADR 0021 Test 5 改反射 +4） (PodService 主流路径接 XML 注入)
  *   5. CustomAttributeApplierStrictTest.php       —  37 assertions (Applier 严格模式 / 自由 chips / select/multiselect)
  *   6. CustomFieldServiceBuildFromPostTest.php    —  18 assertions (Field Service 从 POST 构造 Domain)
  *   7. CustomAttributeImportExportTest.php        —  65 assertions (CSV 导入导出 + 异常路径)
@@ -18,7 +18,7 @@
  *   9. CustomAttributeServiceBooleanTest.php      -  32 assertions (小改 K:boolean label 自定义 + 结构化 options + parse/serialize helpers)
  *  10. MigrateGlsCredentialsTest.php               -  40 assertions (Logistic GLS 凭据迁移脚本,ADR 0020)
  *   ─────────────────────────────────────────────
- *   合计: 439 assertions(Injection 199 + Carrier 200 + Logistic 40)
+ *   合计: 479 assertions（+30 CleanupGlsApiSystemConfig ADR 0021）（+10 ADR 0021）(Injection 199 + Carrier 200 + Logistic 40)
  *   - "ALL PASS" + [PASS]/[FAIL] 行格式(老 Carrier 套件,通过 grep 统计 [PASS] 数)
  *
  * 退出码:
@@ -145,6 +145,14 @@ $suites = array(
     array(
         'file'  => 'app/code/community/XFE/Logistic/Test/Sql/MigrateGlsCredentialsTest.php',
         'label' => 'Unit: MigrateGlsCredentials (ADR 0020)',
+    ),
+    array(
+        'file'  => 'app/code/community/XFE/Logistic/Test/Unit/GlsApiConfigTest.php',
+        'label' => 'Unit: GlsApiConfig (ADR 0021)',
+    ),
+    array(
+        'file'  => 'app/code/community/XFE/Logistic/Test/Sql/CleanupGlsApiSystemConfigTest.php',
+        'label' => 'Unit: CleanupGlsApiSystemConfig (ADR 0021)',
     ),
     array(
         'file'  => 'app/code/community/XFE/Carrier/Test/Service/CustomAttributeServiceBooleanTest.php',

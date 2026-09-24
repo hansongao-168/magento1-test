@@ -216,25 +216,44 @@ if (file_exists($selfXml) && file_exists($carrierXml) && file_exists($logisticXm
 }
 
 // ---------------------------------------------------------
-// Test 5: 注入路径返回 null → PodService 主流程 fallback
+// Test 5: PodService 最终态静态验证（ADR 0021）
 // ---------------------------------------------------------
-echo "\n--- Test 5: injection null -> fallback path ---\n";
+echo "\n--- Test 5: PodService finalize (ADR 0021) ---\n";
+
+$podClass = new ReflectionClass('XFE_Logistic_Service_PodService');
+ok(!$podClass->hasProperty('_helper'),
+    "PodService no longer has _helper property (fallback removed)");
+
+$getProofMethod = $podClass->getMethod('getProofOfDelivery');
+$methodSource = file_get_contents($getProofMethod->getFileName());
+$startLine = $getProofMethod->getStartLine();
+$endLine = $getProofMethod->getEndLine();
+$sourceLines = explode("\n", $methodSource);
+$sourceBody = implode("\n", array_slice($sourceLines, $startLine - 1, $endLine - $startLine + 1));
+ok(strpos($sourceBody, ' else ') === false
+    && strpos($sourceBody, '}else') === false
+    && strpos($sourceBody, '} else') === false,
+    "getProofOfDelivery has no 'else' fallback branch");
+
+ok(strpos($sourceBody, 'RESOURCE_PARCELPOD') !== false,
+    "getProofOfDelivery uses GlsApiConfig::RESOURCE_PARCELPOD constant (not system config)");
+
+ok(strpos($sourceBody, 'throwException') !== false,
+    "getProofOfDelivery throws exception when injection returns null (hard fail)");
+
+// 旁证：注入路径在 mock 返回 null 时 $result->first() === null，仍是 getProofOfDelivery 触发硬失败的条件
 XFE_Injection_Model_Registry::resetForTesting();
 $merger5 = new XFE_Injection_Model_Config_Merger();
 $merger5->mergeFromXml('XFE_Injection', file_get_contents($selfXml));
 $merger5->mergeFromXml('XFE_Carrier', file_get_contents($carrierXml));
 $merger5->mergeFromXml('XFE_Logistic', file_get_contents($logisticXml));
-
 $reg5 = XFE_Injection_Model_Registry::getInstance();
-
 $mock5 = new MockCredentialsService();
-$mock5->returnValue = null; // 模拟"无账号 / Carrier 端返回 null"
+$mock5->returnValue = null;
 $locator5 = new XFE_Injection_Model_ServiceLocator();
 $locator5->setOverride('service_carrier_get_credentials', $mock5);
-
 $injCtx5 = new XFE_Injection_Domain_InjectionContext(array('carrierCode' => 'gls', 'contextValues' => array()));
 $result5 = new XFE_Injection_Domain_InjectionResult();
-
 foreach ($reg5->getCallingsForHook('hook_logistic_before_request') as $call) {
     if ($call->getServiceId() === 'service_carrier_resolve_account') continue;
     $svcDef = $reg5->getService($call->getServiceId());
@@ -247,9 +266,8 @@ foreach ($reg5->getCallingsForHook('hook_logistic_before_request') as $call) {
     $value = call_user_func_array(array($instance, $call->getMethodName()), $args);
     $result5->set($call->getId(), $value);
 }
-
-$first5 = $result5->first();
-ok($first5 === null, "InjectionResult first() returns null when service returns null (fallback condition)");
+ok($result5->first() === null,
+    "InjectionResult first() === null when mock returns null (triggers getProofOfDelivery hard fail)");
 
 // ---------------------------------------------------------
 // Test 6: 真实 XML 注册的服务列表
