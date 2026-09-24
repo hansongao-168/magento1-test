@@ -1,0 +1,93 @@
+<?php
+/**
+ * XFE_MagePlugin 登录短信验证表单模板。
+ *
+ * 当登录被 IP 守卫拦截时，此表单显示在登录页用户名/密码下方。
+ */
+/** @var XFE_MagePlugin_Block_Adminhtml_Login_Sms $this */
+?>
+<?php if ($this->isPendingSms()): ?>
+<div class="entry-edit" style="margin-top:10px;padding:10px;border:1px solid #ccc;background:#fafafa;">
+    <h4><?php echo Mage::helper('xfe_mageplugin')->__('短信验证') ?></h4>
+    <p style="margin:5px 0;">
+        <?php echo Mage::helper('xfe_mageplugin')->__('当前 IP（%s）不在白名单中，请先完成短信验证后再登录。', $this->escapeHtml($this->getPendingIp())) ?>
+    </p>
+    <div class="input-box" style="margin:5px 0;">
+        <label for="xfe_sms_phone"><?php echo Mage::helper('xfe_mageplugin')->__('手机号：') ?></label><br/>
+        <input type="text" id="xfe_sms_phone" name="xfe_sms[phone]" class="input-text" autocomplete="off" />
+    </div>
+    <div class="input-box" style="margin:5px 0;">
+        <label for="xfe_sms_code"><?php echo Mage::helper('xfe_mageplugin')->__('验证码：') ?></label><br/>
+        <input type="text" id="xfe_sms_code" name="xfe_sms[code]" class="input-text" autocomplete="off" />
+        <button type="button" id="xfe_sms_send_btn" class="scalable" style="margin-left:5px;">
+            <?php echo Mage::helper('xfe_mageplugin')->__('发送验证码') ?>
+        </button>
+    </div>
+    <div class="input-box" style="margin:5px 0;">
+        <button type="button" id="xfe_sms_verify_btn" class="scalable save">
+            <?php echo Mage::helper('xfe_mageplugin')->__('验证并登录') ?>
+        </button>
+    </div>
+    <div id="xfe_sms_message" style="margin:5px 0;color:#d00;"></div>
+</div>
+<script type="text/javascript">
+//<![CDATA[
+document.observe('dom:loaded', function() {
+    var sendBtn = $('xfe_sms_send_btn');
+    var verifyBtn = $('xfe_sms_verify_btn');
+    var msg = $('xfe_sms_message');
+    var sending = '<?php echo Mage::helper('core')->jsQuoteEscape(Mage::helper('xfe_mageplugin')->__('正在发送验证码...')) ?>';
+    var sent = '<?php echo Mage::helper('core')->jsQuoteEscape(Mage::helper('xfe_mageplugin')->__('验证码已发送，请查收短信。')) ?>';
+    var sendFail = '<?php echo Mage::helper('core')->jsQuoteEscape(Mage::helper('xfe_mageplugin')->__('发送失败')) ?>';
+    var verifying = '<?php echo Mage::helper('core')->jsQuoteEscape(Mage::helper('xfe_mageplugin')->__('正在验证...')) ?>';
+    var success = '<?php echo Mage::helper('core')->jsQuoteEscape(Mage::helper('xfe_mageplugin')->__('验证成功，正在登录...')) ?>';
+    var fail = '<?php echo Mage::helper('core')->jsQuoteEscape(Mage::helper('xfe_mageplugin')->__('验证失败')) ?>';
+
+    if (sendBtn) {
+        sendBtn.observe('click', function() {
+            var phone = $('xfe_sms_phone').value;
+            if (!phone) { msg.update(sendFail); return; }
+            msg.update(sending);
+            new Ajax.Request('<?php echo $this->getSendSmsUrl() ?>', {
+                method: 'post',
+                parameters: {phone: phone},
+                onSuccess: function(transport) {
+                    var res = null;
+                    try { res = transport.responseJSON || eval('(' + transport.responseText + ')'); }
+                    catch (e) { msg.update(sendFail); return; }
+                    if (res && res.success) { msg.update(sent); }
+                    else { msg.update((res && res.message) ? res.message : sendFail); }
+                },
+                onFailure: function() { msg.update(sendFail); }
+            });
+        });
+    }
+
+    if (verifyBtn) {
+        verifyBtn.observe('click', function() {
+            var phone = $('xfe_sms_phone').value;
+            var code = $('xfe_sms_code').value;
+            if (!phone || !code) { msg.update(fail); return; }
+            msg.update(verifying);
+            new Ajax.Request('<?php echo $this->getVerifySmsUrl() ?>', {
+                method: 'post',
+                parameters: {phone: phone, code: code},
+                onSuccess: function(transport) {
+                    var res = null;
+                    try { res = transport.responseJSON || eval('(' + transport.responseText + ')'); }
+                    catch (e) { msg.update(fail); return; }
+                    if (res && res.success) {
+                        msg.update(success);
+                        window.location.href = res.redirect_url;
+                    } else {
+                        msg.update((res && res.message) ? res.message : fail);
+                    }
+                },
+                onFailure: function() { msg.update(fail); }
+            });
+        });
+    }
+});
+//]]>
+</script>
+<?php endif; ?>

@@ -97,6 +97,9 @@ desktop.ini
 /test-condition.html
 /delivery_proof_*.pdf
 /zip/
-# Chinese-named personal PDF at repo root
-/22 06 2026 收件客户使用权限 — 开关设置.pdf
+# Chinese-named personal PDFs at repo root
+/22 06 2026 *.pdf
 
+
+# Windows null-device artifact
+nul

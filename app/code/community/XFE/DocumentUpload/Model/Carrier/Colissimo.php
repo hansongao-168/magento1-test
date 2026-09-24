@@ -221,4 +221,32 @@ extends XFE_DocumentUpload_Model_Carrier_Abstract
 		$documentId = isset($responseData['documentId']) ? $responseData['documentId'] : '';
 		return $this->_successResult($documentId);
 	}
+
+	/**
+	 * 旁路方法：通过 XML 注入从 XFE_Carrier 读取账号列表。
+	 *
+	 * 与 getAccounts() 共存。getAccounts() 仍读 system config（旧路径），
+	 * 本方法走 XML 注入（新路径）。两条路径行为可对照。
+	 *
+	 * 未来数据迁移时，把 getAccounts() 内部实现改为调用本方法即可。
+	 *
+	 * 单向依赖：本方法仅依赖 XFE_Injection 公共模块，
+	 * 不出现 use XFE_Carrier_* / new XFE_Carrier_*，实现 Carrier ↔ DocumentUpload 零 PHP 类型耦合。
+	 *
+	 * @param array $contextValues 业务上下文（可选，当前未使用，仅保持签名一致）
+	 * @return int[] account_id 列表
+	 */
+	public function getAccountsViaInjection(array $contextValues = array())
+	{
+		$injCtx = new XFE_Injection_Domain_InjectionContext(array(
+			'carrierCode'   => $this->getCarrierCode(),
+			'contextValues' => $contextValues,
+		));
+		$result = XFE_Injection_Model_Runner::trigger(
+			'hook_documentupload_resolve_accounts',
+			$injCtx
+		);
+		$first = $result->first();
+		return is_array($first) ? $first : array();
+	}
 }

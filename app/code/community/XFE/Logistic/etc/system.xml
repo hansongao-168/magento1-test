@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<config>
+    <tabs>
+        <xfe translate="title">
+            <label>XFE</label>
+            <sort_order>250</sort_order>
+        </xfe>
+    </tabs>
+    <sections>
+        <xfe_logistic translate="label" module="xfe_logistic">
+            <label>Logistic (GLS)</label>
+            <tab>xfe</tab>
+            <frontend_type>text</frontend_type>
+            <sort_order>110</sort_order>
+            <show_in_default>1</show_in_default>
+            <show_in_website>0</show_in_website>
+            <show_in_store>0</show_in_store>
+            <groups>
+            </groups>
+        </xfe_logistic>
+    </sections>
+</config>

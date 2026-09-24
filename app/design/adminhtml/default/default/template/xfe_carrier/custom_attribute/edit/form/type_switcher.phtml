@@ -1,0 +1,212 @@
+<?php
+/**
+ * 自定义属性表单 field_type 联动 — 入口(ADR 0009)
+ *
+ * 真正的联动逻辑全部在:
+ *   js/xfe_carrier/custom-attribute-form-switcher.js
+ *   window.XfeCaTypeSwitcher
+ *
+ * 本模板只做四件事:
+ *   1. 注入 window.XfeCaFormNotes(小改 A:type-specific note 文案)
+ *   2. 等 DOM 就绪
+ *   3. 取 field_type / options_csv / default_value 三个元素
+ *   4. 调 XfeCaTypeSwitcher.bind(...) 启动联动
+ *
+ * 后端契约不变:default_value 字段 name 仍是 "default_value"。
+ *
+ * 关联文档:
+ *   docs/architecture/xfe-carrier-custom-attribute-form-switcher-js.md
+ *   docs/architecture/decisions/0009-js-extract-and-tests.md
+ *   docs/architecture/decisions/0008-custom-attribute-form-ux.md
+ *
+ * @var XFE_Carrier_Block_Adminhtml_CustomAttribute_Edit_Form_TypeSwitcher $this
+ */
+?>
+<script type="text/javascript">
+//<![CDATA[
+// 小改 A:注入 type-specific note 文案(JS bind() 内 switchType 读取)
+window.XfeCaFormNotes = <?php echo json_encode(array(
+    'default_value' => array(
+        'text'        => Mage::helper('xfe_carrier')->__('任意字符串'),
+        'number'      => Mage::helper('xfe_carrier')->__('数字(支持小数)'),
+        'select'      => Mage::helper('xfe_carrier')->__('从上方"候选项"里选一个'),
+        'multiselect' => Mage::helper('xfe_carrier')->__('从上方"候选项"里多选(按住 Ctrl/Shift)'),
+        'boolean'     => Mage::helper('xfe_carrier')->__('选择 是 / 否'),
+    ),
+    'options_csv' => array(
+        'select'      => Mage::helper('xfe_carrier')->__('必填,逗号分隔(如 红,绿,蓝)'),
+        'multiselect' => Mage::helper('xfe_carrier')->__('可选,逗号分隔。留空 = 自由标签输入'),
+    ),
+)); ?>;
+
+// 小改 D(2026-09-17):options_csv 变更时 JS 弹窗文案(配套 §2.10/§2.11)
+window.XfeCaEditorLabels = <?php echo json_encode(array(
+    'headTitle' => Mage::helper('xfe_carrier')->__('候选项(key / 显示名)'),
+    'addBtn'    => Mage::helper('xfe_carrier')->__('+ 添加候选项'),
+    'delBtn'    => Mage::helper('xfe_carrier')->__('删除'),
+    'dupHint'   => Mage::helper('xfe_carrier')->__('key 重复'),
+)); ?>;
+
+window.XfeCaMigrationLabels = <?php echo json_encode(array(
+    'confirm' => Mage::helper('xfe_carrier')->__(
+        '修改候选项(options_csv)会导致现有默认值失效。\n'
+        . '点 [确定] = 自动清洗(只保留合法项,丢弃非法)\n'
+        . '点 [取消] = 恢复候选项(请重新编辑)'
+    ),
+)); ?>;
+(function () {
+    'use strict';
+
+    function boot() {
+        // 小改 M(2026-09-18):优先用 name 查找(兼容 Magento Form 给 input 加 id 前缀的场景,如 edit_form[options_csv])
+        function findByName(name) {
+            return document.querySelector('select[name="' + name + '"]')
+                || document.querySelector('input[name="' + name + '"]')
+                || document.querySelector('textarea[name="' + name + '"]')
+                || document.getElementById(name);
+        }
+        var fieldTypeEl = findByName('field_type') || document.getElementById('field_type');
+        var optionsEl   = findByName('options_csv') || document.getElementById('options_csv');
+        var defaultEl   = findByName('default_value') || document.getElementById('default_value');
+        if (!fieldTypeEl || !defaultEl) return;
+        if (typeof window.XfeCaTypeSwitcher === 'undefined') return;
+
+        XfeCaTypeSwitcher.bind({
+            fieldTypeEl: fieldTypeEl,
+            optionsEl:   optionsEl,
+            defaultEl:   defaultEl,
+            yesLabel:   '<?php echo Mage::helper("xfe_carrier")->__("是"); ?>',
+            noLabel:    '<?php echo Mage::helper("xfe_carrier")->__("否"); ?>',
+            blankLabel: '<?php echo Mage::helper("xfe_carrier")->__("-- 请选择 --"); ?>'
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
+    }
+}());
+//]]>
+</script>
+<style type="text/css">
+/* 小改 F(2026-09-17):自定义属性表单 — 错误样式
+ * 配套 §2.9(JS submit 前预校验)
+ * - .xfe-ca-field-error:出错字段的红色边框 + 浅红背景
+ * - .xfe-ca-form-errors:form 顶部错误块(替代 JS inline style)
+ */
+.xfe-ca-field-error,
+.xfe-ca-field-error:focus {
+    background-color: #FFF1F1 !important;
+    border: 1px solid #c00 !important;
+    box-shadow: 0 0 0 1px #c00;
+}
+.xfe-ca-form-errors {
+    background: #FFF1F1;
+    border: 1px solid #c00;
+    padding: 10px 15px;
+    margin: 10px 0;
+    color: #c00;
+    list-style: none;
+}
+.xfe-ca-form-errors li {
+    list-style: none;
+    margin: 2px 0;
+}
+.xfe-ca-form-errors li.head {
+    font-weight: bold;
+    list-style: none;
+    margin: 0;
+}
+
+/* 小改 G(2026-09-17):options_csv 行编辑器(ADR 0022)
+ * 容器:关键 key / 显示名 两列 + 删除按钮
+ * 添加按钮:行编辑器下方,引导用户增量录入
+ */
+.xfe-ca-opt-editor {
+    margin: 5px 0 0 0;
+    padding: 8px 10px;
+    background: #FAFAFA;
+    border: 1px solid #DDD;
+    border-radius: 3px;
+}
+.xfe-ca-opt-editor-head {
+    font-weight: bold;
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 6px;
+}
+.xfe-ca-opt-editor-rows {
+    margin-bottom: 6px;
+}
+.xfe-ca-opt-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 4px;
+    align-items: center;
+}
+.xfe-ca-opt-row .xfe-ca-opt-key {
+    width: 28%;
+}
+.xfe-ca-opt-row .xfe-ca-opt-label {
+    flex: 1;
+}
+.xfe-ca-opt-row .xfe-ca-opt-del {
+    background: #F1F1F1;
+    border: 1px solid #CCC;
+    color: #C00;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 11px;
+}
+.xfe-ca-opt-row .xfe-ca-opt-del:hover {
+    background: #FFE5E5;
+    border-color: #C00;
+}
+.xfe-ca-opt-editor-add {
+    background: #E8F0FE;
+    border: 1px solid #4A90E2;
+    color: #1A5FB4;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: 11px;
+    border-radius: 3px;
+}
+.xfe-ca-opt-editor-add:hover {
+    background: #D6E4FB;
+}
+/* 小改 H(2026-09-17):key 重复实时提示 */
+.xfe-ca-opt-key.xfe-ca-opt-dup {
+    border-color: #C00 !important;
+    background-color: #FFE5E5 !important;
+}
+.xfe-ca-opt-row-dup {
+    background-color: #FFF5F5;
+    border-left: 3px solid #C00;
+    padding-left: 4px;
+}
+.xfe-ca-opt-dup-hint {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 6px;
+    background: #C00;
+    color: #FFF;
+    font-size: 11px;
+    border-radius: 2px;
+}
+/* 小改 I(2026-09-17):HTML5 拖拽排序样式 */
+.xfe-ca-opt-row[draggable="true"] {
+    cursor: move;
+}
+.xfe-ca-opt-row.xfe-ca-opt-dragging {
+    opacity: 0.4;
+    background: #F0F8FF !important;
+}
+.xfe-ca-opt-row.xfe-ca-opt-drag-over {
+    border-top: 2px dashed #4A90E2;
+    margin-top: -2px;
+}
+.xfe-ca-opt-row.xfe-ca-opt-drag-over + .xfe-ca-opt-row {
+    border-top: none; /* 避免连续视觉重叠 */
+}
+</style>

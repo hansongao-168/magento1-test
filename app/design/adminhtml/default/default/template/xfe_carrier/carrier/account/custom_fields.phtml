@@ -1,0 +1,416 @@
+<?php
+/**
+ * 自定义字段键值对编辑器(主账号 + FTP 账号共享)
+ *
+ * 模板数据:
+ *   $rawJson     string|null  该账号已存的 custom_fields_json 原文
+ *   $entityType  string       'account' | 'ftp_account'(用于 JS 提交时区分)
+ *
+ * POST 形态(由 JS 在提交时构造,Form.serialize() 抓得到):
+ *   custom_fields[<key>][label]   = string
+ *   custom_fields[<key>][type]    = text|number|select|boolean
+ *   custom_fields[<key>][value]   = mixed
+ *   custom_fields[<key>][options] = string (逗号分隔,仅 type=select)
+ *
+ * 删除某行 = 不提交该 key;后端 Service::applyFromPost() 会自动 diff 出来。
+ *
+ * 关联文档: docs/architecture/carrier-account-custom-fields.md
+ */
+/** @var string|null $rawJson */
+/** @var string $entityType */
+$helper = Mage::helper('xfe_carrier');
+$bag    = array();
+if (is_string($rawJson) && $rawJson !== '') {
+    $decoded = json_decode($rawJson, true);
+    if (is_array($decoded)) {
+        foreach ($decoded as $k => $v) {
+            if (is_string($k) && is_array($v)) {
+                $bag[$k] = $v;
+            }
+        }
+    }
+}
+$fieldId = 'xfe-carrier-custom-fields-editor-' . md5($entityType . '|' . spl_object_hash($this));
+$bagJson = Mage::helper('core')->jsonEncode($bag ?: new stdClass());
+?>
+<style>
+.xfe-cf-editor { width:100%; border-collapse:collapse; }
+.xfe-cf-editor th, .xfe-cf-editor td {
+    padding:6px 8px; border-bottom:1px solid #ddd; vertical-align:middle;
+}
+.xfe-cf-editor th { background:#f6f6f6; text-align:left; font-weight:600; }
+.xfe-cf-editor input[type=text], .xfe-cf-editor select { width:100%; box-sizing:border-box; }
+.xfe-cf-editor .col-handle { width:32px; text-align:center; cursor:move; color:#999; }
+.xfe-cf-editor .col-act    { width:60px; text-align:center; }
+.xfe-cf-editor .col-key    { width:18%; }
+.xfe-cf-editor .col-label  { width:18%; }
+.xfe-cf-editor .col-type   { width:14%; }
+.xfe-cf-editor .col-value  { width:30%; }
+.xfe-cf-editor .col-options{ width:20%; }
+.xfe-cf-row-removed td { opacity:0.45; }
+.xfe-cf-row-removed .xfe-cf-row-input { text-decoration:line-through; }
+.xfe-cf-toolbar { margin-top:8px; }
+.xfe-cf-empty { color:#999; font-style:italic; padding:8px 0; }
+
+/* multiselect chip input */
+.xfe-cf-chips {
+    display:flex; flex-wrap:wrap; gap:4px; align-items:center;
+    min-height:28px; padding:3px; border:1px solid #ccc; border-radius:3px;
+    background:#fff; cursor:text;
+}
+.xfe-cf-chips:focus-within { border-color:#5b9dd9; box-shadow:0 0 2px #5b9dd9; }
+.xfe-cf-chip {
+    display:inline-flex; align-items:center; gap:4px;
+    background:#e1f0ff; border:1px solid #b0d4f1; border-radius:3px;
+    padding:1px 4px 1px 8px; font-size:12px; line-height:18px;
+}
+.xfe-cf-chip-x { cursor:pointer; color:#999; font-weight:bold; padding:0 2px; }
+.xfe-cf-chip-x:hover { color:#c00; }
+.xfe-cf-chip-input {
+    flex:1; min-width:100px; border:none; outline:none; padding:2px 4px;
+    font-size:12px; background:transparent;
+}
+.xfe-cf-mselect { min-height:60px; }
+.xfe-cf-mselect-hint { font-size:11px; color:#888; margin-top:2px; }
+</style>
+
+<div id="<?php echo $fieldId; ?>" class="xfe-carrier-custom-fields-editor" data-entity-type="<?php echo $this->escapeHtml($entityType); ?>">
+    <table class="xfe-cf-editor">
+        <thead>
+            <tr>
+                <th class="col-handle">#</th>
+                <th class="col-key"><?php echo $helper->__('Key'); ?></th>
+                <th class="col-label"><?php echo $helper->__('展示名'); ?></th>
+                <th class="col-type"><?php echo $helper->__('类型'); ?></th>
+                <th class="col-value"><?php echo $helper->__('值'); ?></th>
+                <th class="col-options"><?php echo $helper->__('候选项(select / multiselect 固定模式时填,逗号分隔)'); ?></th>
+                <th class="col-act"><?php echo $helper->__('操作'); ?></th>
+            </tr>
+        </thead>
+        <tbody class="xfe-cf-rows">
+            <!-- 行模板在 JS 内动态创建 -->
+        </tbody>
+    </table>
+    <div class="xfe-cf-toolbar">
+        <button type="button" class="scalable add" data-action="add">
+            <span><span><span><?php echo $helper->__('+ 添加字段'); ?></span></span></span>
+        </button>
+        <span class="xfe-cf-empty" data-role="empty" style="display:none;">
+            <?php echo $helper->__('尚未定义任何字段,点击上方按钮添加。'); ?>
+        </span>
+    </div>
+    <div class="xfe-cf-hint" data-role="hint" style="margin-top:8px;color:#666;font-size:11px;line-height:1.5;">
+        <?php echo $helper->__(
+            '提示:多选(multiselect)有「自由标签」与「固定选项」两种模式 —— '
+            . '候选项留空时为自由标签(回车添加 chip、点击 × 删除、Backspace 删最后一个);'
+            . '候选项非空时为强制从下拉多选(Ctrl / Shift 多选)。'
+        ); ?>
+    </div>
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+(function () {
+    var root = document.getElementById('<?php echo $fieldId; ?>');
+    if (!root || root.__inited) { return; }
+    root.__inited = true;
+
+    var bag = <?php echo $bagJson; ?>;
+    var bagIsObject = bag && typeof bag === 'object' && !Array.isArray(bag);
+    var keys = bagIsObject ? Object.keys(bag) : [];
+    var tbody = root.querySelector('.xfe-cf-rows');
+    var emptyHint = root.querySelector('[data-role="empty"]');
+
+    var TYPE_LABELS = {
+        text:        '<?php echo $helper->__('文本'); ?>',
+        number:      '<?php echo $helper->__('数字'); ?>',
+        select:      '<?php echo $helper->__('下拉'); ?>',
+        multiselect: '<?php echo $helper->__('多选'); ?>',
+        boolean:     '<?php echo $helper->__('布尔'); ?>'
+    };
+    var ALL_TYPES = ['text', 'number', 'select', 'multiselect', 'boolean'];
+
+    var OPTIONS_PLACEHOLDERS = {
+        select:      '<?php echo $helper->__('standard,express,economy'); ?>',
+        multiselect: '<?php echo $helper->__('留空=自由标签;非空=强制从列表多选'); ?>',
+        text:        '<?php echo $helper->__('仅 select / multiselect 需填'); ?>',
+        number:      '<?php echo $helper->__('仅 select / multiselect 需填'); ?>',
+        boolean:     '<?php echo $helper->__('仅 select / multiselect 需填'); ?>'
+    };
+    function optionsPlaceholderFor(type) {
+        return OPTIONS_PLACEHOLDERS[type] || '';
+    }
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function parseOptionsCsv(s) {
+        if (!s) return [];
+        return String(s).split(',').map(function (t) { return t.trim(); }).filter(function (t) { return t !== ''; });
+    }
+
+    /** 把 value 统一拆成 string[] (multiselect 形态)。 */
+    function valueToArray(value) {
+        if (Array.isArray(value)) return value.map(String);
+        if (value === null || value === undefined || value === '') return [];
+        if (typeof value === 'string') {
+            // 兼容 "a,b,c" 或 '["a","b"]' 两种形态
+            var s = value.trim();
+            if (s.charAt(0) === '[') {
+                try { var parsed = JSON.parse(s); if (Array.isArray(parsed)) return parsed.map(String); } catch (e) {}
+            }
+            return parseOptionsCsv(s);
+        }
+        return [String(value)];
+    }
+
+    /** chip input 单元格。hidden input 永远是 data-field="value",真实提交的是它。 */
+    function buildChipsCell(arr) {
+        var cell = document.createElement('td');
+        cell.className = 'col-value';
+        cell.innerHTML = '<div class="xfe-cf-chips" tabindex="0">'
+            + '<input type="hidden" class="xfe-cf-row-input" data-field="value" value="" />'
+            + '<span class="xfe-cf-chip-list" data-role="chip-list"></span>'
+            + '<input type="text" class="xfe-cf-chip-input" data-role="chip-input" '
+            +   'placeholder="<?php echo $helper->__('输入后回车添加'); ?>" />'
+            + '</div>';
+        var hidden = cell.querySelector('input[data-field="value"]');
+        var list   = cell.querySelector('[data-role="chip-list"]');
+        var input  = cell.querySelector('[data-role="chip-input"]');
+        var chips  = [];
+
+        function render() {
+            list.innerHTML = '';
+            chips.forEach(function (c, idx) {
+                var chip = document.createElement('span');
+                chip.className = 'xfe-cf-chip';
+                chip.innerHTML = '<span class="xfe-cf-chip-text"></span><span class="xfe-cf-chip-x" data-idx="' + idx + '">×</span>';
+                chip.querySelector('.xfe-cf-chip-text').textContent = c;
+                list.appendChild(chip);
+            });
+            hidden.value = chips.join(',');
+        }
+        cell.querySelector('.xfe-cf-chips').addEventListener('click', function (e) {
+            if (e.target.classList.contains('xfe-cf-chip-x')) {
+                var i = parseInt(e.target.getAttribute('data-idx'), 10);
+                chips.splice(i, 1);
+                render();
+            } else {
+                input.focus();
+            }
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                var v = input.value.trim();
+                if (v && chips.indexOf(v) === -1) {
+                    chips.push(v);
+                    render();
+                }
+                input.value = '';
+            } else if (e.key === 'Backspace' && input.value === '' && chips.length) {
+                chips.pop();
+                render();
+            }
+        });
+        cell.__xfeSetChips = function (arr) { chips = arr.slice(); render(); };
+        cell.__xfeGetChips = function () { return chips.slice(); };
+        cell.__xfeSetChips(arr);
+        return cell;
+    }
+
+    /** 原生 select multi 单元格(仅 multiselect + options 非空时使用)。 */
+    function buildMultiSelectCell(arr, opts) {
+        var cell = document.createElement('td');
+        cell.className = 'col-value';
+        var selHtml = '<select multiple class="xfe-cf-row-input xfe-cf-mselect" data-field="value">';
+        for (var i = 0; i < opts.length; i++) {
+            var selected = arr.indexOf(opts[i]) !== -1 ? ' selected' : '';
+            selHtml += '<option value="' + escapeHtml(opts[i]) + '"' + selected + '>'
+                + escapeHtml(opts[i]) + '</option>';
+        }
+        selHtml += '</select>'
+            + '<div class="xfe-cf-mselect-hint"><?php echo $helper->__('Ctrl/Shift 多选'); ?></div>';
+        cell.innerHTML = selHtml;
+        return cell;
+    }
+
+    /** 单选 select 单元格。 */
+    function buildSingleSelectCell(value, opts) {
+        var selHtml = '<select class="xfe-cf-row-input" data-field="value">';
+        for (var i = 0; i < opts.length; i++) {
+            var selected = String(value) === String(opts[i]) ? ' selected' : '';
+            selHtml += '<option value="' + escapeHtml(opts[i]) + '"' + selected + '>'
+                + escapeHtml(opts[i]) + '</option>';
+        }
+        selHtml += '</select>';
+        return selHtml;
+    }
+
+    /** 根据 type + options 决定 value 单元格内容。返回 HTML 字符串或 Element。 */
+    function buildValueCell(type, value, optionsCsv) {
+        var opts = parseOptionsCsv(optionsCsv);
+        if (type === 'boolean') {
+            var sTrue = String(value) === 'true' || String(value) === '1' || value === 1 || value === true;
+            return '<select class="xfe-cf-row-input" data-field="value">'
+                + '<option value="1"' + (sTrue ? ' selected' : '') + '><?php echo $helper->__('是'); ?></option>'
+                + '<option value="0"' + (!sTrue ? ' selected' : '') + '><?php echo $helper->__('否'); ?></option>'
+                + '</select>';
+        }
+        if (type === 'select') {
+            if (opts.length === 0) {
+                // 没有 options 时降级为 text,避免渲染空 select
+                return '<input type="text" class="xfe-cf-row-input" data-field="value" '
+                    + 'value="' + escapeHtml(value) + '" placeholder="<?php echo $helper->__('先填写候选项'); ?>" />';
+            }
+            return buildSingleSelectCell(value, opts);
+        }
+        if (type === 'multiselect') {
+            var arr = valueToArray(value);
+            if (opts.length > 0) {
+                return buildMultiSelectCell(arr, opts);
+            }
+            return buildChipsCell(arr);
+        }
+        return '<input type="text" class="xfe-cf-row-input" data-field="value" '
+            + 'value="' + escapeHtml(value) + '" />';
+    }
+
+    function makeRow(key, spec) {
+        spec = spec || {};
+        var tr = document.createElement('tr');
+        tr.className = 'xfe-cf-row';
+        tr.dataset.state = 'kept';
+
+        var type = spec.type || 'text';
+        var label = spec.label || key || '';
+        var value = (spec.value === undefined ? '' : spec.value);
+        var options = Array.isArray(spec.options) ? spec.options.join(',') : '';
+
+        // type select
+        var typeSel = '<select class="xfe-cf-row-input" data-field="type">';
+        ALL_TYPES.forEach(function (t) {
+            typeSel += '<option value="' + t + '"' + (t === type ? ' selected' : '') + '>'
+                + escapeHtml(TYPE_LABELS[t] || t) + '</option>';
+        });
+        typeSel += '</select>';
+
+        // options 单元格 placeholder 根据 type 动态切换,提示用户何时该填何时不该填
+        var optionsPh = optionsPlaceholderFor(type);
+
+        tr.innerHTML = ''
+            + '<td class="col-handle">::</td>'
+            + '<td class="col-key"><input type="text" class="xfe-cf-row-input" data-field="key" '
+                + 'value="' + escapeHtml(key) + '" placeholder="warehouse_code" /></td>'
+            + '<td class="col-label"><input type="text" class="xfe-cf-row-input" data-field="label" '
+                + 'value="' + escapeHtml(label) + '" placeholder="<?php echo $helper->__('仓库代码'); ?>" /></td>'
+            + '<td class="col-type">' + typeSel + '</td>'
+            + '<td class="col-value-wrap"></td>'
+            + '<td class="col-options"><input type="text" class="xfe-cf-row-input" data-field="options" '
+                + 'value="' + escapeHtml(options) + '" '
+                + 'placeholder="' + escapeHtml(optionsPh) + '" /></td>'
+            + '<td class="col-act">'
+                + '<button type="button" class="scalable delete" data-action="remove">'
+                + '<span><span><span><?php echo $helper->__('删除'); ?></span></span></span></button>'
+                + '</td>';
+
+        // value 单元格单独渲染(可能是 Element 或 innerHTML)
+        var wrap = tr.querySelector('.col-value-wrap');
+        var v = buildValueCell(type, value, options);
+        if (v instanceof Element) {
+            wrap.appendChild(v);
+        } else {
+            wrap.innerHTML = v;
+        }
+
+        // type 变化 → 重建 value 单元格 + 同步更新 options placeholder
+        tr.querySelector('[data-field="type"]').addEventListener('change', function () {
+            var curType = this.value;
+            var optsStr = tr.querySelector('[data-field="options"]').value || '';
+            var prevArr = [];
+            var prevVal = tr.querySelector('[data-field="value"]');
+            if (prevVal && curType === 'multiselect') {
+                if (prevVal.tagName === 'SELECT' && prevVal.multiple) {
+                    Array.prototype.forEach.call(prevVal.selectedOptions, function (o) { prevArr.push(o.value); });
+                } else {
+                    prevArr = valueToArray(prevVal.value);
+                }
+            }
+            var cell = buildValueCell(curType, '', optsStr);
+            if (cell instanceof Element) {
+                if (curType === 'multiselect' && cell.__xfeSetChips) {
+                    cell.__xfeSetChips(prevArr);
+                }
+                wrap.innerHTML = '';
+                wrap.appendChild(cell);
+            } else {
+                wrap.innerHTML = cell;
+            }
+            // options placeholder 随 type 切换
+            tr.querySelector('[data-field="options"]').placeholder = optionsPlaceholderFor(curType);
+        });
+
+        // options 变化 → 如果是 multiselect,重建 value 单元格以切换 chip/select
+        tr.querySelector('[data-field="options"]').addEventListener('change', function () {
+            var curType = tr.querySelector('[data-field="type"]').value;
+            if (curType !== 'multiselect') return;
+            var prevArr = [];
+            var prevVal = tr.querySelector('[data-field="value"]');
+            if (prevVal) {
+                if (prevVal.tagName === 'SELECT' && prevVal.multiple) {
+                    Array.prototype.forEach.call(prevVal.selectedOptions, function (o) { prevArr.push(o.value); });
+                } else if (prevVal.tagName === 'INPUT' && prevVal.type === 'hidden') {
+                    prevArr = valueToArray(prevVal.value);
+                } else {
+                    prevArr = valueToArray(prevVal.value);
+                }
+            }
+            var optsStr = this.value || '';
+            var cell = buildValueCell('multiselect', '', optsStr);
+            if (cell instanceof Element) {
+                if (cell.__xfeSetChips) cell.__xfeSetChips(prevArr);
+                wrap.innerHTML = '';
+                wrap.appendChild(cell);
+            } else {
+                wrap.innerHTML = cell;
+            }
+        });
+
+        tr.querySelector('[data-action="remove"]').addEventListener('click', function () {
+            tr.dataset.state = 'removed';
+            tr.classList.add('xfe-cf-row-removed');
+            tr.querySelectorAll('input, select').forEach(function (el) {
+                el.disabled = true;
+            });
+            updateEmpty();
+        });
+
+        return tr;
+    }
+
+    function updateEmpty() {
+        var visible = 0;
+        tbody.querySelectorAll('tr.xfe-cf-row').forEach(function (tr) {
+            if (tr.dataset.state !== 'removed') { visible++; }
+        });
+        emptyHint.style.display = visible === 0 ? '' : 'none';
+    }
+
+    keys.forEach(function (k) { tbody.appendChild(makeRow(k, bag[k])); });
+    updateEmpty();
+
+    root.querySelector('[data-action="add"]').addEventListener('click', function () {
+        // 新行的默认 key 用时间戳,提示用户改成有意义的 snake_case
+        var newKey = 'field_' + Date.now().toString(36);
+        var row = makeRow(newKey, { type: 'text', label: '', value: '', options: [] });
+        tbody.appendChild(row);
+        row.querySelector('[data-field="key"]').focus();
+        row.querySelector('[data-field="key"]').select();
+        updateEmpty();
+    });
+})();
+//]]>
+</script>

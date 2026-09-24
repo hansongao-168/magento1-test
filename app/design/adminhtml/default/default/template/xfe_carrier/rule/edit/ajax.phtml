@@ -1,0 +1,36 @@
+<?php
+/**
+ * XFE Carrier - Rule Edit AJAX 模板 (ADR 0031)
+ *
+ * 与 container.phtml 的差异:
+ *   - 不输出 content-header / content-footer (无 chrome 顶/底部)
+ *   - 不调用 getFormInitScripts() (prototype.js 等已在父窗加载)
+ *   - 保留 tabs + form + 必要 script
+ *   - 渲染 Save/Back 按钮 (由前端 JS hook onclick)
+ *
+ * 父模板调用方式:
+ *   editRuleAjaxAction() 触发 registry xfe_carrier_rule_edit_ajax = true,
+ *   Edit::getTemplate() 自动切换为本模板。
+ */
+?>
+<div id="xfe-carrier-rule-modal-body">
+    <div class="content-header" style="padding:0 0 8px 0;border:none;">
+        <p class="form-buttons" style="float:right;">
+            <?php echo $this->getButtonsHtml('header') ?>
+        </p>
+    </div>
+    <?php echo $this->getChildHtml('tabs') ?>
+    <?php echo $this->getFormHtml() ?>
+    <?php if ($this->hasFooterButtons()): ?>
+        <div class="content-footer" style="padding:8px 0 0;border-top:1px solid #e3e3e3;">
+            <p class="form-buttons"><?php echo $this->getButtonsHtml('footer') ?></p>
+        </div>
+    <?php endif; ?>
+</div>
+<script type="text/javascript">
+//<![CDATA[
+editForm = new varienForm('edit_form', '<?php echo $this->getValidationUrl() ?>');
+editForm._xfeCarrierAjaxMode = true;
+<?php echo $this->getFormScripts() ?>
+//]]>
+</script>

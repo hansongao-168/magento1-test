@@ -1,0 +1,64 @@
+<?php
+/**
+ * 自定义属性批量导入 - 容器
+ *
+ * 渲染: 上传表单 + 模板下载链接
+ * 关联文档: docs/architecture/carrier-global-custom-field-defs.md
+ */
+/** @var XFE_Carrier_Block_Adminhtml_CustomAttribute_Import $this */
+$helper = Mage::helper('xfe_carrier');
+?>
+<div class="content-header">
+    <table cellspacing="0">
+        <tr>
+            <td style="width:50%;">
+                <h3><?php echo $helper->__('批量导入自定义属性'); ?></h3>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div class="entry-edit" style="margin-top:10px;">
+    <div class="entry-edit-head">
+        <h4 class="icon-head head-edit-form fieldset-legend"><?php echo $helper->__('上传 CSV'); ?></h4>
+    </div>
+    <div class="fieldset">
+        <p style="margin:0 0 10px 0;">
+            <?php echo $helper->__('CSV 格式: 11 列(详见模板)。上传后系统按 (entity_type, field_key) upsert。'); ?>
+            <a href="<?php echo $this->getUrl('*/carrier_customAttribute/exportTemplate'); ?>" target="_blank">
+                <?php echo $helper->__('下载 CSV 模板'); ?>
+            </a>
+        </p>
+        <?php echo $this->getChildHtml('form'); ?>
+    </div>
+</div>
+
+<?php $result = Mage::registry('xfe_carrier_custom_attribute_import_result');
+if ($result): ?>
+    <div class="entry-edit" style="margin-top:20px;">
+        <div class="entry-edit-head">
+            <h4 class="icon-head head-edit-form fieldset-legend"><?php echo $helper->__('导入结果'); ?></h4>
+        </div>
+        <div class="fieldset">
+            <p>
+                <?php echo $helper->__('新建: %d &nbsp; 更新: %d &nbsp; 重新激活: %d &nbsp; 跳过: %d',
+                    $result->created, $result->updated, $result->activated, $result->skipped); ?>
+            </p>
+            <?php if ($result->hasErrors()): ?>
+                <h5 style="color:#c00;"><?php echo $helper->__('错误明细'); ?></h5>
+                <table class="xfe-ca-errors" style="width:100%; border-collapse:collapse;">
+                    <tr style="background:#f6f6f6;">
+                        <th style="text-align:left; padding:6px; border:1px solid #ddd;"><?php echo $helper->__('行号'); ?></th>
+                        <th style="text-align:left; padding:6px; border:1px solid #ddd;"><?php echo $helper->__('消息'); ?></th>
+                    </tr>
+                    <?php foreach ($result->getErrors() as $rowNo => $msg): ?>
+                        <tr>
+                            <td style="padding:6px; border:1px solid #ddd;"><?php echo $rowNo; ?></td>
+                            <td style="padding:6px; border:1px solid #ddd; color:#c00;"><?php echo $this->escapeHtml($msg); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+            <?php endif; ?>
+        </div>
+    </div>
+<?php endif; ?>

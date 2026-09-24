@@ -32,6 +32,16 @@ endif;
 ?>
 <form action="<?php echo $this->getFormActionUrl() ?>" method="post" id="edit_form" enctype="multipart/form-data">
     <?php echo $this->getBlockHtml('formkey') ?>
+    <?php
+    // The default Magento form container renders a hidden "id" input from its
+    // child form block; because we override the template to host the tabs,
+    // we have to surface it ourselves so saveAction() can route back to
+    // the existing entity instead of inserting a new row.
+    $entityId = (int)$this->getRequest()->getParam('id');
+    if ($entityId):
+    ?>
+    <input type="hidden" name="id" value="<?php echo $entityId ?>" />
+    <?php endif; ?>
     <div style="display:none"></div>
 </form>
 <?php if ($this->hasFooterButtons()): ?>

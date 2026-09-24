@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Admin Client Grid
  *
@@ -71,6 +71,65 @@ class XFE_OAuth2_Block_Adminhtml_Client_Grid extends Mage_Adminhtml_Block_Widget
             'width'  => '150px',
         ));
 
+        // Secret expiry column. Per ADR 0007 this is informational only -
+        // the Storage layer keeps verifying bcrypt regardless of expiry -
+        // but it is what lets the operator spot a soon-to-expire client at
+        // a glance. The renderer takes care of colour-coding (green /
+        // yellow / red / grey) so the Grid itself stays data-only.
+        $this->addColumn('client_secret_expires_at', array(
+            'header'   => $helper->__('Secret Expires'),
+            'index'    => 'client_secret_expires_at',
+            'type'     => 'datetime',
+            'renderer' => 'xfeoauth2/adminhtml_client_grid_renderer_secretExpiry',
+            'width'    => '150px',
+        ));
+
+        $this->addColumn('reveal', array(
+            'header'   => $helper->__('Secret'),
+            'index'    => 'client_id',
+            'renderer' => 'xfeoauth2/adminhtml_client_grid_renderer_secret',
+            'filter'   => false,
+            'sortable' => false,
+            'width'    => '120px',
+        ));
+
+        // Explicit Edit button. We deliberately keep this separate from the
+        // "Show Secret" button so that prompting for the secret does not
+        // accidentally navigate the user away from the list, and the user
+        // has a clear, single-purpose affordance for entering the edit page.
+        // The row-level click is disabled in getRowUrl() below so cells
+        // without their own buttons (e.g. name, client_id) act as plain text
+        // rather than disguised navigation.
+        $this->addColumn('actions', array(
+            'header'   => $helper->__('Actions'),
+            'type'     => 'action',
+            'index'    => 'client_id',
+            'getter'   => 'getClientId',
+            'filter'   => false,
+            'sortable' => false,
+            'width'    => '120px',
+            'actions'  => array(
+                array(
+                    'caption' => $helper->__('Edit'),
+                    'url'     => array('base' => '*/*/edit'),
+                    'field'   => 'id',
+                ),
+                array(
+                    // Regenerate issues a new client_secret. The onclick
+                    // confirm() makes the operator acknowledge that all
+                    // existing tokens for this client will stop working
+                    // immediately - bshaffer re-verifies client_secret on
+                    // every token request.
+                    'caption' => $helper->__('Regenerate'),
+                    'url'     => array('base' => '*/*/regenerate'),
+                    'field'   => 'id',
+                    'confirm' => $helper->__(
+                        'Regenerate the client secret? Existing tokens will stop working immediately.'
+                    ),
+                ),
+            ),
+        ));
+
         return parent::_prepareColumns();
     }
 
@@ -83,11 +142,18 @@ class XFE_OAuth2_Block_Adminhtml_Client_Grid extends Mage_Adminhtml_Block_Widget
     }
 
     /**
+     * Disabled: rows used to be a single big hit-target for the edit page,
+     * but that made per-row buttons (Show Secret / Edit) awkward to use -
+     * clicking through to edit should now be opt-in via the explicit Edit
+     * action column. Returning an empty string skips the row-level
+     * onclick callback that Mage_Adminhtml_Block_Widget_Grid would
+     * otherwise emit based on a non-empty URL.
+     *
      * @param XFE_OAuth2_Model_Client $row
      * @return string
      */
     public function getRowUrl($row)
     {
-        return $this->getUrl('*/*/edit', array('id' => $row->getClientId()));
+        return '';
     }
 }

@@ -1,0 +1,132 @@
+<?php
+/**
+ * New API Client form
+ *
+ * @var $this XFE_OAuth2_Block_Customer_OAuth2Client
+ */
+?>
+<div class="my-account my-oauth2-client-new">
+    <div class="page-title">
+        <h1><?php echo $this->__('New API Client') ?></h1>
+    </div>
+
+    <form action="<?php echo $this->getSaveUrl() ?>" method="post" id="form-validate">
+        <ul class="form-list">
+            <li>
+                <label for="name" class="required">
+                    <em>*</em><?php echo $this->__('Name') ?>
+                </label>
+                <div class="input-box">
+                    <input type="text" name="name" id="name"
+                           value="<?php echo $this->escapeHtml($this->getRequest()->getParam('name')) ?>"
+                           class="input-text required-entry" maxlength="255" />
+                </div>
+            </li>
+            <li>
+                <label for="description"><?php echo $this->__('Description') ?></label>
+                <div class="input-box">
+                    <textarea name="description" id="description" rows="3" cols="40"
+                              class="input-text"><?php echo $this->escapeHtml($this->getRequest()->getParam('description')) ?></textarea>
+                </div>
+            </li>
+            <li class="wide">
+                <label class="required"><em>*</em><?php echo $this->__('Grant Types') ?></label>
+                <div class="input-box">
+                    <?php
+                        // Frontend-created clients are limited to grant types that
+                        // do not require a redirect_uri. authorization_code is
+                        // omitted on purpose - it is only meaningful for
+                        // third-party apps the customer authorizes via a
+                        // browser redirect.
+                        $grantOptions = array(
+                            'client_credentials' => $this->__('Server-to-server access tokens'),
+                            'refresh_token'      => $this->__('Rotate access tokens without recreating the client'),
+                        );
+                        // Repopulate from a previous (failed) submission when
+                        // present; otherwise default to all options checked so
+                        // the form starts in a valid state.
+                        $submittedParam = $this->getRequest()->getParam('grant_types');
+                        if (is_array($submittedParam)) {
+                            $selectedGrantTypes = array_map('strval', $submittedParam);
+                        } else {
+                            $selectedGrantTypes = array_keys($grantOptions);
+                        }
+                    ?>
+                    <div class="grant-types-options" id="grant-types-options">
+                        <?php foreach ($grantOptions as $value => $description): ?>
+                            <label class="checkbox-label grant-type-option"
+                                   for="grant_type_<?php echo $this->escapeHtml($value) ?>"
+                                   style="display:block;margin:0 0 6px 0;">
+                                <input type="checkbox"
+                                       name="grant_types[]"
+                                       id="grant_type_<?php echo $this->escapeHtml($value) ?>"
+                                       value="<?php echo $this->escapeHtml($value) ?>"
+                                       class="checkbox grant-type-cb"
+                                       <?php if (in_array($value, $selectedGrantTypes, true)) echo 'checked="checked"'; ?> />
+                                <strong><?php echo $this->escapeHtml($value) ?></strong>
+                                &mdash; <?php echo $this->escapeHtml($description) ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <p class="note">
+                        <?php echo $this->__('Select at least one grant type. Frontend-created clients may use: client_credentials, refresh_token.') ?>
+                    </p>
+                </div>
+            </li>
+            <li>
+                <label for="scopes"><?php echo $this->__('Scopes') ?></label>
+                <div class="input-box">
+                    <input type="text" name="scopes" id="scopes"
+                           value="<?php echo $this->escapeHtml($this->getRequest()->getParam('scopes', 'basic')) ?>"
+                           class="input-text" />
+                    <p class="note">
+                        <?php echo $this->__('Space separated. Example: basic orders customers carriers admin') ?>
+                    </p>
+                </div>
+            </li>
+        </ul>
+
+        <div class="buttons-set">
+            <p class="required"><?php echo $this->__('* Required Fields') ?></p>
+            <button type="submit" class="button" title="<?php echo $this->__('Create Client') ?>">
+                <?php echo $this->__('Create Client') ?>
+            </button>
+            <a href="<?php echo $this->getListUrl() ?>" class="button">
+                <?php echo $this->__('Cancel') ?>
+            </a>
+        </div>
+    </form>
+
+    <p style="margin-top:20px;font-size:small;color:#666;">
+        <?php echo $this->__('After creation the system will display a one-time Client Secret. Save it - it cannot be shown again.') ?>
+    </p>
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+document.observe('dom:loaded', function () {
+    var form = $('form-validate');
+    if (!form) {
+        return;
+    }
+    form.observe('submit', function (event) {
+        var boxes = form.select('input.grant-type-cb');
+        var anyChecked = false;
+        for (var i = 0; i < boxes.length; i++) {
+            if (boxes[i].checked) {
+                anyChecked = true;
+                break;
+            }
+        }
+        if (!anyChecked) {
+            Event.stop(event);
+            var first = boxes.first();
+            if (first && typeof Validation !== 'undefined') {
+                Validation.decorate(first, {validationClass: 'validation-failed'});
+            }
+            alert('<?php echo $this->jsQuoteEscape($this->__('Please select at least one Grant Type.')) ?>');
+        }
+    });
+});
+//]]>
+</script>

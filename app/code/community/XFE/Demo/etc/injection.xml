@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    XFE_Demo 自描述 injection.xml:
+      - 提供 2 个 service (Greeter / Logger)
+      - 暴露 2 个 hook (user_login / page_view)
+      - 自身不消费任何 calling(纯演示)
+-->
+<config>
+    <modules>
+        <XFE_Demo>
+            <version>1.0.0</version>
+        </XFE_Demo>
+    </modules>
+    <injection>
+        <services>
+            <service_demo_greet>
+                <class>XFE_Demo_Model_Service_Greeter</class>
+                <method>greet</method>
+            </service_demo_greet>
+            <service_demo_log>
+                <class>XFE_Demo_Model_Service_Logger</class>
+                <method>log</method>
+            </service_demo_log>
+        </services>
+        <hooks>
+            <hook_demo_user_login>
+                <description>模拟用户登录事件</description>
+            </hook_demo_user_login>
+            <hook_demo_page_view>
+                <description>模拟页面浏览事件</description>
+            </hook_demo_page_view>
+        </hooks>
+        <callings/>
+    </injection>
+</config>

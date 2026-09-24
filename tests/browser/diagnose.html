@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>XFE_Carrier — 浏览器实机诊断工具</title>
+<style>
+body { font-family: "Microsoft YaHei", Arial, sans-serif; padding: 20px; }
+pre { background: #F5F5F5; padding: 12px; font-size: 11px; line-height: 1.6; border-left: 4px solid #4A90E2; overflow-x: auto; white-space: pre-wrap; }
+h2 { margin-top: 24px; }
+.btn { background: #4A90E2; color: #FFF; border: 0; padding: 8px 16px; cursor: pointer; border-radius: 3px; margin-right: 8px; }
+.btn:hover { background: #1A5FB4; }
+.test-form { border: 1px solid #ccc; padding: 15px; margin-top: 15px; background: #FAFAFA; }
+.test-form p { margin: 8px 0; }
+</style>
+</head>
+<body>
+<h1>XFE_Carrier 自定义属性编辑 — 实机诊断工具</h1>
+<p>用此页验证 JS 文件是否正确加载 + 行编辑器是否挂载。</p>
+
+<h2>Step 1 — 检查 window 全局</h2>
+<pre id="r1">点击按钮检查</pre>
+<button class="btn" onclick="step1()">检查 JS 全局</button>
+
+<h2>Step 2 — 检查 form 元素查找</h2>
+<pre id="r2">点击按钮检查</pre>
+<button class="btn" onclick="step2()">查找 form 元素</button>
+
+<h2>Step 3 — 检查 mountOptionsEditor 容器</h2>
+<pre id="r3">点击按钮检查</pre>
+<button class="btn" onclick="step3()">查找行编辑器容器</button>
+
+<h2>Step 4 — 模拟切换 type=boolean</h2>
+<pre id="r4">点击按钮模拟</pre>
+<button class="btn" onclick="step4()">切 boolean 看容器</button>
+
+<hr />
+<h2>实机测试 form</h2>
+<div class="test-form">
+<p>类型: <select id="field_type" name="field_type">
+    <option value="text">文本</option>
+    <option value="number">数字</option>
+    <option value="select">下拉(单选)</option>
+    <option value="multiselect">多选</option>
+    <option value="boolean">布尔</option>
+</select></p>
+<p>候选项: <input type="text" id="options_csv" name="options_csv" value="" style="width:300px" /></p>
+<p>默认值: <input type="text" id="default_value" name="default_value" value="" style="width:300px" /></p>
+</div>
+
+<script src="/js/xfe_carrier/custom-attribute-form-switcher.js"></script>
+<script>
+function findByName(name) {
+    return document.querySelector('select[name="' + name + '"]')
+        || document.querySelector('input[name="' + name + '"]')
+        || document.querySelector('textarea[name="' + name + '"]')
+        || document.getElementById(name);
+}
+(function () {
+    var fieldTypeEl = findByName('field_type');
+    var optionsEl   = findByName('options_csv');
+    var defaultEl   = findByName('default_value');
+    if (fieldTypeEl && defaultEl && window.XfeCaTypeSwitcher) {
+        window.XfeCaTypeSwitcher.bind({
+            fieldTypeEl: fieldTypeEl, optionsEl: optionsEl, defaultEl: defaultEl,
+            yesLabel: '是', noLabel: '否', blankLabel: '-- 请选择 --'
+        });
+    }
+})();
+
+function step1() {
+    var r = {
+        XfeCaTypeSwitcher: typeof window.XfeCaTypeSwitcher,
+        XfeCaEditorLabels: typeof window.XfeCaEditorLabels,
+        has_mountOptionsEditor: !!(window.XfeCaTypeSwitcher && window.XfeCaTypeSwitcher.mountOptionsEditor),
+        has_bind: !!(window.XfeCaTypeSwitcher && window.XfeCaTypeSwitcher.bind),
+        methods: window.XfeCaTypeSwitcher ? Object.keys(window.XfeCaTypeSwitcher) : null
+    };
+    document.getElementById('r1').textContent = JSON.stringify(r, null, 2);
+}
+function step2() {
+    var r = {};
+    ['field_type', 'options_csv', 'default_value'].forEach(function (name) {
+        var byId = document.getElementById(name);
+        var byNameInput = document.querySelector('input[name="' + name + '"]');
+        var byNameSelect = document.querySelector('select[name="' + name + '"]');
+        r[name] = {
+            byId: byId ? byId.tagName + '#' + byId.id : null,
+            byName_input: byNameInput ? byNameInput.tagName + '#' + byNameInput.id : null,
+            byName_select: byNameSelect ? byNameSelect.tagName + '#' + byNameSelect.id : null
+        };
+    });
+    document.getElementById('r2').textContent = JSON.stringify(r, null, 2);
+}
+function step3() {
+    var eds = document.querySelectorAll('.xfe-ca-opt-editor');
+    var r = { editor_count: eds.length, editors: [] };
+    eds.forEach(function (ed, i) {
+        r.editors.push({
+            idx: i,
+            display: ed.style.display,
+            parent: ed.parentNode && ed.parentNode.tagName,
+            row_count: ed.querySelectorAll('.xfe-ca-opt-row').length
+        });
+    });
+    document.getElementById('r3').textContent = JSON.stringify(r, null, 2);
+}
+function step4() {
+    var sel = findByName('field_type');
+    if (!sel) { document.getElementById('r4').textContent = 'field_type not found'; return; }
+    sel.value = 'boolean';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    var ed = document.querySelector('.xfe-ca-opt-editor');
+    var r = { field_type: sel.value, editor_visible: ed ? (ed.style.display !== 'none') : null, row_count: ed ? ed.querySelectorAll('.xfe-ca-opt-row').length : 0, rows: [] };
+    if (ed) {
+        ed.querySelectorAll('.xfe-ca-opt-row').forEach(function (row, i) {
+            var k = row.querySelector('.xfe-ca-opt-key');
+            var l = row.querySelector('.xfe-ca-opt-label');
+            r.rows.push({ idx: i, key: k ? k.value : null, label: l ? l.value : null, readonly: k ? k.readOnly : null });
+        });
+    }
+    document.getElementById('r4').textContent = JSON.stringify(r, null, 2);
+}
+</script>
+</body>
+</html>

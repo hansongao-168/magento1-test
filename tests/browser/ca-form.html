@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>XFE_Carrier 自定义属性编辑 - 浏览器真机测试</title>
+<style>
+body { font-family: "Microsoft YaHei", Arial, sans-serif; padding: 20px; }
+fieldset { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+legend { font-weight: bold; }
+table { border-collapse: collapse; }
+td { padding: 6px 10px; vertical-align: top; }
+.var-tag { background: #FFE; padding: 2px 6px; font-size: 11px; border-radius: 3px; margin-left: 8px; }
+.note { color: #888; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<h1>XFE_Carrier 自定义属性编辑 — 浏览器真机测试</h1>
+
+<!-- Variant 1: id = name -->
+<fieldset id="v1">
+    <legend>Variant 1: id = name (标准 Magento Form 渲染)</legend>
+    <table>
+    <tr><td>类型:</td><td>
+        <select id="field_type" name="field_type">
+            <option value="text">文本</option>
+            <option value="number">数字</option>
+            <option value="select">下拉(单选)</option>
+            <option value="multiselect">多选</option>
+            <option value="boolean">布尔</option>
+        </select>
+    </td></tr>
+    <tr><td>候选项:</td><td>
+        <input type="text" id="options_csv" name="options_csv" value="" />
+        <p class="note">仅 select / multiselect 需填。</p>
+    </td></tr>
+    <tr><td>默认值:</td><td>
+        <input type="text" id="default_value" name="default_value" value="" />
+    </td></tr>
+    </table>
+</fieldset>
+
+<!-- Variant 2: id 带 form 前缀 -->
+<fieldset id="v2">
+    <legend>Variant 2: id 带前缀 "edit_form_<name>" (Mage Varien_Data_Form 偶发)</legend>
+    <table>
+    <tr><td>类型:</td><td>
+        <select id="edit_form_field_type" name="field_type">
+            <option value="text">文本</option>
+            <option value="number">数字</option>
+            <option value="select">下拉(单选)</option>
+            <option value="multiselect">多选</option>
+            <option value="boolean">布尔</option>
+        </select>
+    </td></tr>
+    <tr><td>候选项:</td><td>
+        <input type="text" id="edit_form_options_csv" name="options_csv" value="" />
+        <p class="note">仅 select / multiselect 需填。</p>
+    </td></tr>
+    <tr><td>默认值:</td><td>
+        <input type="text" id="edit_form_default_value" name="default_value" value="" />
+    </td></tr>
+    </table>
+</fieldset>
+
+<!-- Variant 3: name 数组形式 -->
+<fieldset id="v3">
+    <legend>Variant 3: name 是数组 "options[<name>]" (Mage Form 偶发)</legend>
+    <table>
+    <tr><td>类型:</td><td>
+        <select id="v3_field_type" name="options[field_type]">
+            <option value="text">文本</option>
+            <option value="number">数字</option>
+            <option value="select">下拉(单选)</option>
+            <option value="multiselect">多选</option>
+            <option value="boolean">布尔</option>
+        </select>
+    </td></tr>
+    <tr><td>候选项:</td><td>
+        <input type="text" id="v3_options_csv" name="options[options_csv]" value="" />
+        <p class="note">仅 select / multiselect 需填。</p>
+    </td></tr>
+    <tr><td>默认值:</td><td>
+        <input type="text" id="v3_default_value" name="options[default_value]" value="" />
+    </td></tr>
+    </table>
+</fieldset>
+
+<!-- 实测输出区 -->
+<hr />
+<h2>实测结果</h2>
+<pre id="output" style="background:#F5F5F5; padding:10px; font-size:11px; line-height:1.6;"></pre>
+
+<!-- 加载真实 JS 文件 -->
+<script src="/js/xfe_carrier/custom-attribute-form-switcher.js"></script>
+
+<!-- 模拟 type_switcher.phtml(对每个 variant 启动 bind) -->
+<script>
+// 标记页面已加载,等待 JS 执行
+window.__ready = false;
+window.addEventListener('load', function () {
+    window.__ready = true;
+});
+</script>
+
+</body>
+</html>

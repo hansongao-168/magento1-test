@@ -16,6 +16,12 @@
                     <sort_order>30</sort_order>
                     <show_new>0</show_new>
                 </account>
+                <ftp_account translate="label" module="xfe_carrier">
+                    <label>FTP账号管理</label>
+                    <block>xfe_carrier/adminhtml_carrier_edit_tab_ftpaccount</block>
+                    <sort_order>35</sort_order>
+                    <show_new>0</show_new>
+                </ftp_account>
                 <rules translate="label" module="xfe_carrier">
                     <label>规则管理</label>
                     <block>xfe_carrier/adminhtml_carrier_edit_tab_rules</block>

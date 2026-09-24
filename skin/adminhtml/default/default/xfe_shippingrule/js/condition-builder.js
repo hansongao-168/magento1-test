@@ -17,17 +17,21 @@ var rootGroupOrder = [];      // Ordered array of top-level group IDs
 var nextGroupId = 0;
 var nextConditionId = 0;
 
-// Numeric attributes list (for operator filtering)
-var numericAttributes = [
-    'user_id', 'package_count', 'package_weight',
-    'length', 'width', 'height', 'volume'
-];
-
 // Attribute options (populated from PHP)
 var attributeOptions = [];
 var operatorOptions = {};
 var numericOperators = {};
 var stringOperators = {};
+var datetimeOperators = {};
+// 属性 → 类型 ('numeric'|'string'|'datetime') 元数据，由 PHP Conditions Tab 注入。
+// 缺省视为 string，避免新属性被错误地套上数值操作符。
+var attributeTypeMap = {};
+function isNumericAttribute(code) {
+    return attributeTypeMap && attributeTypeMap[code] === 'numeric';
+}
+function isDatetimeAttribute(code) {
+    return attributeTypeMap && attributeTypeMap[code] === 'datetime';
+}
 
 /**
  * Initialize the condition builder from hidden field data
@@ -38,6 +42,7 @@ function initConditionBuilder() {
     var opEl = $('op_options_json');
     var numOpEl = $('numeric_op_json');
     var strOpEl = $('string_op_json');
+    var datetimeOpEl = $('datetime_op_json');
 
     if (attrEl) {
         try {
@@ -59,6 +64,19 @@ function initConditionBuilder() {
             stringOperators = JSON.parse(strOpEl.value);
         } catch(e) { stringOperators = {}; }
     }
+    if (datetimeOpEl) {
+        try {
+            datetimeOperators = JSON.parse(datetimeOpEl.value);
+        } catch(e) { datetimeOperators = {}; }
+    }
+
+    // 属性 → 类型元数据 (PHP 下发)。缺省回退到空对象。
+    var metaEl = $('attribute_meta_json');
+    if (metaEl) {
+        try {
+            attributeTypeMap = JSON.parse(metaEl.value);
+        } catch (e) { attributeTypeMap = {}; }
+    }
 
     // Load existing conditions
     var hiddenEl = $('groups_data_hidden');
@@ -77,6 +95,20 @@ function initConditionBuilder() {
 
     // Default: add one empty group
     addConditionGroup();
+    // Safety: ensure groups_data_hidden always carries a valid payload so
+    // the form submission persists the condition tree. addConditionGroup
+    // returns early without writing the hidden field when the UI container
+    // (`condition-groups-container`) isn't in the DOM yet - which can happen
+    // on a race with varienTabs moving the conditions tab content into
+    // edit_form. In that case write a minimal valid default directly.
+    if (typeof $('groups_data_hidden') !== 'undefined' && $('groups_data_hidden') && !$('groups_data_hidden').value) {
+        if (rootGroupOrder.length === 0) {
+            var gid = nextGroupId++;
+            conditionGroups[gid] = {id: gid, aggregator: 'all', items: [], parentGroupId: null};
+            rootGroupOrder.push(gid);
+        }
+        updateHiddenField();
+    }
 }
 
 /**
@@ -225,6 +257,11 @@ function addConditionToGroup(groupId, conditionData) {
     var html = buildConditionHtml(groupId, conditionId, attr, op, val);
     container.insert({bottom: html});
 
+    // 若操作符不需要值（如 is_null / is_not_null），同步禁用输入框
+    if (op === 'is_null' || op === 'is_not_null') {
+        toggleValueInput(groupId, conditionId, op);
+    }
+
     // Track in data structure
     conditionGroups[groupId].items.push({
         type: 'condition',
@@ -280,8 +317,9 @@ function buildConditionHtml(groupId, conditionId, attr, op, val) {
     html += '<select id="condition-op-' + groupId + '-' + conditionId + '" onchange="onOperatorChange(' + groupId + ', ' + conditionId + ', this.value)" style="width:140px;">';
 
     // Determine which operators to show
-    var isNumeric = numericAttributes.indexOf(attr) >= 0;
-    var operators = isNumeric ? numericOperators : stringOperators;
+    var isNumeric = isNumericAttribute(attr);
+    var isDatetime = isDatetimeAttribute(attr);
+    var operators = isNumeric ? numericOperators : (isDatetime ? datetimeOperators : stringOperators);
     for (var opKey in operators) {
         if (operators.hasOwnProperty(opKey)) {
             html += '<option value="' + opKey + '"' + (op === opKey ? ' selected' : '') + '>' + operators[opKey] + '</option>';
@@ -290,7 +328,8 @@ function buildConditionHtml(groupId, conditionId, attr, op, val) {
     html += '</select>';
 
     // Value input
-    html += '<input type="text" id="condition-val-' + groupId + '-' + conditionId + '" value="' + escapeHtml(val) + '" placeholder="Value" style="width:120px;" onchange="onValueChange(' + groupId + ', ' + conditionId + ', this.value)" />';
+    var valuePlaceholder = isDatetime ? 'YYYY-MM-DD HH:mm:ss' : 'Value';
+    html += '<input type="text" id="condition-val-' + groupId + '-' + conditionId + '" value="' + escapeHtml(val) + '" placeholder="' + valuePlaceholder + '" style="width:120px;" onchange="onValueChange(' + groupId + ', ' + conditionId + ', this.value)" />';
 
     // Remove button
     html += '<button type="button" class="scalable delete" onclick="removeCondition(' + groupId + ', ' + conditionId + ')" style="color:red;padding:0 6px;" title="Remove condition">X</button>';
@@ -393,8 +432,11 @@ function onAttributeChange(groupId, conditionId, value) {
 
         // Update operator options based on attribute type
         if (opSelect) {
-            var isNumeric = numericAttributes.indexOf(value) >= 0;
-            updateOperatorOptions(opSelect, isNumeric);
+            var isNumeric = isNumericAttribute(value);
+            var isDatetime = isDatetimeAttribute(value);
+            updateOperatorOptions(opSelect, isNumeric, isDatetime);
+            // 当前操作符切换后要重新判断值输入框是否可用
+            toggleValueInput(groupId, conditionId, opSelect.value);
         }
     }
 
@@ -414,7 +456,23 @@ function onCustomAttributeChange(groupId, conditionId, value) {
  */
 function onOperatorChange(groupId, conditionId, value) {
     updateConditionData(groupId, conditionId, 'operator', value);
+    toggleValueInput(groupId, conditionId, value);
     updateHiddenField();
+}
+
+/**
+ * 根据操作符启用/禁用值输入框；is_null/is_not_null 不需要值。
+ */
+function toggleValueInput(groupId, conditionId, opValue) {
+    var valEl = $('condition-val-' + groupId + '-' + conditionId);
+    if (!valEl) return;
+    if (opValue === 'is_null' || opValue === 'is_not_null') {
+        valEl.value = '';
+        valEl.disabled = true;
+        updateConditionData(groupId, conditionId, 'value', '');
+    } else {
+        valEl.disabled = false;
+    }
 }
 
 /**
@@ -438,13 +496,13 @@ function changeAggregator(groupId, value) {
 /**
  * Update operator dropdown options
  */
-function updateOperatorOptions(selectEl, isNumeric) {
+function updateOperatorOptions(selectEl, isNumeric, isDatetime) {
     if (!selectEl) return;
 
     var selectedValue = selectEl.value;
     selectEl.innerHTML = '';
 
-    var operators = isNumeric ? numericOperators : stringOperators;
+    var operators = isNumeric ? numericOperators : (isDatetime ? datetimeOperators : stringOperators);
     for (var key in operators) {
         if (operators.hasOwnProperty(key)) {
             var option = document.createElement('option');

@@ -44,6 +44,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Rule_Edit_Tab_Conditions
         $operatorOptions = $helper->getOperatorOptions();
         $numericOps      = $helper->getNumericOperators();
         $stringOps       = $helper->getStringOperators();
+        $datetimeOps     = $helper->getDatetimeOperators();
 
         $fieldset->addField('attr_options_json', 'hidden', array(
             'name'  => 'attr_options_json',
@@ -60,6 +61,17 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Rule_Edit_Tab_Conditions
         $fieldset->addField('string_op_json', 'hidden', array(
             'name'  => 'string_op_json',
             'value' => Mage::helper('core')->jsonEncode($stringOps),
+        ));
+        $fieldset->addField('datetime_op_json', 'hidden', array(
+            'name'  => 'datetime_op_json',
+            'value' => Mage::helper('core')->jsonEncode($datetimeOps),
+        ));
+
+        // 属性 → 类型元数据，供共享 JS 决定下拉项集合与值输入框禁用。
+        // 1.0.11+ 新增。
+        $fieldset->addField('attribute_meta_json', 'hidden', array(
+            'name'  => 'attribute_meta_json',
+            'value' => Mage::helper('core')->jsonEncode($helper->getAttributeTypeMap()),
         ));
 
         return parent::_prepareForm();

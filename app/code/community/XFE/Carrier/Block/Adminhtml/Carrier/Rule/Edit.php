@@ -8,6 +8,12 @@
  *   - Uses a custom container.phtml that calls getChildHtml('tabs')
  *     and getFormHtml()
  *   - Localises the back button label to Chinese
+ *
+ * AJAX 模式 (ADR 0031):
+ *   - getTemplate() 根据 registry xfe_carrier_rule_edit_ajax 切换为 ajax.phtml
+ *     (无 chrome, 仅 form + tabs 主体)
+ *   - getSaveUrl() 追加 ajax=1 参数,让前端提交触发 AJAX 分支
+ *   - getBackUrl() / getHeaderText() 仍保留, AJAX 模板不调用
  */
 class XFE_Carrier_Block_Adminhtml_Carrier_Rule_Edit extends Mage_Adminhtml_Block_Widget_Form_Container
 {
@@ -50,6 +56,21 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Rule_Edit extends Mage_Adminhtml_Block
     }
 
     /**
+     * AJAX 模式 (ADR 0031) 使用无 chrome 模板。
+     * 由 controller 在 render 之前通过 registry 设置 xfe_carrier_rule_edit_ajax。
+     * 该标志由 editRuleAction() 的 ?ajax=1 分支写入。
+     *
+     * @return string
+     */
+    public function getTemplate()
+    {
+        if (Mage::registry('xfe_carrier_rule_edit_ajax')) {
+            return 'xfe_carrier/rule/edit/ajax.phtml';
+        }
+        return parent::getTemplate();
+    }
+
+    /**
      * @return string
      */
     public function getHeaderText()
@@ -89,6 +110,12 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Rule_Edit extends Mage_Adminhtml_Block
         return $this->getUrl('*/carrier/');
     }
 
+    /**
+     * AJAX 模式追加 ajax=1 参数 (ADR 0031),让前端 form.submit() 触发
+     * saveRuleAction 的 AJAX 分支。
+     *
+     * @return string
+     */
     public function getSaveUrl()
     {
         $rule = Mage::registry('xfe_carrier_rule_data');
@@ -103,6 +130,10 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Rule_Edit extends Mage_Adminhtml_Block
         }
         if ($logoId) {
             $params['logo_id'] = $logoId;
+        }
+        // AJAX 模式追加 ajax=1 标志
+        if (Mage::registry('xfe_carrier_rule_edit_ajax')) {
+            $params['ajax'] = 1;
         }
         return $this->getUrl('*/*/saveRule', $params);
     }

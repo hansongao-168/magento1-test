@@ -6,12 +6,42 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Account_Edit extends Mage_Adminhtml_Bl
     {
         $this->_objectId   = 'account_id';
         $this->_blockGroup = 'xfe_carrier';
-        $this->_controller = 'adminhtml_carrier_account';
+        // _controller 必须等于 Controller 文件名第二段('CarrierController' → 'carrier'),
+        // 否则 getDeleteUrl() 拼出的 URL 是不存在的 'adminhtml_carrier/delete'。
+        $this->_controller = 'carrier';
         $this->_mode       = 'edit';
 
         parent::__construct();
 
         $this->_updateButton('save', 'label', Mage::helper('xfe_carrier')->__('保存账号'));
+    }
+
+    /**
+     * 显式挂载 form 子块。
+     *
+     * **关键**:必须**跳过** parent::_prepareLayout()。
+     * 父类 Form_Container::_prepareLayout() 会用 _blockGroup/_controller/_mode
+     * 拼出 "xfe_carrier/adminhtml_carrier_edit_form" 去 createBlock(),我们的
+     * 实际类名是 ..._Account_Edit_Form,拼出的 alias 找不到,createBlock()
+     * 返回 null,setChild('form', null) 会把这里挂上去的 form 块覆盖成 null,
+     * 模板 getChildHtml('form') 渲染空,页面就空白了。
+     *
+     * 正确做法:直接调祖父类 Container::_prepareLayout() 处理按钮,
+     * 然后**自己**挂 form 块。参考 XFE_Carrier_Block_Adminhtml_Carrier_Account_Import
+     * 的同款模式。
+     *
+     * @return Mage_Core_Block_Abstract
+     */
+    protected function _prepareLayout()
+    {
+        Mage_Adminhtml_Block_Widget_Container::_prepareLayout();
+        $this->setChild(
+            'form',
+            $this->getLayout()->createBlock(
+                'xfe_carrier/adminhtml_carrier_account_edit_form'
+            )
+        );
+        return $this;
     }
 
     /**

@@ -2,9 +2,15 @@
 /**
  * Social Login Controller - handles /oauth2/login/*
  *
+ * 【2026-09-09】本控制器会通过 helper 间接引用 OAuth2 命名空间类。
+ * 顶部显式注册 autoloader 作为兜底。register() 内部 $_registered 幂等。
+ *
  * @category   Community
  * @package    XFE_OAuth2
  */
+require_once BP . '/lib/XFE/OAuth2/Autoloader.php';
+XFE_OAuth2_Autoloader::register();
+
 class XFE_OAuth2_LoginController extends Mage_Core_Controller_Front_Action
 {
     /**

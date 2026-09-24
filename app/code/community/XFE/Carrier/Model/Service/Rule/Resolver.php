@@ -137,7 +137,11 @@ class XFE_Carrier_Model_Service_Rule_Resolver
         }
 
         if (!$fallback) {
-            return array('id' => null, 'rule_id' => null, 'used_fallback' => false);
+            // 1.0.11+：严格模式下未命中直接抛 NoRuleMatch，让 OrderRuleResolver / QuoteRuleResolver
+            // 的前端调用方接住异常并按"符合才输出正确数据"策略处理。
+            throw new XFE_Carrier_Exception_NoRuleMatch(
+                sprintf('No carrier rule matched for carrier_id=%d, target=%s.', (int)$carrierId, $targetType)
+            );
         }
 
         $default = $this->_findDefaultTarget($targetType, $carrierId);

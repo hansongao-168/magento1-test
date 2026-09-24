@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    XFE_Injection 自描述 injection.xml。
+
+    演示本模块可以声明自己的 hook / service / calling,
+    也可以为空(本模块自身不需要跨模块调用,这里仅给出一个空骨架示例)。
+-->
+<config>
+    <modules>
+        <XFE_Injection>
+            <version>1.0.0</version>
+        </XFE_Injection>
+    </modules>
+    <injection>
+        <!-- 本模块不提供外部 hook,仅预留扩展点 -->
+        <hooks/>
+        <!-- 本模块不提供外部 service,所有能力均通过 Runner 静态方法 -->
+        <services/>
+        <!-- 本模块不消费外部 calling -->
+        <callings/>
+    </injection>
+</config>

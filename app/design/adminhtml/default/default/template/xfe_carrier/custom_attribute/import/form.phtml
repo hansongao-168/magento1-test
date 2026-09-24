@@ -1,0 +1,30 @@
+<?php
+/**
+ * 自定义属性批量导入 - 上传表单
+ */
+/** @var Mage_Adminhtml_Block_Widget_Form $this */
+$helper = Mage::helper('xfe_carrier');
+?>
+<form action="<?php echo $this->getUrl('*/carrier_customAttribute/importPost'); ?>"
+      method="post" enctype="multipart/form-data">
+    <input name="form_key" type="hidden"
+           value="<?php echo Mage::getSingleton('core/session')->getFormKey(); ?>" />
+    <table class="form-list">
+        <tr>
+            <td class="label">
+                <label for="custom_attribute_csv"><?php echo $helper->__('选择 CSV 文件'); ?></label>
+            </td>
+            <td class="value">
+                <input type="file" name="custom_attribute_csv" id="custom_attribute_csv" />
+            </td>
+        </tr>
+        <tr>
+            <td>&nbsp;</td>
+            <td class="value">
+                <button type="submit" class="scalable save">
+                    <span><span><span><?php echo $helper->__('上传并导入'); ?></span></span></span>
+                </button>
+            </td>
+        </tr>
+    </table>
+</form>

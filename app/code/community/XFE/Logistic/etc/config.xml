@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <XFE_Logistic>
+            <version>1.3.0</version>
+        </XFE_Logistic>
+    </modules>
+    <global>
+        <models>
+            <xfe_logistic>
+                <class>XFE_Logistic_Model</class>
+                <!--
+                    PodService 位于 Service/ 目录（对齐 AGENTS.md 的 L3 Service 映射），
+                    与 Magento 默认 Model 工厂路径不一致，需 rewrite 到真实类名。
+                    print_gls_glsGateway 位于 Model/Print/Gls/，默认解析已正确，无需 rewrite。
+                -->
+                <rewrite>
+                    <pod_service>XFE_Logistic_Service_PodService</pod_service>
+                </rewrite>
+            </xfe_logistic>
+        </models>
+        <helpers>
+            <xfe_logistic>
+                <class>XFE_Logistic_Helper</class>
+            </xfe_logistic>
+        </helpers>
+    </global>
+</config>

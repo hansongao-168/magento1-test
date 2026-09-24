@@ -8,6 +8,11 @@
                         <children>
                             <xfe_carrier translate="title" module="xfe_carrier">
                                 <title>承运商管理</title>
+                                <children>
+                                    <custom_attribute translate="title" module="xfe_carrier">
+                                        <title>自定义属性</title>
+                                    </custom_attribute>
+                                </children>
                             </xfe_carrier>
                         </children>
                     </system>

@@ -29,7 +29,8 @@
  *
  * Operators supported (string + numeric):
  *   ==   !=   >   >=   <   <=
- *   in   contains
+ *   in   not_in   contains   not_contains
+ *   is_null   is_not_null
  *   between  (semantics: "x~y", or numeric inclusive range)
  */
 class XFE_Carrier_Model_Service_Rule_Evaluator
@@ -117,6 +118,10 @@ class XFE_Carrier_Model_Service_Rule_Evaluator
         $expected  = isset($cond['value'])     ? $cond['value']             : null;
         $actual    = $context->get($attribute);
 
+        if ($attribute === 'order_created_at') {
+            return $this->_evaluateDatetime($operator, $actual, $expected);
+        }
+
         switch ($operator) {
             case '==':
                 return $this->_eq($actual, $expected);
@@ -132,13 +137,101 @@ class XFE_Carrier_Model_Service_Rule_Evaluator
                 return $this->_lt($actual, $expected) || $this->_eq($actual, $expected);
             case 'in':
                 return $this->_in($actual, $expected);
+            case 'not_in':
+                return !$this->_in($actual, $expected);
             case 'contains':
                 return $this->_contains($actual, $expected);
+            case 'not_contains':
+                return !$this->_contains($actual, $expected);
+            case 'is_null':
+                return $actual === null;
+            case 'is_not_null':
+                return $actual !== null;
             case 'between':
                 return $this->_between($actual, $expected);
             default:
                 return false;
         }
+    }
+
+    /**
+     * @param string $operator
+     * @param mixed $actual
+     * @param mixed $expected
+     * @return bool
+     */
+    protected function _evaluateDatetime($operator, $actual, $expected)
+    {
+        $actualTimestamp = $this->_toTimestamp($actual);
+
+        if ($operator === 'is_null') {
+            return $actualTimestamp === null;
+        }
+        if ($operator === 'is_not_null') {
+            return $actualTimestamp !== null;
+        }
+        switch ($operator) {
+            case '==':
+            case '!=':
+                $expectedTimestamp = $this->_toTimestamp($expected);
+                if ($actualTimestamp === null || $expectedTimestamp === null) {
+                    return false;
+                }
+                $equal = $actualTimestamp === $expectedTimestamp;
+                return $operator === '==' ? $equal : !$equal;
+            case '>':
+            case '>=':
+            case '<':
+            case '<=':
+                $expectedTimestamp = $this->_toTimestamp($expected);
+                if ($actualTimestamp === null || $expectedTimestamp === null) {
+                    return false;
+                }
+                $actualValue = (float)$actualTimestamp;
+                $expectedValue = (float)$expectedTimestamp;
+                switch ($operator) {
+                    case '>': return $actualValue > $expectedValue;
+                    case '>=': return $actualValue >= $expectedValue;
+                    case '<': return $actualValue < $expectedValue;
+                    case '<=': return $actualValue <= $expectedValue;
+                }
+                return false;
+            case 'between':
+                if (!is_string($expected)) {
+                    return false;
+                }
+                $parts = preg_split('/\s*~\s*/', $expected);
+                if (count($parts) !== 2) {
+                    return false;
+                }
+                $from = $this->_toTimestamp($parts[0]);
+                $to = $this->_toTimestamp($parts[1]);
+                return $from !== null && $to !== null
+                    && $actualTimestamp >= $from && $actualTimestamp <= $to;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * @param mixed $value
+     * @return int|null
+     */
+    protected function _toTimestamp($value)
+    {
+        if ($value instanceof DateTime) {
+            return (int)$value->getTimestamp();
+        }
+        if (!is_string($value) && !is_numeric($value)) {
+            return null;
+        }
+
+        $date = DateTime::createFromFormat('!Y-m-d H:i:s', (string)$value);
+        if (!$date || $date->format('Y-m-d H:i:s') !== (string)$value) {
+            return null;
+        }
+
+        return (int)$date->getTimestamp();
     }
 
     /**

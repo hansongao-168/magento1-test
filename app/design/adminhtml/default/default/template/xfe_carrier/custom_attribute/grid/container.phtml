@@ -1,0 +1,51 @@
+<?php
+/**
+ * 自定义属性管理列表页
+ *
+ * 顶部: 4 分类 Tab 过滤器 + 标题
+ * 主体: Grid(系统自动渲染,通过 xfecarrier.xml 的
+ *       <adminhtml_carrier_customattribute> 节点)
+ *
+ * 关联文档: docs/architecture/carrier-global-custom-field-defs.md
+ */
+/** @var XFE_Carrier_Block_Adminhtml_CustomAttribute $this */
+$helper = Mage::helper('xfe_carrier');
+$current = $this->getRequest()->getParam('entity_type');
+$tabs = array(
+    ''                 => $helper->__('全部'),
+    XFE_Carrier_Domain_CustomAttribute::ENTITY_TYPE_CARRIER     => $helper->__('承运商信息'),
+    XFE_Carrier_Domain_CustomAttribute::ENTITY_TYPE_ACCOUNT     => $helper->__('账号'),
+    XFE_Carrier_Domain_CustomAttribute::ENTITY_TYPE_FTP_ACCOUNT => $helper->__('FTP'),
+    XFE_Carrier_Domain_CustomAttribute::ENTITY_TYPE_LOGO        => $helper->__('LOGO'),
+);
+?>
+<div class="content-header">
+    <table cellspacing="0">
+        <tr>
+            <td style="width:50%;">
+                <h3><?php echo $helper->__('自定义属性管理'); ?></h3>
+            </td>
+            <td class="form-buttons">&nbsp;</td>
+        </tr>
+    </table>
+</div>
+
+<div class="xfe-attr-tabs" style="margin:8px 0;">
+    <?php foreach ($tabs as $key => $label):
+        $url = $this->getUrl('*/carrier_customAttribute/index',
+            $key === '' ? array() : array('entity_type' => $key));
+        $active = ($key === '' && $current === null)
+            || ($key !== '' && $key === $current);
+    ?>
+        <a href="<?php echo $url; ?>"
+           class="xfe-attr-tab<?php echo $active ? ' active' : ''; ?>"
+           style="display:inline-block;padding:6px 14px;margin-right:4px;
+                  border:1px solid #ccc;border-radius:3px;
+                  text-decoration:none;color:#333;
+                  background:<?php echo $active ? '#e1f0ff' : '#f6f6f6'; ?>;">
+            <?php echo $this->escapeHtml($label); ?>
+        </a>
+    <?php endforeach; ?>
+</div>
+
+<?php echo $this->getGridHtml(); ?>

@@ -11,10 +11,13 @@
  * so the Account Edit page shows rules in the same look-and-feel as
  * the carrier-level Rules tab.
  *
- * The grid block's _toHtml() prepends the [+ 娣诲姞瑙勫垯] button. The
+ * The grid block's _toHtml() prepends the [+ 添加规则] button. The
  * button sits ABOVE the grid in a simple `<p>` toolbar (not a
  * `<div class="content-header">` - that class is for page-level
  * headers and would add unwanted borders/padding inside a fieldset).
+ *
+ * Mojibake cleanup (1.0.10): all literal Chinese strings here are real
+ * UTF-8 bytes (previously UTF-8 read as Latin-1 then re-saved as UTF-8).
  */
 class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Rules_Grid
     extends Mage_Adminhtml_Block_Widget_Grid
@@ -53,6 +56,24 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Rules_Grid
     }
 
     /**
+     * Materialise the condition tree for every loaded rule.
+     *
+     * Collection loads don't populate conditions_data (the resource
+     * model's _afterLoad() only runs on a single-model load), so without
+     * this the 条件描述 column would show "匹配所有" for every rule.
+     *
+     * @return $this
+     */
+    protected function _afterLoadCollection()
+    {
+        $collection = $this->getCollection();
+        if ($collection instanceof XFE_Carrier_Model_Resource_Rule_Collection) {
+            $collection->loadConditions();
+        }
+        return parent::_afterLoadCollection();
+    }
+
+    /**
      * Grid columns - same shape as the carrier-level Rules tab.
      *
      * @return $this
@@ -62,7 +83,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Rules_Grid
         $helper = Mage::helper('xfe_carrier');
 
         $this->addColumn('module_code', array(
-            'header'  => $helper->__('鎵€灞炴ā鍧?),
+            'header'  => $helper->__('所属模块'),
             'index'   => 'module_code',
             'width'   => '100px',
             'type'    => 'options',
@@ -70,17 +91,25 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Rules_Grid
         ));
 
         $this->addColumn('name', array(
-            'header' => $helper->__('瑙勫垯鍚嶇О'),
+            'header' => $helper->__('规则名称'),
             'index'  => 'name',
         ));
 
         $this->addColumn('description', array(
-            'header' => $helper->__('鎻忚堪'),
+            'header' => $helper->__('描述'),
             'index'  => 'description',
         ));
 
+        $this->addColumn('conditions_description', array(
+            'header'   => $helper->__('条件描述'),
+            'frame_callback' => array($this, 'decorateConditionsDescription'),
+            'filter'   => false,
+            'sortable' => false,
+            'width'    => '280px',
+        ));
+
         $this->addColumn('status', array(
-            'header'   => $helper->__('鐘舵€?),
+            'header'   => $helper->__('状态'),
             'index'    => 'status',
             'type'     => 'options',
             'width'    => '80px',
@@ -89,27 +118,27 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Rules_Grid
         ));
 
         $this->addColumn('priority', array(
-            'header' => $helper->__('\xe4\xbc\x98\xe5\x85\x88\xe7\xba\xa7'),
+            'header' => $helper->__('优先级'),
             'index'  => 'priority',
             'type'   => 'number',
             'width'  => '60px',
         ));
 
         $this->addColumn('sort_order', array(
-            'header' => $helper->__('鎺掑簭'),
+            'header' => $helper->__('排序'),
             'index'  => 'sort_order',
             'type'   => 'number',
             'width'  => '60px',
         ));
 
         $this->addColumn('action', array(
-            'header'  => $helper->__('鎿嶄綔'),
+            'header'  => $helper->__('操作'),
             'width'   => '140px',
             'type'    => 'action',
             'getter'  => 'getId',
             'actions' => array(
                 array(
-                    'caption' => $helper->__('缂栬緫'),
+                    'caption' => $helper->__('编辑'),
                     'url'     => array(
                         'base'   => '*/carrier/editRule',
                         'params' => array(
@@ -120,10 +149,10 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Rules_Grid
                     'field'   => 'rule_id',
                 ),
                 array(
-                    'caption' => $helper->__('鍒犻櫎'),
+                    'caption' => $helper->__('删除'),
                     'url'     => array('base' => '*/carrier/deleteRule', 'params' => array()),
                     'field'   => 'rule_id',
-                    'confirm' => $helper->__('纭畾瑕佸垹闄よ瑙勫垯鍚楋紵'),
+                    'confirm' => $helper->__('确定要删除该规则吗？'),
                 ),
             ),
             'filter'   => false,
@@ -160,7 +189,24 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Rules_Grid
      */
     public function getEmptyText()
     {
-        return Mage::helper('xfe_carrier')->__('鏆傛棤瑙勫垯锛岃鐐瑰嚮涓婃柟鎸夐挳娣诲姞銆?);
+        return Mage::helper('xfe_carrier')->__('暂无规则，请点击上方按钮添加。');
+    }
+
+    /**
+     * @param mixed $value
+     * @param Varien_Object $row
+     * @param Mage_Adminhtml_Block_Widget_Grid_Column $column
+     * @param bool $isExport
+     * @return string
+     */
+    public function decorateConditionsDescription($value, $row, $column, $isExport)
+    {
+        $description = (string)$row->getConditionsDescription();
+        if ($isExport) {
+            return $description;
+        }
+
+        return nl2br(htmlspecialchars($description, ENT_QUOTES, 'UTF-8'));
     }
 
     /**
@@ -185,10 +231,10 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Rules_Grid
     }
 
     /**
-     * Prepend the [+ 娣诲姞瑙勫垯] button above the grid.
+     * Prepend the [+ 添加规则] button above the grid.
      *
      * Wrapped in a plain `<p>` toolbar (no content-header class) so the
-     * button renders cleanly inside the 瑙勫垯璁剧疆 entry-edit block.
+     * button renders cleanly inside the 规则设置 entry-edit block.
      *
      * @return string
      */
@@ -203,7 +249,7 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Rules_Grid
         $html  = '<div id="account-rules-list-wrapper">';
         $html .= '<p class="form-buttons" style="margin:0 0 8px 0;">';
         $html .= '<button type="button" class="scalable add" onclick="setLocation(\'' . $addUrl . '\')">';
-        $html .= '<span><span><span>' . $helper->__('+ 娣诲姞瑙勫垯') . '</span></span></span>';
+        $html .= '<span><span><span>' . $helper->__('+ 添加规则') . '</span></span></span>';
         $html .= '</button>';
         $html .= '</p>';
         $html .= parent::_toHtml();

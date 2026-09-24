@@ -17,9 +17,12 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Logo_Rules_Grid
     {
         $logo = Mage::registry('xfe_carrier_logo_data');
         if ($logo && $logo->getId()) {
+            // ADR 0030: 同时按 logo_id 过滤，避免该 carrier 下其他 logo 的规则混入列表。
+            // 之前只按 module_code=logo 过滤，是因为表中还没有 logo_id 列（现在 1.0.16 加了）。
             $collection = Mage::getModel('xfe_carrier/carrier_rule')->getCollection()
                 ->addFieldToFilter('carrier_id', (int)$logo->getCarrierId())
                 ->addFieldToFilter('module_code', 'logo')
+                ->addFieldToFilter('logo_id', (int)$logo->getId())
                 ->setOrder('sort_order', 'ASC');
         } else {
             $collection = new Varien_Data_Collection();

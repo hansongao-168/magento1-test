@@ -134,4 +134,50 @@
         </reference>
     </oauth_customer_token_index>
     <!-- EOF My Applications-->
+
+    <!-- XFE OAuth2 - My API Clients (added by XFE_OAuth2 module) -->
+    <customer_account>
+        <reference name="customer_account_navigation">
+            <action method="addLink" translate="label" module="xfeoauth2">
+                <name>oauth2_clients</name>
+                <path>oauth2/client/index</path>
+                <label>My API Clients</label>
+            </action>
+        </reference>
+    </customer_account>
+
+    <oauth2_client_index>
+        <reference name="root">
+            <action method="setTemplate"><template>page/2columns-left.phtml</template></action>
+            <action method="setHeaderTitle" translate="title" module="xfeoauth2"><title>My API Clients</title></action>
+        </reference>
+        <reference name="content">
+            <block type="page/html_wrapper" name="my.account.wrapper" translate="label">
+                <label>My Account Wrapper</label>
+                <action method="setElementClass"><value>my-account</value></action>
+            </block>
+        </reference>
+        <reference name="my.account.wrapper">
+            <block type="xfeoauth2/customer_oauth2Client" name="customer.oauth2.client.list"
+                   template="xfeoauth2/customer/oauth2client/list.phtml"/>
+        </reference>
+    </oauth2_client_index>
+
+    <oauth2_client_new>
+        <reference name="root">
+            <action method="setTemplate"><template>page/2columns-left.phtml</template></action>
+            <action method="setHeaderTitle" translate="title" module="xfeoauth2"><title>New API Client</title></action>
+        </reference>
+        <reference name="content">
+            <block type="page/html_wrapper" name="my.account.wrapper" translate="label">
+                <label>My Account Wrapper</label>
+                <action method="setElementClass"><value>my-account</value></action>
+            </block>
+        </reference>
+        <reference name="my.account.wrapper">
+            <block type="xfeoauth2/customer_oauth2Client" name="customer.oauth2.client.new"
+                   template="xfeoauth2/customer/oauth2client/new.phtml"/>
+        </reference>
+    </oauth2_client_new>
+    <!-- EOF XFE OAuth2 My API Clients -->
 </layout>

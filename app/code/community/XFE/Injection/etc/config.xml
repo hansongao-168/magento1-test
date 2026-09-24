@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    XFE_Injection 模块配置。
+
+    本模块是公共基础设施,提供"基于 XML 注入的跨模块调用机制":
+      - 业务模块通过 etc/injection.xml 声明 services / hooks / callings
+      - 运行时 XFE_Injection_Model_Runner::trigger() 自动调度
+
+    实现要点:
+      - 不注册 <models>/<helpers>/<blocks>:Domain + Model 类都是 final 普通 PHP,
+        由 Magento autoload 按类名直接 require。
+      - <adminhtml>/<admin>/<frontend> 节点为空,本模块不直接参与 HTTP 流程。
+      - <events> 暂不挂 observer,启动期加载由 Runner::trigger() 懒加载触发。
+      - <default> 节点提供 3 个配置项供 System > Config 维护。
+-->
+<config>
+    <modules>
+        <XFE_Injection>
+            <version>1.0.0</version>
+        </XFE_Injection>
+    </modules>
+    <global>
+        <models>
+            <xfe_injection>
+                <class>XFE_Injection_Model</class>
+                <!--
+                    Runner / Loader / Registry / ServiceLocator / Merger 都是 final,
+                    直接通过类名引用,无需 <rewrite>。
+                -->
+            </xfe_injection>
+        </models>
+    </global>
+    <default>
+        <xfe_injection>
+            <general>
+                <enabled>1</enabled>
+                <debug>0</debug>
+                <strict_mode>1</strict_mode>
+                <max_calling_depth>5</max_calling_depth>
+            </general>
+        </xfe_injection>
+    </default>
+</config>

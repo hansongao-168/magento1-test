@@ -33,6 +33,23 @@
                             <show_in_store>0</show_in_store>
                             <comment>Page to redirect after social login</comment>
                         </redirect_page>
+                        <!--
+                            Default TTL for newly created client_secret values.
+                            The hard default of 90 days lives in
+                            XFE_OAuth2_Helper_Data::getDefaultSecretTtlDays()
+                            so that an operator who deletes the config still
+                            gets a sensible fallback. Clamped to [1, 3650]
+                            by the helper. See ADR 0007.
+                        -->
+                        <client_secret_ttl_days translate="label">
+                            <label>Client Secret TTL (days)</label>
+                            <frontend_type>text</frontend_type>
+                            <sort_order>20</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <comment>Default expiration period for newly generated client secrets. Min 1, max 3650. Falls back to 90 if blank or out of range.</comment>
+                        </client_secret_ttl_days>
                     </fields>
                 </general>
                 <google translate="label">
@@ -129,3 +146,4 @@
         </xfeoauth2>
     </sections>
 </config>
+

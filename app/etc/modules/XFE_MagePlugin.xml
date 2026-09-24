@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!--
+    XFE_MagePlugin 模块激活器。
+    本模块替换原 XFE_Customer 中「批量修改名字」的实现。
+    Mage 核心未做修改。
+-->
+<config>
+    <modules>
+        <XFE_MagePlugin>
+            <active>true</active>
+            <codePool>community</codePool>
+            <depends>
+                <Mage_Admin/>
+                <Mage_Adminhtml/>
+            </depends>
+        </XFE_MagePlugin>
+    </modules>
+</config>
