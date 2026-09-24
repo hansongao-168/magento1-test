@@ -2453,6 +2453,9 @@ describe('mountOptionsEditor() — boolean label 自定义(小改 K)', () => {
 });
 
 
+// === 接入弹窗测试(ADR 0029)===
+require("./test-rule-modal.js")({ describe: describe, it: it, assert: assert });
+
 // === Render ===
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';

@@ -19,14 +19,17 @@
 | `injection-architecture.md` | `XFE_Injection` | architecture | 公共模块：基于 XML 注入的跨模块调用机制 |
 | `injection-api.md` | `XFE_Injection` | api | 公共模块对外契约（Runner / Registry / Domain） |
 | `injection-examples.md` | `XFE_Injection` | examples | 使用示例（Carrier↔Logistic 解耦 / 教学 Demo） |
+| `injection-onboarding.md` | `XFE_Injection` | examples | 新模块接入指南（Provider / Consumer 角色 + 5 步流程 + 完整 A→B 示例 + 反模式清单） |
 | `injection-carrier-logistic-integration.md` | `XFE_Carrier` / `XFE_Logistic` | examples | Carrier↔Logistic 集成开发指南（最小化方案 + 验证清单 + 回滚方案） |
 | `documentupload-injection-integration.md` | `XFE_DocumentUpload` / `XFE_Carrier` | examples | DocumentUpload 通过 XML 注入接入 Carrier（消除 accounts_json 独立小作坊） |
 | `ci-php-integration.md` | `XFE_Injection` | examples | XFE_Injection PHP 测试 CI 集成开发指南（GitLab CI + GitHub Actions） |
 | `decouple-podservice-main-path.md` | `XFE_Logistic` / `XFE_Carrier` | examples | PodService 主流路径接入 XML 注入（凭据单一来源） |
 | `migrate-gls-api-credentials.md` | `XFE_Logistic` / `XFE_Carrier` | examples | GLS API 凭据迁移脚本（system config → xfe_carrier_account） |
+| `finalize-podservice-injection.md` | `XFE_Logistic` / `XFE_Carrier` | examples | PodService 注入最终态（删除 fallback + Helper 空壳 + system config 下线） |
 | `carrier-account-import-export.md` | `XFE_Carrier` | architecture | 承运商账号与 FTP账号批量导入导出 |
 | `logistic-architecture.md` | `XFE_Logistic` | architecture | GLS 物流集成模块定位与分层 |
 | `logistic-gls-api.md` | `XFE_Logistic` | api | GLS Web API 接口契约（Collect POD） |
+| `logistic-gls-pod-diagnostics.md` | `XFE_Logistic` | diagnostics | Collect POD「无签收图片」排查报告（实测响应取证 `404 + Error: NO_POD_IMAGE_FOUND`，剩余 GLS 确认清单，暂无代码改动） |
 | `oauth2-architecture.md` | `XFE_OAuth2` | architecture | OAuth2 Server 模块分层 + bshaffer 库 autoloader 契约 + 4 处 storage 类顶部 require_once 父接口铁律 |
 | `oauth2-customer-navigation.md` | `XFE_OAuth2` | architecture | 客户账户页 layout handle 名纠正（`oauth2_*` → `xfeoauth2_*`） |
 
