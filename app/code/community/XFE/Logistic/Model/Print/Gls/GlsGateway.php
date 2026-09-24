@@ -21,6 +21,8 @@ class XFE_Logistic_Model_Print_Gls_GlsGateway
      * @param string $authHeader Basic Auth 头值（含 "Basic " 前缀）
      * @return array 解析后的 PODItem：{ TrackID, ImageData }
      * @throws Mage_Core_Exception 当 HTTP 失败或响应无法解析
+     * @throws XFE_Logistic_Domain_Exception_GlsApiException
+     *         当 GLS 返回非 2xx 时抛出，异常上可读取 getHttpCode() / getErrorCode() / getRawMessage()
      */
     public function requestParcelPod($trackId, $url, $authHeader)
     {
@@ -44,13 +46,23 @@ class XFE_Logistic_Model_Print_Gls_GlsGateway
         $successCodes = array($config::HTTP_OK, $config::HTTP_CREATED);
         if (!in_array($httpCode, $successCodes)) {
             // GLS 错误消息位于响应 header，而非 body（见文档 Error Messages 章节）。
-            // 抛带 HTTP 状态码的异常，供上层区分 400（请求错误）/5xx（服务端错误）。
-            $glsMessage = $this->_extractGlsErrorMessage($response['headers']);
-            $message = $glsMessage !== ''
-                ? sprintf('GLS POD 请求失败（HTTP %s）: %s', $httpCode, $glsMessage)
+            // L2 只做协议层提取：code = 机器可读枚举码（Error header），
+            //                          message = 人类可读原文（Message header）。
+            // 业务错误码分类（什么算业务异常）由 L3 Service 负责。
+            $info = $this->_extractGlsErrorInfo($response['headers']);
+            $errorCode  = $info['code'];
+            $rawMessage = $info['message'];
+
+            $message = $rawMessage !== ''
+                ? sprintf('GLS POD 请求失败（HTTP %s）: %s', $httpCode, $rawMessage)
                 : sprintf('GLS POD 请求失败（HTTP %s）', $httpCode);
 
-            throw new XFE_Logistic_Domain_Exception_GlsApiException($message, $httpCode);
+            throw new XFE_Logistic_Domain_Exception_GlsApiException(
+                $message,
+                $httpCode,
+                $errorCode,
+                $rawMessage
+            );
         }
 
         $decoded = json_decode($response['body'], true);
@@ -147,31 +159,32 @@ class XFE_Logistic_Model_Print_Gls_GlsGateway
     }
 
     /**
-     * 从 HTTP 响应 header 中提取 GLS 错误消息。
+     * 从 HTTP 响应 header 中提取 GLS 错误信息（结构化）。
      *
-     * GLS 规范：错误消息在响应 header 中。不同环境下具体字段名可能不同，
-     * 这里探测常见错误字段，找不到则返回空字符串。
+     * 按 AGENTS.md 单向依赖 4 层 + ADR 0028：
+     * L2 Gateway 只做协议层 header 提取，不做"什么算业务错误"的判断。
      *
-     * @param array $headers header 名（小写）=> 值
-     * @return string
+     * 提取策略（2026-09-21 实测响应后修正）：
+     *  - code    = 优先 Error header（机器可读枚举码，用于业务判定）
+     *  - message = 回退 Message header（人类可读原文，用于日志/展示）
+     *  - 都没匹配 → 二者皆空字符串
+     *
+     * 历史 bug：旧实现 `_extractGlsErrorMessage()` 按候选数组顺序取第一个命中，
+     * `message` 排在 `error` 之前，导致 `NO_POD_IMAGE_FOUND` 等机器可读错误码
+     * 永远读不到，上层只能拿英文整句模糊匹配。
+     *
+     * @param array $headers header 名（小写归一化后）=> 值
+     * @return array{code: string, message: string}
      */
-    protected function _extractGlsErrorMessage(array $headers)
+    protected function _extractGlsErrorInfo(array $headers)
     {
-        $candidates = array(
-            'message',
-            'errormessage',
-            'error',
-            'description',
-            'x-glserror',
+        $code    = isset($headers['error']) ? trim((string) $headers['error']) : '';
+        $message = isset($headers['message']) ? trim((string) $headers['message']) : '';
+
+        return array(
+            'code'    => $code,
+            'message' => $message,
         );
-
-        foreach ($candidates as $key) {
-            if (isset($headers[$key]) && trim($headers[$key]) !== '') {
-                return (string) $headers[$key];
-            }
-        }
-
-        return '';
     }
 
     /**

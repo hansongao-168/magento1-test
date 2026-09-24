@@ -15,6 +15,31 @@
         <reference name="content">
             <block type="xfe_carrier/adminhtml_carrier_edit" name="carrier_edit" />
         </reference>
+        <reference name="head">
+            <!-- ADR 0029 (2026-09-21): 规则弹窗 JS, 只在编辑承运商时加载 -->
+            <action method="addItem">
+                <type>skin_js</type>
+                <name>xfe_carrier/js/rule-modal.js</name>
+            </action>
+            <!-- ADR 0032 (2026-09-23): widgetTools.openDialog 基础设施
+                 - js/mage/adminhtml/wysiwyg/widget.js 提供 widgetTools 全局对象
+                 - js/prototype/windows/themes/default.css 提供 prototype-windows 弹窗基础样式 (缺这个会黑屏没窗口)
+                 - lib/prototype/windows/themes/magento.css 提供 Magento 主题样式 (覆盖 default.css)
+                 prototype/window.js (Dialog 类) 已由 main.xml 全局加载,无需重复 -->
+            <action method="addJs"><script>mage/adminhtml/wysiwyg/widget.js</script></action>
+            <!-- ADR 0032 修复 (补丁 #4): 父页必须加载 condition-builder.js,
+                 弹窗内 [+ 添加条件组] 按钮 onclick="addConditionGroup()" 引用全局函数.
+                 iframe 时代 iframe 自带这个 JS, widgetTools.openDialog 注入 innerHTML 时代
+                 父页需要提前加载。 -->
+            <action method="addItem">
+                <type>skin_js</type>
+                <name>xfe_shippingrule/js/condition-builder.js</name>
+            </action>
+            <!-- ADR 0032 修复: 必须同时加载 default.css (基础) + magento.css (主题),
+                 否则 prototype-windows 弹窗 div 没有基础样式, 出现"黑屏没窗口"。-->
+            <action method="addItem"><type>js_css</type><name>prototype/windows/themes/default.css</name></action>
+            <action method="addCss"><name>lib/prototype/windows/themes/magento.css</name></action>
+        </reference>
     </adminhtml_carrier_edit>
 
     <!-- Bulk import landing page (1.0.13+). Form posts to importPost. -->

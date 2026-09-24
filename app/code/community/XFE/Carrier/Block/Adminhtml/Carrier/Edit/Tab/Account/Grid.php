@@ -76,6 +76,16 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Grid extends Mage_Adm
             'width'  => '60px',
         ));
 
+        // ADR 0030: 每行加「+ 添加规则」按钮，点击弹出该资源的 rule 编辑页
+        $this->addColumn('add_rule', array(
+            'header'         => $helper->__('+ 添加规则'),
+            'width'          => '110px',
+            'renderer'       => 'xfe_carrier/adminhtml_carrier_grid_column_renderer_addRule',
+            'module_code'    => 'account',
+            'resource_field' => 'account_id',
+            'filter'         => false,
+            'sortable'       => false,
+        ));
         $this->addColumn('action', array(
             'header'    => $helper->__('操作'),
             'width'     => '140px',
@@ -158,6 +168,11 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_Account_Grid extends Mage_Adm
         $html .= '<div class="content-header" style="padding:0 0 10px 0;border:none;">';
         $html .= '<button type="button" class="scalable add" onclick="setLocation(\'' . $addUrl . '\')">';
         $html .= '<span><span><span>' . $helper->__('+ 添加账号') . '</span></span></span>';
+        $html .= '</button>';
+        // ADR 0029 (2026-09-21): 弹窗方式添加新规则 (module_code=account)
+        $ruleUrl = $carrierId ? $this->getUrl('*/carrier/editRule', array('carrier_id' => $carrierId, 'module_code' => 'account')) : '#';
+        $html .= '<button type="button" class="scalable add xfe-carrier-rule-btn" style="margin-left:8px;padding:6px 14px;background:#5cb85c;border:1px solid #4cae4c;color:#fff;border-radius:3px;cursor:pointer;font-weight:600;" onclick="XFE_CarrierRuleModal.open(\'' . $ruleUrl . '\');">';
+        $html .= '<span><span><span>' . $helper->__('+ 添加规则') . '</span></span></span>';
         $html .= '</button>';
         // 预设示例入口:选择一个示例后,会带着 preset=xxx 跳到新建账号页面,
         // 账号表单会自动填入示例字段(账号编号/名称/物流公司/API Endpoint)。

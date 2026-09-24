@@ -100,6 +100,16 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_FtpAccount_Grid extends Mage_
             'width'  => '60px',
         ));
 
+        // ADR 0030: 每行加「+ 添加规则」按钮，点击弹出该资源的 rule 编辑页
+        $this->addColumn('add_rule', array(
+            'header'         => $helper->__('+ 添加规则'),
+            'width'          => '110px',
+            'renderer'       => 'xfe_carrier/adminhtml_carrier_grid_column_renderer_addRule',
+            'module_code'    => 'ftp',
+            'resource_field' => 'ftp_account_id',
+            'filter'         => false,
+            'sortable'       => false,
+        ));
         $this->addColumn('action', array(
             'header'  => $helper->__('操作'),
             'width'   => '140px',
@@ -159,6 +169,11 @@ class XFE_Carrier_Block_Adminhtml_Carrier_Edit_Tab_FtpAccount_Grid extends Mage_
         $html .= '<div class="content-header" style="padding:0 0 10px 0;border:none;">';
         $html .= '<button type="button" class="scalable add" onclick="setLocation(\'' . $addUrl . '\')">';
         $html .= '<span><span><span>' . $helper->__('+ 添加 FTP账号') . '</span></span></span>';
+        $html .= '</button>';
+        // ADR 0029 (2026-09-21): 弹窗方式添加新规则 (module_code=ftp)
+        $ruleUrl = $carrierId ? $this->getUrl('*/carrier/editRule', array('carrier_id' => $carrierId, 'module_code' => 'ftp')) : '#';
+        $html .= '<button type="button" class="scalable add xfe-carrier-rule-btn" style="margin-left:8px;padding:6px 14px;background:#5cb85c;border:1px solid #4cae4c;color:#fff;border-radius:3px;cursor:pointer;font-weight:600;" onclick="XFE_CarrierRuleModal.open(\'' . $ruleUrl . '\');">';
+        $html .= '<span><span><span>' . $helper->__('+ 添加规则') . '</span></span></span>';
         $html .= '</button>';
         $html .= '</div>';
         $html .= parent::_toHtml();

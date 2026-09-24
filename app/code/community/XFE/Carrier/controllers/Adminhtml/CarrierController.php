@@ -891,53 +891,153 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
      *   account_id   int (optional - bind to account)
      *   rule_id      int (optional - edit existing)
      */
-    public function editRuleAction()
+    /**
+     * 加载并验证 rule + carrier, 失败时返回 false (表示已处理 redirect/JSON)。
+     * 抽出来供 editRuleAction 与 editRuleAjaxAction 复用。
+     *
+     * @param bool $isAjax 是否 ajax 模式
+     * @return XFE_Carrier_Model_Carrier_Rule|false
+     */
+    protected function _loadRuleForEdit($isAjax)
     {
-        $carrierId = (int) $this->getRequest()->getParam('carrier_id');
-        $accountId = (int) $this->getRequest()->getParam('account_id');
-        $ruleId    = (int) $this->getRequest()->getParam('rule_id');
-        $helper    = Mage::helper('xfe_carrier');
+        $carrierId    = (int) $this->getRequest()->getParam('carrier_id');
+        $accountId    = (int) $this->getRequest()->getParam('account_id');
+        $logoId       = (int) $this->getRequest()->getParam('logo_id');
+        $ftpAccountId = (int) $this->getRequest()->getParam('ftp_account_id');
+        $ruleId       = (int) $this->getRequest()->getParam('rule_id');
+        $helper       = Mage::helper('xfe_carrier');
 
         if (!$carrierId) {
+            if ($isAjax) {
+                $this->_ajaxRuleError(400, $helper->__('Missing carrier ID.'));
+                return false;
+            }
             Mage::getSingleton('adminhtml/session')->addError(
                 $helper->__('Missing carrier ID.')
             );
-            return $this->_redirect('*/carrier/');
+            return false;
         }
 
         $carrier = Mage::getModel('xfe_carrier/carrier')->load($carrierId);
         if (!$carrier->getId()) {
+            if ($isAjax) {
+                $this->_ajaxRuleError(404, $helper->__('The carrier does not exist.'));
+                return false;
+            }
             Mage::getSingleton('adminhtml/session')->addError(
                 $helper->__('The carrier does not exist.')
             );
-            return $this->_redirect('*/carrier/');
+            return false;
         }
 
         $rule = Mage::getModel('xfe_carrier/carrier_rule');
         if ($ruleId) {
             $rule->load($ruleId);
             if (!$rule->getId()) {
+                if ($isAjax) {
+                    $this->_ajaxRuleError(404, $helper->__('The rule does not exist.'));
+                    return false;
+                }
                 Mage::getSingleton('adminhtml/session')->addError(
                     $helper->__('The rule does not exist.')
                 );
-                return $this->_redirect('*/carrier/edit', array('id' => $carrierId));
+                return false;
             }
         } else {
             $rule->setCarrierId($carrierId);
             if ($accountId) {
                 $rule->setAccountId($accountId);
             }
+            if ($logoId) {
+                $rule->setLogoId($logoId);
+            }
+            if ($ftpAccountId) {
+                $rule->setFtpAccountId($ftpAccountId);
+            }
+        }
 
+        return $rule;
+    }
+
+    /**
+     * 输出 AJAX 错误 JSON 并中断后续渲染。
+     *
+     * @param int $status
+     * @param string $message
+     */
+    protected function _ajaxRuleError($status, $message)
+    {
+        $this->getResponse()
+            ->setHttpResponseCode($status)
+            ->setHeader('Content-Type', 'application/json; charset=UTF-8', true)
+            ->setBody(json_encode(array(
+                'success' => false,
+                'message' => $message,
+                'errors'  => array(),
+            )));
+    }
+
+    public function editRuleAction()
+    {
+        // ADR 0032: ?ajax=1 时改走 editRuleAjaxAction() 行为, 弹窗内只渲染 form (无 chrome)
+        if ($this->getRequest()->getParam('ajax')) {
+            return $this->editRuleAjaxAction();
+        }
+
+        $helper = Mage::helper('xfe_carrier');
+        $rule   = $this->_loadRuleForEdit(false);
+        if (!$rule) {
+            return $this->_redirect('*/carrier/');
         }
 
         Mage::register('xfe_carrier_rule_data', $rule);
 
         $this->_initAction()
             ->_addBreadcrumb(
-                $ruleId ? $helper->__('Edit Rule') : $helper->__('New Rule'),
-                $ruleId ? $helper->__('Edit Rule') : $helper->__('New Rule')
+                $rule->getId() ? $helper->__('Edit Rule') : $helper->__('New Rule'),
+                $rule->getId() ? $helper->__('Edit Rule') : $helper->__('New Rule')
             )
             ->renderLayout();
+    }
+
+    /**
+     * AJAX 模式加载 editRule 表单 (ADR 0031)。
+     * 返回纯 HTML (无 chrome 顶/底部), 供 rule-modal.js 注入到弹窗 div。
+     *
+     * URL: adminhtml/carrier_editrule/...  (key=ajax value=1)
+     *
+     * 流程:
+     *   1) 调用 _loadRuleForEdit(true) 加载 rule + carrier, 失败时已输出 JSON
+     *   2) 注册 xfe_carrier_rule_edit_ajax registry, 让 Edit::getTemplate() 切换为 ajax.phtml
+     *   3) loadLayout() 加载 adminhtml_carrier_editrule handle
+     *   4) 仅输出 carrier_rule_edit block 的 HTML (跳过 head/header/footer 等 chrome)
+     *
+     * 失败响应: JSON {success:false, message, errors:[]}
+     * 成功响应: HTML (status 200)
+     */
+    public function editRuleAjaxAction()
+    {
+        $rule = $this->_loadRuleForEdit(true);
+        if (!$rule) {
+            // _loadRuleForEdit(true) 失败时已经输出 JSON
+            return;
+        }
+
+        Mage::register('xfe_carrier_rule_edit_ajax', true);
+        Mage::register('xfe_carrier_rule_data', $rule);
+
+        // 加载 layout, 让 generateBlocks() 实例化 carrier_rule_edit block
+        $this->loadLayout(array('adminhtml_carrier_editrule'));
+
+        $block = $this->getLayout()->getBlock('carrier_rule_edit');
+        if (!$block) {
+            $this->_ajaxRuleError(500, 'Block carrier_rule_edit not found in layout.');
+            return;
+        }
+
+        $this->getResponse()
+            ->setHeader('Content-Type', 'text/html; charset=UTF-8', true)
+            ->setBody($block->toHtml());
     }
 
     /**
@@ -954,13 +1054,23 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
      *   is_cancel_on_failure int (0/1)
      *   sort_order    int
      *   groups_data   string (JSON from condition builder)
+     *
+     * AJAX 模式 (ADR 0031):
+     *   - 由 ?ajax=1 或 form action 中的 ajax=1 触发
+     *   - 不 _redirect, 返回 JSON
+     *   - 成功: {success:true, message, rule_id}
+     *   - 失败: {success:false, message, errors:[field,...]}
      */
     public function saveRuleAction()
     {
         $data   = $this->getRequest()->getPost();
         $helper = Mage::helper('xfe_carrier');
+        $isAjax = (bool) $this->getRequest()->getParam('ajax');
 
         if (!$data) {
+            if ($isAjax) {
+                return $this->_ajaxRuleSave(false, $helper->__('Cannot save: no data received.'), array());
+            }
             Mage::getSingleton('adminhtml/session')->addError(
                 $helper->__('Cannot save: no data received.')
             );
@@ -971,6 +1081,9 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
         $ruleId    = (int) $this->getRequest()->getParam('rule_id');
 
         if (!$carrierId) {
+            if ($isAjax) {
+                return $this->_ajaxRuleSave(false, $helper->__('Missing carrier ID.'), array('carrier_id'));
+            }
             Mage::getSingleton('adminhtml/session')->addError(
                 $helper->__('Missing carrier ID.')
             );
@@ -1003,6 +1116,9 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
             );
 
             if ($this->getRequest()->getParam('back')) {
+                if ($isAjax) {
+                    return $this->_ajaxRuleSave(true, $helper->__('Rule saved.'), array(), $rule->getId());
+                }
                 return $this->_redirect('*/carrier/editRule', array(
                     'rule_id'    => $rule->getId(),
                     'carrier_id' => $carrierId,
@@ -1011,17 +1127,69 @@ class XFE_Carrier_Adminhtml_CarrierController extends Mage_Adminhtml_Controller_
 
             $accountId = $rule->getAccountId();
             if ($carrierId && $accountId) {
+                if ($isAjax) {
+                    return $this->_ajaxRuleSave(true, $helper->__('Rule saved.'), array(), $rule->getId());
+                }
                 return $this->_redirect('*/carrier/editAccount', array(
                     'carrier_id' => $carrierId,
                     'account_id' => $accountId,
                 ));
             }
+            $logoId = $rule->getLogoId();
+            if ($carrierId && $logoId) {
+                if ($isAjax) {
+                    return $this->_ajaxRuleSave(true, $helper->__('Rule saved.'), array(), $rule->getId());
+                }
+                return $this->_redirect('*/carrier/editLogo', array(
+                    'carrier_id' => $carrierId,
+                    'logo_id'    => $logoId,
+                ));
+            }
+            $ftpAccountId = $rule->getFtpAccountId();
+            if ($carrierId && $ftpAccountId) {
+                if ($isAjax) {
+                    return $this->_ajaxRuleSave(true, $helper->__('Rule saved.'), array(), $rule->getId());
+                }
+                return $this->_redirect('*/carrier/editFtpAccount', array(
+                    'carrier_id'    => $carrierId,
+                    'ftp_account_id' => $ftpAccountId,
+                ));
+            }
+
+            if ($isAjax) {
+                return $this->_ajaxRuleSave(true, $helper->__('Rule saved.'), array(), $rule->getId());
+            }
         } catch (Exception $e) {
             Mage::logException($e);
             Mage::getSingleton('adminhtml/session')->addError($e->getMessage());
+            if ($isAjax) {
+                return $this->_ajaxRuleSave(false, $e->getMessage(), array());
+            }
         }
 
         return $this->_redirect('*/carrier/edit', array('id' => $carrierId));
+    }
+
+    /**
+     * 输出 AJAX 保存响应 JSON (ADR 0031)。
+     *
+     * @param bool   $success
+     * @param string $message
+     * @param array  $errors  字段名列表, 用于前端高亮
+     * @param int    $ruleId  保存后的 rule id (可选)
+     */
+    protected function _ajaxRuleSave($success, $message, $errors = array(), $ruleId = 0)
+    {
+        $body = array(
+            'success' => (bool) $success,
+            'message' => $message,
+            'errors'  => $errors,
+        );
+        if ($ruleId) { $body['rule_id'] = (int) $ruleId; }
+        $this->getResponse()
+            ->setHeader('Content-Type', 'application/json; charset=UTF-8', true)
+            ->setBody(json_encode($body));
+        return $this;
     }
 
     /**
